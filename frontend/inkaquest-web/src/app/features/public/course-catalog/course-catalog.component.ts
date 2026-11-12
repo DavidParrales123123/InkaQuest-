@@ -8,10 +8,9 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { CourseService } from '../../../core/services/course.service';
+import { CourseService, CursoResponse, CategoriaResponse } from '../../../core/services/course.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
-import { Categoria, Curso } from '../../../core/models/domain.models';
 import { CourseCardComponent } from '../../../shared/components/course-card/course-card.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
@@ -156,9 +155,9 @@ export class CourseCatalogComponent implements OnInit {
   private readonly enrollmentService = inject(EnrollmentService);
 
   /** Cursos cargados/ordenados (todos los que cumplen filtros). */
-  protected readonly cursos = signal<Curso[]>([]);
+  protected readonly cursos = signal<CursoResponse[]>([]);
   /** Categorías disponibles. */
-  protected readonly categorias = signal<Categoria[]>([]);
+  protected readonly categorias = signal<CategoriaResponse[]>([]);
   /** Estado de carga. */
   protected readonly cargando = signal(true);
   /** Total de cursos que cumplen los filtros (según consulta). */
@@ -244,21 +243,18 @@ export class CourseCatalogComponent implements OnInit {
   protected async cargarCursos(): Promise<void> {
     this.cargando.set(true);
     try {
-      const [cursos, total] = await Promise.all([
-        this.courseService.listarPublicos({
-          busqueda: this.busqueda().trim() || undefined,
-          categoriaId: this.categoriaId() || undefined,
-          limite: 60,
-        }),
-        this.courseService.contarPublicos({
-          busqueda: this.busqueda().trim() || undefined,
-          categoriaId: this.categoriaId() || undefined,
-        }),
-      ]);
-      this.cursos.set(this.ordenar(cursos));
-      this.total.set(total);
+      const resultado = await this.courseService.listarPublicos({
+        q: this.busqueda().trim() || undefined,
+        categoriaId: this.categoriaId() || undefined,
+        page: 0,
+        size: 60,
+      });
+      
+      this.cursos.set(this.ordenar(resultado.content));
+      this.total.set(resultado.totalElements);
       this.pagina.set(1);
-    } catch {
+    } catch (error) {
+      console.error('Error cargando cursos:', error);
       this.cursos.set([]);
       this.total.set(0);
     } finally {
@@ -266,7 +262,7 @@ export class CourseCatalogComponent implements OnInit {
     }
   }
 
-  private ordenar(cursos: Curso[]): Curso[] {
+  private ordenar(cursos: CursoResponse[]): CursoResponse[] {
     const copia = [...cursos];
     switch (this.orden()) {
       case 'precio_asc':
@@ -276,8 +272,8 @@ export class CourseCatalogComponent implements OnInit {
       case 'recientes':
         return copia.sort(
           (a, b) =>
-            new Date(b.publicado_en ?? b.creado_en).getTime() -
-            new Date(a.publicado_en ?? a.creado_en).getTime(),
+            new Date(b.publicadoEn ?? '').getTime() -
+            new Date(a.publicadoEn ?? '').getTime(),
         );
       default:
         return copia;
