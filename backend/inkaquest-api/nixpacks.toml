@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["maven", "jdk17"]
+
+[phases.build]
+cmds = ["mvn clean package -DskipTests"]
+
+[phases.deploy]
+cmd = "java -Dserver.port=$PORT -jar target/inkaquest-api-0.1.0.jar"
+
+[start]
+cmd = "java -Dserver.port=$PORT -jar target/inkaquest-api-0.1.0.jar"
