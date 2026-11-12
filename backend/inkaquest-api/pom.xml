@@ -15,12 +15,12 @@
     <artifactId>inkaquest-api</artifactId>
     <version>0.1.0</version>
     <name>InkaQuest API</name>
-    <description>API REST de InkaQuest (Spring Boot, Java 25, PostgreSQL/Supabase)</description>
+    <description>API REST de InkaQuest (Spring Boot, Java 17, PostgreSQL/Supabase)</description>
 
     <properties>
-        <!-- Java 25 es el lenguaje objetivo; `release` garantiza compatibilidad binaria. -->
-        <java.version>25</java.version>
-        <maven.compiler.release>25</maven.compiler.release>
+        <!-- Java 17 es el lenguaje objetivo; `release` garantiza compatibilidad binaria. -->
+        <java.version>17</java.version>
+        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <springdoc.version>2.9.1</springdoc.version>
