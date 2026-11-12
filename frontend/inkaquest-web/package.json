@@ -10,9 +10,9 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "node scripts/write-environment.mjs && ng build --configuration production",
+    "build": "ng build --configuration production",
     "build:dev": "ng build --configuration development",
-    "build:prod": "node scripts/write-environment.mjs && ng build --configuration production",
+    "build:prod": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "lint": "ng lint",
     "lint:fix": "ng lint --fix",
