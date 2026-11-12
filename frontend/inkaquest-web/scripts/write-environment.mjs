@@ -33,5 +33,5 @@ if (!apiUrl.endsWith('/api/v1')) {
 }
 
 const source = `/** Archivo generado automáticamente. No editar manualmente. */\nexport const environment = {\n  production: true,\n  apiUrl: ${JSON.stringify(apiUrl)},\n  supabaseUrl: ${JSON.stringify(supabaseUrl)},\n  supabaseAnonKey: ${JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY.trim())},\n} as const;\n`;
-await writeFile(resolve(here, '../src/environments/environment.prod.ts'), source, 'utf8');
+await writeFile(resolve(here, '../src/environments/environment.ts'), source, 'utf8');
 console.log('Configuración de producción de InkaQuest generada correctamente.');

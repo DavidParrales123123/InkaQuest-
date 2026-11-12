@@ -11,14 +11,13 @@ export const environment = {
   production: false,
   
   /** URL base del backend Spring Boot (sin trailing slash) */
-  apiUrl: import.meta.env?.VITE_API_URL || 'http://localhost:8080/api/v1',
+  apiUrl: 'http://localhost:8080/api/v1',
   
   /** URL del proyecto Supabase (solo para Auth) */
-  supabaseUrl: import.meta.env?.VITE_SUPABASE_URL || 'https://nrfdifzechrjikrvzhdl.supabase.co',
+  supabaseUrl: 'https://nrfdifzechrjikrvzhdl.supabase.co',
   
   /** Clave pública (anon) de Supabase - SEGURA en navegador */
-  supabaseAnonKey: import.meta.env?.VITE_SUPABASE_ANON_KEY || 
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yZmRpZnplY2hyamlrcnZ6aGRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzMjY4NTUsImV4cCI6MjEwOTkwMjg1NX0.l_MirIPpG8xkKCIuh5wMqAIth1jUfIT3A5vcNLS2yv0',
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yZmRpZnplY2hyamlrcnZ6aGRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzMjY4NTUsImV4cCI6MjEwOTkwMjg1NX0.l_MirIPpG8xkKCIuh5wMqAIth1jUfIT3A5vcNLS2yv0',
 } as const;
 
 // Validación en desarrollo para detectar configuración incorrecta
