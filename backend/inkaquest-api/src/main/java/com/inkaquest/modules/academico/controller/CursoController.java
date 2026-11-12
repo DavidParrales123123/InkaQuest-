@@ -41,11 +41,8 @@ public class CursoController {
                                                   @RequestParam(defaultValue = "") @Size(max = 200, message = "La busqueda no puede superar 200 caracteres.") String q,
                                                   @RequestParam(defaultValue = "0") @Min(value = 0, message = "La pagina debe ser >= 0.") int page,
                                                   @RequestParam(defaultValue = "20") @Min(value = 1, message = "El tamano debe ser >= 1.") @Max(value = 100, message = "El tamano maximo es 100.") int size) {
-        if (jwt == null) {
-            throw new org.springframework.security.authentication.BadCredentialsException(
-                    "Autenticación requerida.");
-        }
-        UUID estudianteId = parseUserId(jwt);
+        // Permitir acceso público al catálogo (jwt puede ser null)
+        UUID estudianteId = jwt != null ? parseUserId(jwt) : null;
         int sizeClamped = Math.max(1, Math.min(100, size));
         Pageable pageable = PageRequest.of(Math.max(0, page), sizeClamped,
                 Sort.by("publicadoEn").descending());
@@ -57,11 +54,9 @@ public class CursoController {
     @GetMapping("/{slug}")
     public ApiResponse<CursoResponse> detalle(@AuthenticationPrincipal Jwt jwt,
                                               @PathVariable @Size(min = 1, max = 200) @Pattern(regexp = "^[a-z0-9]+(-[a-z0-9]+)*$", message = "Slug de curso invalido.") String slug) {
-        if (jwt == null) {
-            throw new org.springframework.security.authentication.BadCredentialsException(
-                    "Autenticación requerida.");
-        }
-        return ApiResponse.ok(cursoService.detallePorSlug(parseUserId(jwt), slug), "Curso cargado.");
+        // Permitir acceso público al detalle del curso
+        UUID estudianteId = jwt != null ? parseUserId(jwt) : null;
+        return ApiResponse.ok(cursoService.detallePorSlug(estudianteId, slug), "Curso cargado.");
     }
 
     private UUID parseUserId(Jwt jwt) {

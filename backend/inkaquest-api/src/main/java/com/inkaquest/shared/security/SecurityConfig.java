@@ -59,7 +59,12 @@ public class SecurityConfig {
                                 // Webhook de Culqi: se verifica contra la API autenticada del proveedor (nunca JWT).
                                 "/api/v1/webhooks/culqi",
                                 // Verificacion publica de certificados por codigo.
-                                "/api/v1/certificados/verificar/**")
+                                "/api/v1/certificados/verificar/**",
+                                // Catálogo público de cursos (GET solamente)
+                                "/api/v1/cursos",
+                                "/api/v1/cursos/*",
+                                // Categorías públicas
+                                "/api/v1/categorias")
                         .permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
