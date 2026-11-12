@@ -58,10 +58,15 @@ export class CourseService {
 
   /** Lista los cursos en los que el estudiante está matriculado. */
   async listarCursosDeEstudiante(estudianteId: string): Promise<Curso[]> {
+    // El backend devuelve matrículas, no cursos directamente
+    // Necesitamos obtener las matrículas y extraer los cursos
     const res = await firstValueFrom(
-      this.http.get<ApiResponse<Curso[]>>(`${environment.apiUrl}/estudiantes/${estudianteId}/cursos`)
+      this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/matriculas/yo`)
     );
-    return res.data || [];
+    
+    // Las matrículas tienen la estructura de curso embebida
+    const matriculas = res.data || [];
+    return matriculas.map((m: any) => m.curso).filter(Boolean);
   }
 
   // === ESTRUCTURA DEL CURSO ===
