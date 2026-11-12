@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
+import { Curso } from '../models/domain.models';
 
 /**
  * Servicio del catálogo académico: cursos y su contenido.
@@ -51,6 +52,14 @@ export class CourseService {
   async listarCategorias(): Promise<CategoriaResponse[]> {
     const res = await firstValueFrom(
       this.http.get<ApiResponse<CategoriaResponse[]>>(`${environment.apiUrl}/categorias`)
+    );
+    return res.data || [];
+  }
+
+  /** Lista los cursos en los que el estudiante está matriculado. */
+  async listarCursosDeEstudiante(estudianteId: string): Promise<Curso[]> {
+    const res = await firstValueFrom(
+      this.http.get<ApiResponse<Curso[]>>(`${environment.apiUrl}/estudiantes/${estudianteId}/cursos`)
     );
     return res.data || [];
   }
