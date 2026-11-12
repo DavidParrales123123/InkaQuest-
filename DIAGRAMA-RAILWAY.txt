@@ -1,0 +1,49 @@
+﻿╔══════════════════════════════════════════════════════════════════╗
+║                    RAILWAY PROJECT                               ║
+║              inkaquest-production                                ║
+╠══════════════════════════════════════════════════════════════════╣
+║                                                                  ║
+║  ┌─────────────────────┐      ┌─────────────────────┐          ║
+║  │   SERVICIO 1        │      │   SERVICIO 2        │          ║
+║  │   Backend           │◀────▶│   Frontend          │          ║
+║  │   (Ya existe)       │      │   (Vas a agregar)   │          ║
+║  │                     │      │                     │          ║
+║  │  Spring Boot        │      │  Angular 22         │          ║
+║  │  Java 17            │      │  Node 22            │          ║
+║  │  Puerto: 8080       │      │  Puerto: 8080       │          ║
+║  │                     │      │                     │          ║
+║  │  Root Dir:          │      │  Root Dir:          │          ║
+║  │  backend/           │      │  frontend/          │          ║
+║  │  inkaquest-api      │      │  inkaquest-web      │          ║
+║  └─────────────────────┘      └─────────────────────┘          ║
+║           │                            │                        ║
+║           │                            │                        ║
+║           ▼                            ▼                        ║
+║  https://inkaquest-       https://inkaquest-web-               ║
+║  production.up.           production-xxx.up.                   ║
+║  railway.app              railway.app                          ║
+║                                                                 ║
+╠═════════════════════════════════════════════════════════════════╣
+║                    CONECTADO A                                  ║
+║                                                                 ║
+║              ┌─────────────────────┐                           ║
+║              │   SUPABASE          │                           ║
+║              │   PostgreSQL 17     │                           ║
+║              │   Auth + RLS        │                           ║
+║              └─────────────────────┘                           ║
+║                                                                 ║
+╚═════════════════════════════════════════════════════════════════╝
+
+PASOS SIMPLES:
+
+1. Railway Dashboard → Tu proyecto existente
+2. Click en + New → GitHub Repo
+3. Root Directory: frontend/inkaquest-web
+4. Service Name: frontend
+5. Deploy!
+
+RESULTADO:
+- 1 Proyecto Railway
+- 2 Servicios (backend + frontend)
+- 1 Base de datos (Supabase)
+- Todo conectado automaticamente
