@@ -1,0 +1,1 @@
+web: java -Dserver.port=$PORT -jar target/inkaquest-api-0.1.0.jar

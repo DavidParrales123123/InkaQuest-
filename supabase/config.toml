@@ -1,0 +1,86 @@
+# =============================================================================
+# SUPABASE - Configuración del proyecto Inkaquest mejorado
+# -----------------------------------------------------------------------------
+# Project ID: nrfdifzechrjikrvzhdl
+# URL: https://nrfdifzechrjikrvzhdl.supabase.co
+#
+# Este archivo configura el CLI de Supabase (supabase init / supabase start).
+#
+# IMPORTANTE:
+#   - `project_id` NO es un secreto, pero debe corresponder al proyecto real
+#     enlazado con `supabase link --project-ref <ref>`.
+#   - Las claves (anon/publishable/service_role) NUNCA se escriben aquí.
+#     Se configuran como variables de entorno del proveedor de despliegue.
+#
+# Comandos habituales:
+#   supabase link --project-ref <ref>   # enlaza el proyecto remoto
+#   supabase db push                    # aplica las migraciones pendientes
+#   supabase db diff -f <nombre>        # genera una migración a partir del diff
+#   supabase start                      # levanta el stack local (Docker)
+# =============================================================================
+
+project_id = "nrfdifzechrjikrvzhdl"
+
+# -----------------------------------------------------------------------------
+# API (expuesta en http://127.0.0.1:54321 en el stack local)
+# -----------------------------------------------------------------------------
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+# -----------------------------------------------------------------------------
+# Base de datos (PostgreSQL local para desarrollo)
+# -----------------------------------------------------------------------------
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+# -----------------------------------------------------------------------------
+# Migraciones y semillas
+# Las rutas son relativas a la carpeta supabase/ (no a la raiz del repo).
+# -----------------------------------------------------------------------------
+[db.migrations]
+schema_paths = ["./migrations"]
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed/seed.sql"]
+
+# -----------------------------------------------------------------------------
+# Autenticación (Supabase Auth)
+# -----------------------------------------------------------------------------
+[auth]
+enabled = true
+site_url = "http://localhost:4200"
+additional_redirect_urls = ["http://localhost:4200"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+
+# -----------------------------------------------------------------------------
+# Almacenamiento de archivos (Supabase Storage)
+# -----------------------------------------------------------------------------
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+# -----------------------------------------------------------------------------
+# Edge Functions: se despliegan de forma independiente y verifican el JWT.
+# El orden de escritura sigue el de `supabase/functions/`.
+# -----------------------------------------------------------------------------
+[functions.emitir-certificado]
+verify_jwt = true
+
+[functions.enroll-course]
+verify_jwt = true
+
+[functions.evaluate-activity]
+verify_jwt = true
+
+[functions.get-learning-progress]
+verify_jwt = true

@@ -1,0 +1,35 @@
+# =============================================================================
+# INKAQUEST - Entorno de desarrollo con Docker Compose
+# -----------------------------------------------------------------------------
+# Levanta PostgreSQL local para trabajar contra una base de datos sin depender
+# del proyecto remoto de Supabase.
+#
+# Uso:
+#   docker compose -f infra/docker/docker-compose.dev.yml up -d
+#   docker compose -f infra/docker/docker-compose.dev.yml down -v
+#
+# Nota: el stack completo de Supabase (Auth, Storage, Realtime, funciones) se
+# levanta con `supabase start`, que es la opción recomendada.
+# =============================================================================
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: inkaquest-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-inkaquest}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - inkaquest-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-inkaquest}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  inkaquest-pgdata:

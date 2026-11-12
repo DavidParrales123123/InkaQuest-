@@ -1,0 +1,112 @@
+# ===================================
+# InkaQuest - .gitignore
+# ===================================
+
+# === SECRETS Y CONFIGURACIÓN SENSIBLE ===
+# NUNCA versionar archivos con credenciales
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+
+# === BACKEND (Spring Boot) ===
+# Build outputs
+backend/**/target/
+backend/**/*.jar
+backend/**/*.war
+backend/**/*.class
+
+# Maven
+backend/**/.mvn/wrapper/maven-wrapper.jar
+backend/**/mvnw
+backend/**/mvnw.cmd
+
+# Logs
+backend/**/*.log
+
+# === FRONTEND (Angular) ===
+# Dependencies
+frontend/**/node_modules/
+frontend/**/.pnpm-store/
+frontend/**/package-lock.json
+
+# Build outputs
+frontend/**/dist/
+frontend/**/out-tsc/
+frontend/**/.angular/
+frontend/**/bazel-out/
+
+# Logs
+frontend/**/npm-debug.log*
+frontend/**/yarn-debug.log*
+frontend/**/yarn-error.log*
+
+# === IDE ===
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# VSCode
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# NetBeans
+nbproject/
+nbbuild/
+nbdist/
+
+# === OS ===
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+
+# === TESTING ===
+coverage/
+.nyc_output/
+*.lcov
+.hypothesis/
+.pytest_cache/
+
+# === TEMP FILES ===
+*.swp
+*.swo
+*.tmp
+*.bak
+*.cache
+*.pid
+*.seed
+
+# === DOCS TEMPORALES ===
+# Mantener docs/ pero ignorar builds de documentación
+**/docs/_build/
+**/docs/.doctrees/
+
+# === OTROS ===
+# Railway, Vercel, etc. (locales)
+.railway/
+.vercel/
+
+# Archivos de sistema
+*.orig

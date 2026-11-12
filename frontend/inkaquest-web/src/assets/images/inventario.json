@@ -1,0 +1,106 @@
+[
+  {
+    "original": "Algoritmos y Estructuras de Datos Neón.png",
+    "origen": "C:\\Users\\david\\Desktop\\proyecto mejorado\\imagen\\Algoritmos y Estructuras de Datos Neón.png",
+    "destino": "src/assets/images/courses/algoritmos-estructuras-datos.png",
+    "tipo": "Portada de curso",
+    "idCurso": "algoritmos-estructuras-datos",
+    "kb": 1761
+  },
+  {
+    "original": "Análisis y Diseño de Algoritmos.png",
+    "origen": "C:\\Users\\david\\Desktop\\proyecto mejorado\\imagen\\Análisis y Diseño de Algoritmos.png",
+    "destino": "src/assets/images/courses/analisis-diseno-algoritmos.png",
+    "tipo": "Portada de curso",
+    "idCurso": "analisis-diseno-algoritmos",
+    "kb": 1666
+  },
+  {
+    "original": "Base de Datos 1_ SQL y Esquemas.png",
+    "origen": "C:\\Users\\david\\Desktop\\proyecto mejorado\\imagen\\Base de Datos 1_ SQL y Esquemas.png",
+    "destino": "src/assets/images/courses/base-de-datos-1.png",
+    "tipo": "Portada de curso",
+    "idCurso": "base-de-datos-1",
+    "kb": 1706
+  },
+  {
+    "original": "Base de Datos 2_ Futuro SQL.png",
+    "origen": "C:\\Users\\david\\Desktop\\proyecto mejorado\\imagen\\Base de Datos 2_ Futuro SQL.png",
+    "destino": "src/assets/images/courses/base-de-datos-2.png",
+    "tipo": "Portada de curso",
+    "idCurso": "base-de-datos-2",
+    "kb": 1736
+  },
+  {
+    "original": "Diseño de patrones_ guía visual de software.png",
+    "origen": "C:\\Users\\david\\Desktop\\proyecto mejorado\\imagen\\Diseño de patrones_ guía visual de software.png",
+    "destino": "src/assets/images/courses/diseno-patrones.png",
+    "tipo": "Portada de curso",
+    "idCurso": "diseno-patrones",
+    "kb": 1748
+  },
+  {
+    "original": "Introducción a las TIC en neón.png",
+    "origen": "C:\\Users\\david\\Desktop\\proyecto mejorado\\imagen\\Introducción a las TIC en neón.png",
+    "destino": "src/assets/images/courses/introduccion-tic.png",
+    "tipo": "Portada de curso",
+    "idCurso": "introduccion-tic",
+    "kb": 1761
+  },
+  {
+    "original": "logo.png",
+    "origen": "C:\\Users\\david\\Desktop\\proyecto mejorado\\imagen\\logo.png",
+    "destino": "src/assets/images/brand/logo.png",
+    "tipo": "Logotipo oficial",
+    "idCurso": null,
+    "kb": 1737
+  },
+  {
+    "original": "Principios de Algoritmos_ Guía Visual.png",
+    "origen": "C:\\Users\\david\\Desktop\\proyecto mejorado\\imagen\\Principios de Algoritmos_ Guía Visual.png",
+    "destino": "src/assets/images/courses/principios-algoritmos.png",
+    "tipo": "Portada de curso",
+    "idCurso": "principios-algoritmos",
+    "kb": 1799
+  },
+  {
+    "original": "Programación Orientada a Objetos.png",
+    "origen": "C:\\Users\\david\\Desktop\\proyecto mejorado\\imagen\\Programación Orientada a Objetos.png",
+    "destino": "src/assets/images/courses/poo.png",
+    "tipo": "Portada de curso",
+    "idCurso": "poo",
+    "kb": 1842
+  },
+  {
+    "original": "Redes y comunicación de datos 1.png",
+    "origen": "C:\\Users\\david\\Desktop\\proyecto mejorado\\imagen\\Redes y comunicación de datos 1.png",
+    "destino": "src/assets/images/courses/redes-comunicacion-datos.png",
+    "tipo": "Portada de curso",
+    "idCurso": "redes-comunicacion-datos",
+    "kb": 1913
+  },
+  {
+    "original": "Sistemas Operativos_ Guía Visual Futurista.png",
+    "origen": "C:\\Users\\david\\Desktop\\proyecto mejorado\\imagen\\Sistemas Operativos_ Guía Visual Futurista.png",
+    "destino": "src/assets/images/courses/sistemas-operativos.png",
+    "tipo": "Portada de curso",
+    "idCurso": "sistemas-operativos",
+    "kb": 1855
+  },
+  {
+    "original": "Taller de Programación Java.png",
+    "origen": "C:\\Users\\david\\Desktop\\proyecto mejorado\\imagen\\Taller de Programación Java.png",
+    "destino": "src/assets/images/courses/taller-programacion-java.png",
+    "tipo": "Portada de curso",
+    "idCurso": "taller-programacion-java",
+    "kb": 1931
+  },
+  {
+    "original": "Taller de Programación Web Neon.png",
+    "origen": "C:\\Users\\david\\Desktop\\proyecto mejorado\\imagen\\Taller de Programación Web Neon.png",
+    "destino": "src/assets/images/courses/taller-programacion-web.png",
+    "tipo": "Portada de curso",
+    "idCurso": "taller-programacion-web",
+    "kb": 1987
+  }
+]

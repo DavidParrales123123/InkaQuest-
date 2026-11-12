@@ -1,0 +1,134 @@
+# =============================================================================
+# INKAQUEST API - Configuración base
+# -----------------------------------------------------------------------------
+# Los valores sensibles NUNCA se versionan. Se inyectan por variable de
+# entorno (Render / Railway / entorno local). Ver `application-local.yml`
+# para el perfil de desarrollo y `.env.example` en la raíz del repositorio.
+# =============================================================================
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+  error:
+    # En ningún perfil el cliente recibe mensajes internos de error.
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+
+spring:
+  application:
+    name: inkaquest-api
+
+  profiles:
+    # Perfil por defecto. Sin este valor solo se carga application.yml.
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  datasource:
+    # Supabase PostgreSQL. La contraseña llega siempre por variable de entorno.
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/inkaquest}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    # El esquema de Supabase se gestiona con migraciones SQL versionadas
+    # (carpeta supabase/migrations). Hibernate NO debe alterar el esquema.
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+    show-sql: false
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: America/Lima
+    default-property-inclusion: non_null
+
+# -----------------------------------------------------------------------------
+# Rate limiting (por IP + ruta; ver RateLimitFilter/RateLimiter)
+# -----------------------------------------------------------------------------
+app:
+  rate-limit:
+    max-per-minute: ${RATE_LIMIT_MAX_PER_MINUTE:60}
+    strict-per-minute: ${RATE_LIMIT_STRICT_PER_MINUTE:20}
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200}
+    allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
+    allowed-headers: "*"
+    allow-credentials: true
+    max-age: 3600
+  security:
+    allowed-origins: ${APP_SECURITY_ALLOWED_ORIGINS:http://localhost:4200}
+    public-endpoints: /actuator/health,/actuator/info,/api-docs,/swagger-ui
+
+# -----------------------------------------------------------------------------
+# Supabase (Auth / Storage / JWT)
+# -----------------------------------------------------------------------------
+supabase:
+  url: ${SUPABASE_URL:}
+  anon-key: ${SUPABASE_ANON_KEY:}
+  # Solo para uso interno del backend. NUNCA exponer en el frontend.
+  service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
+  jwt-secret: ${SUPABASE_JWT_SECRET:}
+  # Cuando está definido, se usa JWKS (ES256 asimétrico) para validar JWT.
+  # Si se define, tiene prioridad sobre jwt-secret.
+  jwks-uri: ${SUPABASE_JWKS_URI:}
+
+# -----------------------------------------------------------------------------
+# Culqi (pagos)
+# -----------------------------------------------------------------------------
+culqi:
+  api-key: ${CULQI_API_KEY:${CULQI_SECRET_KEY:}}
+  api-base: ${CULQI_API_BASE:https://api.culqi.com/v2}
+
+# -----------------------------------------------------------------------------
+# OpenAPI / Swagger UI
+# -----------------------------------------------------------------------------
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+# -----------------------------------------------------------------------------
+# Actuator (health checks para el proveedor de despliegue)
+# Solo `health` e `info` pública. `metrics` NO se expone por HTTP en ningún
+# perfil; si hace falta, se abre vía configuración de administración.
+# -----------------------------------------------------------------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+# -----------------------------------------------------------------------------
+# Logs: el formato por ambiente lo define logback-spring.xml (legible en local,
+# JSON estructurado en prod). Aquí solo ajustamos el nivel de la app.
+# -----------------------------------------------------------------------------
+logging:
+  level:
+    com.inkaquest: ${LOG_LEVEL_INKAQUEST:INFO}
+
+# -----------------------------------------------------------------------------
+# Chatbot IA (proveedor compatible con OpenAI; secretos solo en backend)
+# -----------------------------------------------------------------------------
+chatbot:
+  api-key: ${CHATBOT_API_KEY:}
+  api-url: ${CHATBOT_API_URL:https://api.openai.com/v1/chat/completions}
+  model: ${CHATBOT_MODEL:gpt-4o-mini}

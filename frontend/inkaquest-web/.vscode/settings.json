@@ -1,0 +1,40 @@
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  
+  // Excluir archivos de configuración del análisis de TypeScript
+  "files.associations": {
+    "*.config.js": "javascript",
+    "*.config.mjs": "javascript",
+    "eslint.config.js": "javascript"
+  },
+  
+  // Desactivar validación de TypeScript para archivos .js de configuración
+  "javascript.validate.enable": true,
+  "typescript.validate.enable": true,
+  
+  // Excluir archivos que causan ruido
+  "files.exclude": {
+    "**/.angular": true,
+    "**/node_modules": true
+  },
+  
+  // Configuración de ESLint
+  "eslint.workingDirectories": [
+    {
+      "mode": "auto"
+    }
+  ],
+  
+  // Auto-formateo al guardar
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  
+  // Excluir del validador de TypeScript
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}

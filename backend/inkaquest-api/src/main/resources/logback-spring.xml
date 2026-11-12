@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Importar configuración base de Spring Boot -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- === FORMATO TEXTO PLANO (Desarrollo) === -->
+    <springProfile name="local,development">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [request-id=%X{request-id:-N/A}] - %msg%n</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
+        <!-- Log de archivo en desarrollo (rotación diaria) -->
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/inkaquest-api.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>logs/inkaquest-api-%d{yyyy-MM-dd}.log</fileNamePattern>
+                <maxHistory>7</maxHistory>
+                <totalSizeCap>100MB</totalSizeCap>
+            </rollingPolicy>
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [request-id=%X{request-id:-N/A}] - %msg%n</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
+        <!-- Niveles de log en desarrollo -->
+        <logger name="com.inkaquest" level="DEBUG"/>
+        <logger name="org.springframework.security" level="DEBUG"/>
+        <logger name="org.hibernate.SQL" level="DEBUG"/>
+        <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="TRACE"/>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- === FORMATO JSON ESTRUCTURADO (Producción) === -->
+    <springProfile name="production">
+        <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <!-- Campos personalizados -->
+                <provider class="net.logstash.logback.composite.loggingevent.ArgumentsJsonProvider"/>
+                <provider class="net.logstash.logback.composite.loggingevent.StackTraceJsonProvider"/>
+                
+                <!-- MDC personalizado -->
+                <customFields>{"app":"inkaquest-api"}</customFields>
+                
+                <!-- No incluir stack traces completos en producción (seguridad) -->
+                <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                    <maxDepthPerThrowable>20</maxDepthPerThrowable>
+                    <maxLength>2048</maxLength>
+                    <exclude>sun\..*</exclude>
+                    <exclude>java\.lang\.reflect.*</exclude>
+                </throwableConverter>
+            </encoder>
+        </appender>
+
+        <!-- Niveles de log en producción (más restrictivos) -->
+        <logger name="com.inkaquest" level="INFO"/>
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
+        
+        <!-- NO loguear SQL en producción (puede contener datos sensibles) -->
+        <logger name="org.hibernate.SQL" level="WARN"/>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_JSON"/>
+        </root>
+    </springProfile>
+
+    <!-- === LOGGING DE SEGURIDAD === -->
+    <!-- Logs de seguridad siempre en INFO o superior -->
+    <logger name="org.springframework.security" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- === LOGGING DE AUDITORÍA === -->
+    <!-- Auditoría de acciones críticas -->
+    <logger name="com.inkaquest.modules.auditoria" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- === SUPRESIÓN DE LOGS RUIDOSOS === -->
+    <logger name="org.springframework.boot.autoconfigure" level="WARN"/>
+    <logger name="org.apache.catalina" level="WARN"/>
+    <logger name="org.apache.tomcat" level="WARN"/>
+    <logger name="org.springframework.web.servlet.mvc.method.annotation" level="WARN"/>
+
+</configuration>

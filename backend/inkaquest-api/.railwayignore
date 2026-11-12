@@ -1,0 +1,21 @@
+# Build outputs
+target/
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment (Railway usa sus propias variables)
+.env
+.env.local
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar

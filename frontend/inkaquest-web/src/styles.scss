@@ -1,0 +1,13 @@
+/*
+ * Estilos globales de InkaQuest (SCSS).
+ *
+ * Tailwind CSS v4 se carga desde `src/tailwind.css` a través del plugin
+ * PostCSS (`@tailwindcss/postcss`), declarado en `.postcssrc.json`.
+ * Este archivo queda para estilos globales propios y componentes SCSS.
+ */
+@layer theme {
+  :root {
+    --color-brand-500: #12736b;
+    --color-brand-600: #0f5d57;
+  }
+}

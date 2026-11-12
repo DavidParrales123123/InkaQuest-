@@ -1,0 +1,60 @@
+# =============================================================================
+# INKAQUEST API - Configuración de despliegue (Render)
+# -----------------------------------------------------------------------------
+# Blueprint de Render: permite desplegar el backend con unos clics desde el
+# repositorio, o con `render blueprint launch`.
+#
+# Referencia: https://render.com/docs/blueprint-spec
+# =============================================================================
+
+services:
+  - type: web
+    name: inkaquest-api
+    runtime: docker
+    dockerfilePath: ./infra/docker/Dockerfile.backend
+    dockerContext: .
+    plan: starter
+    region: oregon
+    branch: main
+    healthCheckPath: /actuator/health
+    # Las variables se configuran en el panel de Render (o desde un Secret File).
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: SERVER_PORT
+        value: 8080
+      - key: JAVA_OPTS
+        value: -XX:MaxRAMPercentage=75 -XX:+UseContainerSupport
+      # Secretos: definir en "Environment" del panel de Render, no en este archivo.
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWKS_URI
+        sync: false
+      # Solo para proyectos legacy HS256; dejar sin configurar si se usa JWKS ES256.
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: APP_CORS_ALLOWED_ORIGINS
+        sync: false
+      # Culqi: comenzar con llaves sk_test_* (Sandbox). Cambiar a sk_live_* solo
+      # después de validar el flujo completo y configurar webhooks en el panel.
+      - key: CULQI_API_KEY
+        sync: false
+      - key: CULQI_API_BASE
+        value: https://api.culqi.com/v2
+      # Chatbot IA: clave privada exclusivamente en el backend.
+      - key: CHATBOT_API_KEY
+        sync: false
+      - key: CHATBOT_API_URL
+        value: https://api.openai.com/v1/chat/completions
+      - key: CHATBOT_MODEL
+        value: gpt-4o-mini

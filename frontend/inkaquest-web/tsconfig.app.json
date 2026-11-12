@@ -1,0 +1,19 @@
+/* Configuración de TypeScript para la compilación de la aplicación. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/app",
+    "rootDir": "./src",
+    "types": []
+  },
+  "files": ["src/main.ts"],
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "src/**/*.spec.ts",
+    "src/test-setup.ts",
+    "**/*.config.js",
+    "**/*.config.mjs",
+    "eslint.config.js",
+    "vite.config.ts"
+  ]
+}

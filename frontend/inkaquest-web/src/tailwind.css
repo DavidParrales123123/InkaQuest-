@@ -1,0 +1,6 @@
+/*
+ * Punto de entrada de Tailwind CSS v4 - InkaQuest
+ * Diseño adaptado del proyecto de referencia (identidad andina/tech)
+ */
+@import 'tailwindcss';
+@import './styles/theme.css';

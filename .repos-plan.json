@@ -1,0 +1,728 @@
+[
+  {
+    "modulo": "matriculas",
+    "Ent": "AccesoCurso",
+    "repoName": "AccesoCursoRepository",
+    "tabla": "acceso_curso"
+  },
+  {
+    "modulo": "evaluaciones",
+    "Ent": "Actividad",
+    "repoName": "ActividadRepository",
+    "tabla": "actividad"
+  },
+  {
+    "modulo": "progreso",
+    "Ent": "ActividadCompletada",
+    "repoName": "ActividadCompletadaRepository",
+    "tabla": "actividad_completada"
+  },
+  {
+    "modulo": "minijuegos",
+    "Ent": "ActividadJuego",
+    "repoName": "ActividadJuegoRepository",
+    "tabla": "actividad_juego"
+  },
+  {
+    "modulo": "identidad",
+    "Ent": "AprobacionDocente",
+    "repoName": "AprobacionDocenteRepository",
+    "tabla": "aprobacion_docente"
+  },
+  {
+    "modulo": "identidad",
+    "Ent": "AuditoriaAcceso",
+    "repoName": "AuditoriaAccesoRepository",
+    "tabla": "auditoria_acceso"
+  },
+  {
+    "modulo": "evaluaciones",
+    "Ent": "Calificacion",
+    "repoName": "CalificacionRepository",
+    "tabla": "calificacion"
+  },
+  {
+    "modulo": "auditoria",
+    "Ent": "CambioAdministrativo",
+    "repoName": "CambioAdministrativoRepository",
+    "tabla": "cambio_administrativo"
+  },
+  {
+    "modulo": "matriculas",
+    "Ent": "CancelacionMatricula",
+    "repoName": "CancelacionMatriculaRepository",
+    "tabla": "cancelacion_matricula"
+  },
+  {
+    "modulo": "comercio",
+    "Ent": "Carrito",
+    "repoName": "CarritoRepository",
+    "tabla": "carrito"
+  },
+  {
+    "modulo": "retos",
+    "Ent": "CasoPrueba",
+    "repoName": "CasoPruebaRepository",
+    "tabla": "caso_prueba"
+  },
+  {
+    "modulo": "academico",
+    "Ent": "Categoria",
+    "repoName": "CategoriaRepository",
+    "tabla": "categoria"
+  },
+  {
+    "modulo": "certificados",
+    "Ent": "Certificado",
+    "repoName": "CertificadoRepository",
+    "tabla": "certificado"
+  },
+  {
+    "modulo": "certificados",
+    "Ent": "CertificadoCurso",
+    "repoName": "CertificadoCursoRepository",
+    "tabla": "certificado_curso"
+  },
+  {
+    "modulo": "certificados",
+    "Ent": "CertificadoEmision",
+    "repoName": "CertificadoEmisionRepository",
+    "tabla": "certificado_emision"
+  },
+  {
+    "modulo": "certificados",
+    "Ent": "CertificadoRevocacion",
+    "repoName": "CertificadoRevocacionRepository",
+    "tabla": "certificado_revocacion"
+  },
+  {
+    "modulo": "certificados",
+    "Ent": "CertificadoTitular",
+    "repoName": "CertificadoTitularRepository",
+    "tabla": "certificado_titular"
+  },
+  {
+    "modulo": "chatbot",
+    "Ent": "ChatbotConsumo",
+    "repoName": "ChatbotConsumoRepository",
+    "tabla": "chatbot_consumo"
+  },
+  {
+    "modulo": "chatbot",
+    "Ent": "ChatbotConversacion",
+    "repoName": "ChatbotConversacionRepository",
+    "tabla": "chatbot_conversacion"
+  },
+  {
+    "modulo": "chatbot",
+    "Ent": "ChatbotDerivacion",
+    "repoName": "ChatbotDerivacionRepository",
+    "tabla": "chatbot_derivacion"
+  },
+  {
+    "modulo": "chatbot",
+    "Ent": "ChatbotDocumento",
+    "repoName": "ChatbotDocumentoRepository",
+    "tabla": "chatbot_documento"
+  },
+  {
+    "modulo": "chatbot",
+    "Ent": "ChatbotDocumentoVersion",
+    "repoName": "ChatbotDocumentoVersionRepository",
+    "tabla": "chatbot_documento_version"
+  },
+  {
+    "modulo": "chatbot",
+    "Ent": "ChatbotFragmento",
+    "repoName": "ChatbotFragmentoRepository",
+    "tabla": "chatbot_fragmento"
+  },
+  {
+    "modulo": "chatbot",
+    "Ent": "ChatbotHistorial",
+    "repoName": "ChatbotHistorialRepository",
+    "tabla": "chatbot_historial"
+  },
+  {
+    "modulo": "chatbot",
+    "Ent": "ChatbotMensaje",
+    "repoName": "ChatbotMensajeRepository",
+    "tabla": "chatbot_mensaje"
+  },
+  {
+    "modulo": "chatbot",
+    "Ent": "ChatbotParticipante",
+    "repoName": "ChatbotParticipanteRepository",
+    "tabla": "chatbot_participante"
+  },
+  {
+    "modulo": "chatbot",
+    "Ent": "ChatbotReferencia",
+    "repoName": "ChatbotReferenciaRepository",
+    "tabla": "chatbot_referencia"
+  },
+  {
+    "modulo": "chatbot",
+    "Ent": "ChatbotRetroalimentacion",
+    "repoName": "ChatbotRetroalimentacionRepository",
+    "tabla": "chatbot_retroalimentacion"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "CompraVirtual",
+    "repoName": "CompraVirtualRepository",
+    "tabla": "compra_virtual"
+  },
+  {
+    "modulo": "auditoria",
+    "Ent": "Configuracion",
+    "repoName": "ConfiguracionRepository",
+    "tabla": "configuracion"
+  },
+  {
+    "modulo": "minijuegos",
+    "Ent": "ConfiguracionJuego",
+    "repoName": "ConfiguracionJuegoRepository",
+    "tabla": "configuracion_juego"
+  },
+  {
+    "modulo": "academico",
+    "Ent": "Contenido",
+    "repoName": "ContenidoRepository",
+    "tabla": "contenido"
+  },
+  {
+    "modulo": "evaluaciones",
+    "Ent": "CriterioEvaluacion",
+    "repoName": "CriterioEvaluacionRepository",
+    "tabla": "criterio_evaluacion"
+  },
+  {
+    "modulo": "comercio",
+    "Ent": "Cupon",
+    "repoName": "CuponRepository",
+    "tabla": "cupon"
+  },
+  {
+    "modulo": "academico",
+    "Ent": "Curso",
+    "repoName": "CursoRepository",
+    "tabla": "curso"
+  },
+  {
+    "modulo": "comercio",
+    "Ent": "Descuento",
+    "repoName": "DescuentoRepository",
+    "tabla": "descuento"
+  },
+  {
+    "modulo": "comercio",
+    "Ent": "DetallePedido",
+    "repoName": "DetallePedidoRepository",
+    "tabla": "detalle_pedido"
+  },
+  {
+    "modulo": "academico",
+    "Ent": "DocenteCurso",
+    "repoName": "DocenteCursoRepository",
+    "tabla": "docente_curso"
+  },
+  {
+    "modulo": "evaluaciones",
+    "Ent": "Entrega",
+    "repoName": "EntregaRepository",
+    "tabla": "entrega"
+  },
+  {
+    "modulo": "evaluaciones",
+    "Ent": "EntregaArchivo",
+    "repoName": "EntregaArchivoRepository",
+    "tabla": "entrega_archivo"
+  },
+  {
+    "modulo": "retos",
+    "Ent": "EnvioReto",
+    "repoName": "EnvioRetoRepository",
+    "tabla": "envio_reto"
+  },
+  {
+    "modulo": "evaluaciones",
+    "Ent": "Evaluacion",
+    "repoName": "EvaluacionRepository",
+    "tabla": "evaluacion"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "EventoGamificacion",
+    "repoName": "EventoGamificacionRepository",
+    "tabla": "evento_gamificacion"
+  },
+  {
+    "modulo": "comercio",
+    "Ent": "EventoPlataforma",
+    "repoName": "EventoPlataformaRepository",
+    "tabla": "evento_plataforma"
+  },
+  {
+    "modulo": "auditoria",
+    "Ent": "EventoSistema",
+    "repoName": "EventoSistemaRepository",
+    "tabla": "evento_sistema"
+  },
+  {
+    "modulo": "evaluaciones",
+    "Ent": "Examen",
+    "repoName": "ExamenRepository",
+    "tabla": "examen"
+  },
+  {
+    "modulo": "minijuegos",
+    "Ent": "FinalizacionJuego",
+    "repoName": "FinalizacionJuegoRepository",
+    "tabla": "finalizacion_juego"
+  },
+  {
+    "modulo": "retos",
+    "Ent": "HistorialEjecucion",
+    "repoName": "HistorialEjecucionRepository",
+    "tabla": "historial_ejecucion"
+  },
+  {
+    "modulo": "comercio",
+    "Ent": "HistorialFinanciero",
+    "repoName": "HistorialFinancieroRepository",
+    "tabla": "historial_financiero"
+  },
+  {
+    "modulo": "matriculas",
+    "Ent": "HistorialMatricula",
+    "repoName": "HistorialMatriculaRepository",
+    "tabla": "historial_matricula"
+  },
+  {
+    "modulo": "auditoria",
+    "Ent": "HistorialModificacion",
+    "repoName": "HistorialModificacionRepository",
+    "tabla": "historial_modificacion"
+  },
+  {
+    "modulo": "progreso",
+    "Ent": "HistorialProgreso",
+    "repoName": "HistorialProgresoRepository",
+    "tabla": "historial_progreso"
+  },
+  {
+    "modulo": "academico",
+    "Ent": "HistorialPublicacion",
+    "repoName": "HistorialPublicacionRepository",
+    "tabla": "historial_publicacion"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "HistorialRacha",
+    "repoName": "HistorialRachaRepository",
+    "tabla": "historial_racha"
+  },
+  {
+    "modulo": "soporte",
+    "Ent": "HistorialSoporte",
+    "repoName": "HistorialSoporteRepository",
+    "tabla": "historial_soporte"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "Insignia",
+    "repoName": "InsigniaRepository",
+    "tabla": "insignia"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "InsigniaUsuario",
+    "repoName": "InsigniaUsuarioRepository",
+    "tabla": "insignia_usuario"
+  },
+  {
+    "modulo": "evaluaciones",
+    "Ent": "IntentoEvaluacion",
+    "repoName": "IntentoEvaluacionRepository",
+    "tabla": "intento_evaluacion"
+  },
+  {
+    "modulo": "minijuegos",
+    "Ent": "IntentoJuego",
+    "repoName": "IntentoJuegoRepository",
+    "tabla": "intento_juego"
+  },
+  {
+    "modulo": "comercio",
+    "Ent": "IntentoPago",
+    "repoName": "IntentoPagoRepository",
+    "tabla": "intento_pago"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "Inventario",
+    "repoName": "InventarioRepository",
+    "tabla": "inventario"
+  },
+  {
+    "modulo": "comercio",
+    "Ent": "ItemCarrito",
+    "repoName": "ItemCarritoRepository",
+    "tabla": "item_carrito"
+  },
+  {
+    "modulo": "minijuegos",
+    "Ent": "Juego",
+    "repoName": "JuegoRepository",
+    "tabla": "juego"
+  },
+  {
+    "modulo": "academico",
+    "Ent": "Leccion",
+    "repoName": "LeccionRepository",
+    "tabla": "leccion"
+  },
+  {
+    "modulo": "retos",
+    "Ent": "Lenguaje",
+    "repoName": "LenguajeRepository",
+    "tabla": "lenguaje"
+  },
+  {
+    "modulo": "academico",
+    "Ent": "MaterialDescargable",
+    "repoName": "MaterialDescargableRepository",
+    "tabla": "material_descargable"
+  },
+  {
+    "modulo": "matriculas",
+    "Ent": "Matricula",
+    "repoName": "MatriculaRepository",
+    "tabla": "matricula"
+  },
+  {
+    "modulo": "soporte",
+    "Ent": "Mensaje",
+    "repoName": "MensajeRepository",
+    "tabla": "mensaje"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "Mision",
+    "repoName": "MisionRepository",
+    "tabla": "mision"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "MisionUsuario",
+    "repoName": "MisionUsuarioRepository",
+    "tabla": "mision_usuario"
+  },
+  {
+    "modulo": "academico",
+    "Ent": "Modulo",
+    "repoName": "ModuloRepository",
+    "tabla": "modulo"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "Monedero",
+    "repoName": "MonederoRepository",
+    "tabla": "monedero"
+  },
+  {
+    "modulo": "minijuegos",
+    "Ent": "Motor",
+    "repoName": "MotorRepository",
+    "tabla": "motor"
+  },
+  {
+    "modulo": "minijuegos",
+    "Ent": "MotorComun",
+    "repoName": "MotorComunRepository",
+    "tabla": "motor_comun"
+  },
+  {
+    "modulo": "minijuegos",
+    "Ent": "MotorCurso",
+    "repoName": "MotorCursoRepository",
+    "tabla": "motor_curso"
+  },
+  {
+    "modulo": "soporte",
+    "Ent": "Notificacion",
+    "repoName": "NotificacionRepository",
+    "tabla": "notificacion"
+  },
+  {
+    "modulo": "soporte",
+    "Ent": "NotificacionDestinatario",
+    "repoName": "NotificacionDestinatarioRepository",
+    "tabla": "notificacion_destinatario"
+  },
+  {
+    "modulo": "evaluaciones",
+    "Ent": "Opcion",
+    "repoName": "OpcionRepository",
+    "tabla": "opcion"
+  },
+  {
+    "modulo": "auditoria",
+    "Ent": "ParametroSistema",
+    "repoName": "ParametroSistemaRepository",
+    "tabla": "parametro_sistema"
+  },
+  {
+    "modulo": "comercio",
+    "Ent": "Pedido",
+    "repoName": "PedidoRepository",
+    "tabla": "pedido"
+  },
+  {
+    "modulo": "identidad",
+    "Ent": "Perfil",
+    "repoName": "PerfilRepository",
+    "tabla": "perfil"
+  },
+  {
+    "modulo": "identidad",
+    "Ent": "Permiso",
+    "repoName": "PermisoRepository",
+    "tabla": "permiso"
+  },
+  {
+    "modulo": "soporte",
+    "Ent": "PreferenciaNotificacion",
+    "repoName": "PreferenciaNotificacionRepository",
+    "tabla": "preferencia_notificacion"
+  },
+  {
+    "modulo": "identidad",
+    "Ent": "PreferenciaUsuario",
+    "repoName": "PreferenciaUsuarioRepository",
+    "tabla": "preferencia_usuario"
+  },
+  {
+    "modulo": "evaluaciones",
+    "Ent": "Pregunta",
+    "repoName": "PreguntaRepository",
+    "tabla": "pregunta"
+  },
+  {
+    "modulo": "progreso",
+    "Ent": "ProgresoCurso",
+    "repoName": "ProgresoCursoRepository",
+    "tabla": "progreso_curso"
+  },
+  {
+    "modulo": "progreso",
+    "Ent": "ProgresoLeccion",
+    "repoName": "ProgresoLeccionRepository",
+    "tabla": "progreso_leccion"
+  },
+  {
+    "modulo": "progreso",
+    "Ent": "ProgresoUnidad",
+    "repoName": "ProgresoUnidadRepository",
+    "tabla": "progreso_unidad"
+  },
+  {
+    "modulo": "comercio",
+    "Ent": "Promocion",
+    "repoName": "PromocionRepository",
+    "tabla": "promocion"
+  },
+  {
+    "modulo": "minijuegos",
+    "Ent": "PuntuacionJuego",
+    "repoName": "PuntuacionJuegoRepository",
+    "tabla": "puntuacion_juego"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "Racha",
+    "repoName": "RachaRepository",
+    "tabla": "racha"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "Ranking",
+    "repoName": "RankingRepository",
+    "tabla": "ranking"
+  },
+  {
+    "modulo": "minijuegos",
+    "Ent": "RecompensaJuego",
+    "repoName": "RecompensaJuegoRepository",
+    "tabla": "recompensa_juego"
+  },
+  {
+    "modulo": "academico",
+    "Ent": "Recurso",
+    "repoName": "RecursoRepository",
+    "tabla": "recurso"
+  },
+  {
+    "modulo": "comercio",
+    "Ent": "Reembolso",
+    "repoName": "ReembolsoRepository",
+    "tabla": "reembolso"
+  },
+  {
+    "modulo": "auditoria",
+    "Ent": "RegistroAccion",
+    "repoName": "RegistroAccionRepository",
+    "tabla": "registro_accion"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "ReglaProgresion",
+    "repoName": "ReglaProgresionRepository",
+    "tabla": "regla_progresion"
+  },
+  {
+    "modulo": "matriculas",
+    "Ent": "RenovacionMatricula",
+    "repoName": "RenovacionMatriculaRepository",
+    "tabla": "renovacion_matricula"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "RequisitoInsignia",
+    "repoName": "RequisitoInsigniaRepository",
+    "tabla": "requisito_insignia"
+  },
+  {
+    "modulo": "academico",
+    "Ent": "RequisitoPrevio",
+    "repoName": "RequisitoPrevioRepository",
+    "tabla": "requisito_previo"
+  },
+  {
+    "modulo": "evaluaciones",
+    "Ent": "RespuestaEvaluacion",
+    "repoName": "RespuestaEvaluacionRepository",
+    "tabla": "respuesta_evaluacion"
+  },
+  {
+    "modulo": "minijuegos",
+    "Ent": "RespuestaJuego",
+    "repoName": "RespuestaJuegoRepository",
+    "tabla": "respuesta_juego"
+  },
+  {
+    "modulo": "retos",
+    "Ent": "RestriccionReto",
+    "repoName": "RestriccionRetoRepository",
+    "tabla": "restriccion_reto"
+  },
+  {
+    "modulo": "retos",
+    "Ent": "ResultadoCaso",
+    "repoName": "ResultadoCasoRepository",
+    "tabla": "resultado_caso"
+  },
+  {
+    "modulo": "minijuegos",
+    "Ent": "ResultadoJuego",
+    "repoName": "ResultadoJuegoRepository",
+    "tabla": "resultado_juego"
+  },
+  {
+    "modulo": "retos",
+    "Ent": "Reto",
+    "repoName": "RetoRepository",
+    "tabla": "reto"
+  },
+  {
+    "modulo": "evaluaciones",
+    "Ent": "Retroalimentacion",
+    "repoName": "RetroalimentacionRepository",
+    "tabla": "retroalimentacion"
+  },
+  {
+    "modulo": "identidad",
+    "Ent": "RolPermiso",
+    "repoName": "RolPermisoRepository",
+    "tabla": "rol_permiso"
+  },
+  {
+    "modulo": "identidad",
+    "Ent": "SolicitudDocente",
+    "repoName": "SolicitudDocenteRepository",
+    "tabla": "solicitud_docente"
+  },
+  {
+    "modulo": "evaluaciones",
+    "Ent": "Tarea",
+    "repoName": "TareaRepository",
+    "tabla": "tarea"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "Temporada",
+    "repoName": "TemporadaRepository",
+    "tabla": "temporada"
+  },
+  {
+    "modulo": "soporte",
+    "Ent": "Ticket",
+    "repoName": "TicketRepository",
+    "tabla": "ticket"
+  },
+  {
+    "modulo": "soporte",
+    "Ent": "TicketRespuesta",
+    "repoName": "TicketRespuestaRepository",
+    "tabla": "ticket_respuesta"
+  },
+  {
+    "modulo": "minijuegos",
+    "Ent": "TiempoJuego",
+    "repoName": "TiempoJuegoRepository",
+    "tabla": "tiempo_juego"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "TiendaItem",
+    "repoName": "TiendaItemRepository",
+    "tabla": "tienda_item"
+  },
+  {
+    "modulo": "comercio",
+    "Ent": "Transaccion",
+    "repoName": "TransaccionRepository",
+    "tabla": "transaccion"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "TransaccionMoneda",
+    "repoName": "TransaccionMonedaRepository",
+    "tabla": "transaccion_moneda"
+  },
+  {
+    "modulo": "gamificacion",
+    "Ent": "TransaccionXp",
+    "repoName": "TransaccionXpRepository",
+    "tabla": "transaccion_xp"
+  },
+  {
+    "modulo": "academico",
+    "Ent": "Unidad",
+    "repoName": "UnidadRepository",
+    "tabla": "unidad"
+  },
+  {
+    "modulo": "minijuegos",
+    "Ent": "VersionMotor",
+    "repoName": "VersionMotorRepository",
+    "tabla": "version_motor"
+  },
+  {
+    "modulo": "comercio",
+    "Ent": "WebhookPago",
+    "repoName": "WebhookPagoRepository",
+    "tabla": "webhook_pago"
+  }
+]
