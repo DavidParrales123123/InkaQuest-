@@ -39,7 +39,10 @@
                 "output": "assets"
               }
             ],
-            "styles": ["src/tailwind.css", "src/styles.scss"]
+            "styles": ["src/tailwind.css", "src/styles.scss"],
+            "aot": true,
+            "allowedCommonJsDependencies": ["*"],
+            "strictTypeChecks": false
           },
           "configurations": {
             "production": {

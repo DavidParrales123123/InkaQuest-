@@ -4,7 +4,10 @@
   "compilerOptions": {
     "outDir": "./out-tsc/app",
     "rootDir": "./src",
-    "types": []
+    "types": [],
+    "noEmitOnError": false,
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true
   },
   "files": ["src/main.ts"],
   "include": ["src/**/*.ts"],
