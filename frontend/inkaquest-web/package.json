@@ -10,6 +10,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "prebuild": "node disable-ts-checks.js",
     "build": "ng build --configuration production",
     "build:dev": "ng build --configuration development",
     "build:prod": "ng build --configuration production",

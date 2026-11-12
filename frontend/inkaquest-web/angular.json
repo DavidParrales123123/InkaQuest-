@@ -40,9 +40,7 @@
               }
             ],
             "styles": ["src/tailwind.css", "src/styles.scss"],
-            "aot": true,
-            "allowedCommonJsDependencies": ["*"],
-            "strictTypeChecks": false
+            "allowedCommonJsDependencies": ["*"]
           },
           "configurations": {
             "production": {
