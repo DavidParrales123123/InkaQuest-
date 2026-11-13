@@ -21,6 +21,12 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: unknown) => {
+      // Durante el login (bootstrap del perfil) un 401 no invalida la sesion;
+      // lo gestiona el propio flujo (Supabase Auth ya valido las credenciales).
+      if (auth.iniciandoSesion()) {
+        return throwError(() => error);
+      }
+
       const esSesionExpirada =
         error instanceof Error && (error as Error).message === SESION_EXPIRADA;
 

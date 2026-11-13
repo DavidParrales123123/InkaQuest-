@@ -39,6 +39,11 @@ export class AuthService {
   /** Indica si hay una sesion activa. */
   readonly autenticado = computed(() => this._usuario() !== null);
 
+  /** Se marca mientras el inicio de sesion esta en curso. */
+  private readonly _iniciandoSesion = signal(false);
+  /** Indica si un login esta en curso (usado por interceptores/guards). */
+  readonly iniciandoSesion = this._iniciandoSesion.asReadonly();
+
   /** Rol efectivo del usuario. */
   readonly rol = computed<RolUsuario | null>(() => this._perfil()?.rol ?? null);
 
@@ -306,6 +311,7 @@ export class AuthService {
     email: string,
     password: string,
   ): Promise<{ ok: boolean; mensaje: string }> {
+    this._iniciandoSesion.set(true);
     try {
       const { data, error } = await this.supabase.client.auth.signInWithPassword({
         email,
@@ -327,6 +333,8 @@ export class AuthService {
         ok: false,
         mensaje: e instanceof Error ? e.message : 'Error inesperado al iniciar sesión.',
       };
+    } finally {
+      this._iniciandoSesion.set(false);
     }
   }
 
