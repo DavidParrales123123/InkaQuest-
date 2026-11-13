@@ -84,8 +84,9 @@ supabase:
   service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
   jwt-secret: ${SUPABASE_JWT_SECRET:}
   # Cuando está definido, se usa JWKS (ES256 asimétrico) para validar JWT.
-  # Si se define, tiene prioridad sobre jwt-secret.
-  jwks-uri: ${SUPABASE_JWKS_URI:}
+  # Si se define, tiene prioridad sobre jwt-secret. Por defecto se usa la
+  # clave pública ES256 del proyecto "Inkaquest mejorado" (endpoint público).
+  jwks-uri: ${SUPABASE_JWKS_URI:https://nrfdifzechrjikrvzhdl.supabase.co/auth/v1/.well-known/jwks.json}
 
 # -----------------------------------------------------------------------------
 # Culqi (pagos)

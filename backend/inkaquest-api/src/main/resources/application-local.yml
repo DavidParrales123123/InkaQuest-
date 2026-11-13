@@ -38,6 +38,7 @@ supabase:
   anon-key: ${SUPABASE_ANON_KEY:}
   service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
   jwt-secret: ${SUPABASE_JWT_SECRET:}
+  jwks-uri: ${SUPABASE_JWKS_URI:https://nrfdifzechrjikrvzhdl.supabase.co/auth/v1/.well-known/jwks.json}
 
 logging:
   level:
