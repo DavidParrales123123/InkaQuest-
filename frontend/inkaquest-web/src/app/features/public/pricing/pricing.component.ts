@@ -211,7 +211,8 @@ export class PricingComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
     try {
-      this.cursos.set(await this.courseService.listarPublicos({ limite: 60 }));
+      const resultado = await this.courseService.listarPublicos({ size: 60 });
+      this.cursos.set(resultado.content);
     } catch (e) {
       this.cursos.set([]);
       this.error.set(e instanceof Error ? e.message : 'No se pudo cargar el catálogo.');
