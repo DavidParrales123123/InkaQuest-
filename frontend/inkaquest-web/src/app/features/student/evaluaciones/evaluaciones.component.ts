@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
@@ -9,13 +9,25 @@ import { Actividad, Curso, Evaluacion, IntentoEvaluacion } from '../../../core/m
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
+type EstadoEvaluacion = 'pendiente' | 'rendida';
+
+/** Fila de evaluación enriquecida por el panel del estudiante. */
+type FilaEvaluacion = Evaluacion & {
+  actividad: Actividad;
+  intentosHechos: number;
+  intentosPermitidos: number;
+  estadoCard: EstadoEvaluacion;
+  ultimo?: IntentoEvaluacion;
+  resultadoTexto: string;
+};
+
 @Component({
   selector: 'app-student-evaluaciones',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, DataPanelComponent, PageHeaderComponent],
   template: `
     <section class="space-y-6">
-      <app-page-header titulo="Evaluaciones" descripcion="Quizzes y exámenes de tus cursos, con tus intentos registrados." />
+      <app-page-header titulo="Evaluaciones" descripcion="Quizzes y exámenes de tus cursos. Las que rendiste quedan como realizado; las que no, veras aquí." />
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="items().length === 0" tituloVacio="Sin evaluaciones" descripcionVacia="No hay evaluaciones publicadas en tus cursos." (alReintentar)="cargar()">
         <div contenido class="space-y-4">
           @for (item of items(); track item.curso.id) {
@@ -27,13 +39,22 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                 <ul class="mt-3 space-y-2">
                   @for (e of item.evaluaciones; track e.id) {
                     <li class="rounded-button border border-surface-200 p-3 text-sm">
-                      <div class="flex flex-wrap items-center justify-between gap-2">
-                        <p class="font-medium text-marine-800">{{ e.actividad.titulo }}</p>
-                        <span class="badge badge-neutral">Intentos: {{ e.intentosInfo }}</span>
-                      </div>
-                      <p class="text-marine-500">Tipo: {{ e.actividad.tipo }} · Nota máx: {{ e.nota_maxima }} · Tu % mínimo para aprobar: {{ e.porcentaje_aprobacion }}%</p>
-                      <div class="mt-2 flex items-center justify-end gap-2">
-                        <a [routerLink]="['/estudiante/evaluaciones', e.id]" class="btn btn-primary btn-sm">▶ Rendir evaluación</a>
+                      <div class="flex flex-wrap items-start justify-between gap-2">
+                        <div class="min-w-0">
+                          <p class="font-medium text-marine-800">{{ e.actividad.titulo }}</p>
+                          <p class="mt-1 text-xs text-marine-500">Tipo: {{ e.actividad.tipo }} · Nota máx: {{ e.nota_maxima }}</p>
+                          <p class="mt-0.5 text-xs text-marine-400">{{ e.intentosHechos }} de {{ e.intentosPermitidos }} intento(s) usado(s)</p>
+                          @if (e.estadoCard === 'rendida' && e.ultimo) {
+                            <p class="mt-1.5 text-xs font-semibold text-success-700">
+                              Realizado — Resultado: {{ e.resultadoTexto }}
+                            </p>
+                          }
+                        </div>
+                        @if (e.estadoCard === 'rendida') {
+                          <span class="badge badge-gold">Realizado</span>
+                        } @else {
+                          <a [routerLink]="['/estudiante/evaluaciones', e.id]" class="btn btn-primary btn-sm">▶ Rendir evaluación</a>
+                        }
                       </div>
                     </li>
                   }
@@ -41,7 +62,6 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
               }
             </div>
           }
-          <p class="text-xs text-marine-400">Haz clic en «Rendir evaluación» para abrir la evaluación en pantalla completa. Tus intentos, respuestas y resultados quedan registrados en el servidor.</p>
         </div>
       </app-data-panel>
     </section>
@@ -53,7 +73,7 @@ export class EvaluationsComponent implements OnInit {
   private readonly evaluationService = inject(EvaluationService);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly items = signal<{ curso: Curso; evaluaciones: (Evaluacion & { actividad: Actividad; intentosInfo: string })[] }[]>([]);
+  protected readonly items = signal<{ curso: Curso; evaluaciones: FilaEvaluacion[] }[]>([]);
 
   ngOnInit(): void { void this.cargar(); }
 
@@ -63,14 +83,24 @@ export class EvaluationsComponent implements OnInit {
     this.cargando.set(true); this.error.set(null);
     try {
       const cursos = await this.courseService.listarCursosDeEstudiante(user.id);
-      const items = [] as { curso: Curso; evaluaciones: (Evaluacion & { actividad: Actividad; intentosInfo: string })[] }[];
+      const items = [] as { curso: Curso; evaluaciones: FilaEvaluacion[] }[];
       for (const curso of cursos) {
         const evals = await this.evaluationService.listarEvaluacionesCurso(curso.id).catch(() => []);
-        const enriched = await Promise.all(evals.map(async (e) => {
-          const intentos = await this.evaluationService.listarIntentos(e.id, user.id).catch(() => [] as IntentoEvaluacion[]);
-          return { ...e, intentosInfo: `${intentos.length} registrado(s)` };
-        }));
-        items.push({ curso, evaluaciones: enriched });
+        const rows = await Promise.all(
+          evals.map(async (e) => {
+            const intentos = await this.evaluationService.listarIntentos(e.id, user.id).catch(() => [] as IntentoEvaluacion[]);
+            const intentosHechos = intentos.length;
+            const intentosPermitidos = Math.max(1, e.intentos_permitidos ?? 1);
+            const entregados = intentos.filter((i) => i.estado === 'entregado' || i.estado === 'expirado');
+            const ultimo = entregados[0] ?? intentos[0];
+            const resultadoTexto = ultimo?.puntaje != null
+              ? `${ultimo.puntaje}/${ultimo.puntaje_maximo ?? e.nota_maxima} pts`
+              : 'Sin puntaje registrado aún.';
+            const estadoCard: EstadoEvaluacion = intentosHechos >= intentosPermitidos ? 'rendida' : 'pendiente';
+            return { ...e, intentosHechos, intentosPermitidos, estadoCard, ultimo, resultadoTexto };
+          }),
+        );
+        items.push({ curso, evaluaciones: rows });
       }
       this.items.set(items);
     } catch (e) { this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar las evaluaciones.'); }
