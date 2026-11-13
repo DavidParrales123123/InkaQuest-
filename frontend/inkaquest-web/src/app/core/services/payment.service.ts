@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
+import { SupabaseService } from './supabase.service';
 
 /**
  * Servicio de pagos, pedidos y cupones.
@@ -22,6 +23,8 @@ import { ApiResponse } from '../models/api-response.model';
 @Injectable({ providedIn: 'root' })
 export class PaymentService {
   private readonly http = inject(HttpClient);
+  private readonly supabase = inject(SupabaseService);
+  private readonly client = this.supabase.client;
   private readonly baseUrl = `${environment.apiUrl}/pedidos`;
   private readonly cuponesUrl = `${environment.apiUrl}/cupones`;
 
@@ -57,6 +60,56 @@ export class PaymentService {
     return res.data!;
   }
 
+  // === CONSULTA (Supabase + RLS) ===
+
+  /** Pedidos del estudiante autenticado (filtra por RLS). */
+  async listarPedidos(usuarioId?: string): Promise<PedidoResponse[]> {
+    let consulta = this.client
+      .from(this.supabase.tabla.pedido)
+      .select('*')
+      .order('creado_en', { ascending: false });
+    if (usuarioId) consulta = consulta.eq('usuario_id', usuarioId);
+
+    const { data, error } = await consulta;
+    if (error) {
+      console.error('[InkaQuest] Error cargando pedidos:', error.message);
+      return [];
+    }
+    return (data ?? []) as PedidoResponse[];
+  }
+
+  /** Transacciones del estudiante autenticado. */
+  async listarTransacciones(usuarioId?: string): Promise<TransaccionResponse[]> {
+    let consulta = this.client
+      .from(this.supabase.tabla.transaccion)
+      .select('*')
+      .order('creado_en', { ascending: false });
+    if (usuarioId) consulta = consulta.eq('usuario_id', usuarioId);
+
+    const { data, error } = await consulta;
+    if (error) {
+      console.error('[InkaQuest] Error cargando transacciones:', error.message);
+      return [];
+    }
+    return (data ?? []) as TransaccionResponse[];
+  }
+
+  /** Reembolsos del estudiante autenticado. */
+  async listarReembolsos(usuarioId?: string): Promise<ReembolsoResponse[]> {
+    let consulta = this.client
+      .from(this.supabase.tabla.reembolso)
+      .select('*')
+      .order('creado_en', { ascending: false });
+    if (usuarioId) consulta = consulta.eq('usuario_id', usuarioId);
+
+    const { data, error } = await consulta;
+    if (error) {
+      console.error('[InkaQuest] Error cargando reembolsos:', error.message);
+      return [];
+    }
+    return (data ?? []) as ReembolsoResponse[];
+  }
+
   // === CUPONES ===
 
   /** Valida un cupón y calcula el descuento aplicable. */
@@ -73,6 +126,32 @@ export class PaymentService {
 }
 
 // === INTERFACES ===
+
+export interface TransaccionResponse {
+  id: string;
+  pedido_id: string;
+  usuario_id: string;
+  estado: string;
+  metodo: string;
+  monto: number;
+  moneda: string;
+  proveedor: string;
+  referencia: string | null;
+  codigo_autorizacion: string | null;
+  creado_en: string;
+}
+
+export interface ReembolsoResponse {
+  id: string;
+  transaccion_id: string;
+  pedido_id: string | null;
+  usuario_id: string;
+  estado: string;
+  monto: number;
+  moneda: string;
+  motivo: string | null;
+  creado_en: string;
+}
 
 export interface PedidoResponse {
   id: string;

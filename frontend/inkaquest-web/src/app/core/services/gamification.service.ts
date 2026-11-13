@@ -7,6 +7,14 @@ import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
 import { PaginatedResponse } from './course.service';
 import { SupabaseService } from './supabase.service';
+import {
+  Monedero,
+  TransaccionMoneda,
+  EventoGamificacion,
+  ReglaProgresion,
+  Temporada,
+  Ranking,
+} from '../models/domain.models';
 
 /**
  * Servicio de gamificación: XP, nivel, insignias, rachas, misiones y ranking.
@@ -41,8 +49,7 @@ export class GamificationService {
    * Obtiene la racha del usuario (fila propia en `public.racha`, vía RLS).
    * Si aún no existe, devuelve ceros.
    */
-  async obtenerRacha(usuarioId: string): Promise<{ racha_actual: number; mejor_racha: number; ultima_actividad: string | null }> {
-    try {
+  async obtenerRacha(usuarioId: string): Promise<{ racha_actual: number; mejor_racha: number; ultima_actividad: string | null }> {    try {
       const { data, error } = await this.supabase.client
         .from(this.supabase.tabla.racha)
         .select('racha_actual, mejor_racha, ultima_actividad')
@@ -94,6 +101,118 @@ export class GamificationService {
       this.http.get<ApiResponse<RankingTemporadaResponse>>(`${this.baseUrl}/ranking`)
     );
     return res.data!;
+  }
+
+  // === HISTORIAL UNIFICADO (Supabase) ===
+
+  /** Monedero del usuario (fila propia vía RLS). */
+  async obtenerMonedero(usuarioId?: string): Promise<Monedero | null> {
+    let consulta = this.client.from(this.supabase.tabla.monedero).select('*');
+    if (usuarioId) consulta = consulta.eq('usuario_id', usuarioId);
+    const { data, error } = await consulta.maybeSingle();
+    if (error) {
+      console.error('[InkaQuest] Error cargando monedero:', error.message);
+      return null;
+    }
+    return (data as Monedero) ?? null;
+  }
+
+  /** Historial de transacciones de monedas del usuario. */
+  async listarHistorialMonedas(usuarioId?: string, limite = 20): Promise<TransaccionMoneda[]> {
+    let consulta = this.client
+      .from(this.supabase.tabla.transaccionMoneda)
+      .select('*')
+      .order('creado_en', { ascending: false })
+      .limit(limite);
+    if (usuarioId) consulta = consulta.eq('usuario_id', usuarioId);
+    const { data, error } = await consulta;
+    if (error) {
+      console.error('[InkaQuest] Error cargando historial de monedas:', error.message);
+      return [];
+    }
+    return (data ?? []) as TransaccionMoneda[];
+  }
+
+  /** Eventos de gamificación activos. */
+  async listarEventos(): Promise<EventoGamificacion[]> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.eventoGamificacion)
+      .select('*')
+      .eq('activo', true)
+      .order('fecha_inicio', { ascending: false });
+    if (error) {
+      console.error('[InkaQuest] Error cargando eventos:', error.message);
+      return [];
+    }
+    return (data ?? []) as EventoGamificacion[];
+  }
+
+  /** Reglas de progresión activas ordenadas por tipo y XP. */
+  async listarReglasProgresion(): Promise<ReglaProgresion[]> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.reglaProgresion)
+      .select('*')
+      .eq('activa', true)
+      .order('tipo', { ascending: true })
+      .order('xp_requerido', { ascending: true });
+    if (error) {
+      console.error('[InkaQuest] Error cargando reglas de progresión:', error.message);
+      return [];
+    }
+    return (data ?? []) as ReglaProgresion[];
+  }
+
+  /** Todas las temporadas. */
+  async listarTemporadas(): Promise<Temporada[]> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.temporada)
+      .select('*')
+      .order('fecha_inicio', { ascending: false });
+    if (error) {
+      console.error('[InkaQuest] Error cargando temporadas:', error.message);
+      return [];
+    }
+    return (data ?? []) as Temporada[];
+  }
+
+  /** Ranking de una temporada (puntos desc). */
+  async listarRanking(temporadaId?: string): Promise<Ranking[]> {
+    let consulta = this.client
+      .from(this.supabase.tabla.ranking)
+      .select('*')
+      .order('puntos', { ascending: false })
+      .limit(50);
+    if (temporadaId) consulta = consulta.eq('temporada_id', temporadaId);
+    const { data, error } = await consulta;
+    if (error) {
+      console.error('[InkaQuest] Error cargando ranking:', error.message);
+      return [];
+    }
+    return (data ?? []) as Ranking[];
+  }
+
+  /** Catálogo completo de insignias activas, con las obtenidas por el usuario. */
+  async listarCatalogoInsignias(): Promise<InsigniaCatalogoResponse[]> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.insignia)
+      .select('*, insignia_usuario(usuario_id)')
+      .eq('activa', true)
+      .order('xp_otorgado', { ascending: true });
+    if (error) {
+      console.error('[InkaQuest] Error cargando catálogo de insignias:', error.message);
+      return [];
+    }
+    return (data ?? []).map((i: any) => ({
+      id: i.id,
+      nombre: i.nombre,
+      descripcion: i.descripcion,
+      icono: i.icono ?? null,
+      tipo: i.tipo ?? 'insignia',
+      rareza: i.rareza ?? 'comun',
+      xpRequerido: i.xp_otorgado ?? 0,
+      activa: i.activa,
+      obtenida: Array.isArray(i.insignia_usuario) ? i.insignia_usuario.length > 0 : false,
+    })) as InsigniaCatalogoResponse[];
   }
 
   // === HISTORIAL ===

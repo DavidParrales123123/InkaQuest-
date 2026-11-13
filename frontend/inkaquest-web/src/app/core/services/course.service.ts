@@ -4,9 +4,11 @@ import { Injectable, inject } from '@angular/core';
 import {
   Actividad,
   Categoria,
+  Contenido,
   Curso,
   Leccion,
   Modulo,
+  Recurso,
   Unidad,
 } from '../models/domain.models';
 import { SupabaseService } from './supabase.service';
@@ -119,6 +121,52 @@ export class CourseService {
       throw new Error('No se pudieron cargar las categorías.');
     }
     return (data ?? []) as Categoria[];
+  }
+
+  /** Actividades publicadas de un curso (por curso_id). */
+  async listarActividadesPublicadas(cursoId: string): Promise<Actividad[]> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.actividad)
+      .select('*')
+      .eq('curso_id', cursoId)
+      .eq('publicado', true)
+      .order('creado_en', { ascending: true });
+
+    if (error) {
+      console.error('[InkaQuest] Error cargando actividades:', error.message);
+      return [];
+    }
+    return (data ?? []) as Actividad[];
+  }
+
+  /** Contenido de una lección (ordenado). */
+  async listarContenido(leccionId: string): Promise<Contenido[]> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.contenido)
+      .select('*')
+      .eq('leccion_id', leccionId)
+      .order('orden', { ascending: true });
+
+    if (error) {
+      console.error('[InkaQuest] Error cargando contenidos de la lección:', error.message);
+      return [];
+    }
+    return (data ?? []) as Contenido[];
+  }
+
+  /** Recursos asociados a una lección. */
+  async listarRecursos(leccionId: string): Promise<Recurso[]> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.recurso)
+      .select('*')
+      .eq('leccion_id', leccionId)
+      .order('creado_en', { ascending: true });
+
+    if (error) {
+      console.error('[InkaQuest] Error cargando recursos de la lección:', error.message);
+      return [];
+    }
+    return (data ?? []) as Recurso[];
   }
 
   /** Estructura pública del curso: unidades → módulos → lecciones publicadas. */

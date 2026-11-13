@@ -5,6 +5,8 @@ import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
+import { SupabaseService } from './supabase.service';
+import { Actividad, Evaluacion, IntentoEvaluacion } from '../models/domain.models';
 
 /**
  * Servicio de evaluaciones (examenes y cuestionarios).
@@ -18,7 +20,45 @@ import { ApiResponse } from '../models/api-response.model';
 @Injectable({ providedIn: 'root' })
 export class EvaluationService {
   private readonly http = inject(HttpClient);
+  private readonly supabase = inject(SupabaseService);
+  private readonly client = this.supabase.client;
   private readonly baseUrl = `${environment.apiUrl}/evaluaciones`;
+
+  // === EVALUACIONES (Supabase + RLS) ===
+
+  /** Evaluaciones publicadas del curso, con su actividad embebida. */
+  async listarEvaluacionesCurso(cursoId: string): Promise<(Evaluacion & { actividad: Actividad })[]> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.evaluacion)
+      .select('*, actividad:actividad_id!inner(*)')
+      .eq('actividad.curso_id', cursoId)
+      .eq('actividad.publicado', true)
+      .order('creado_en', { ascending: true });
+
+    if (error) {
+      console.error('[InkaQuest] Error cargando evaluaciones:', error.message);
+      return [];
+    }
+    return (data ?? []) as (Evaluacion & { actividad: Actividad })[];
+  }
+
+  /** Intentos registrados por el estudiante en una evaluación. */
+  async listarIntentos(evaluacionId: string, estudianteId?: string): Promise<IntentoEvaluacion[]> {
+    let consulta = this.client
+      .from(this.supabase.tabla.intentoEvaluacion)
+      .select('*')
+      .eq('evaluacion_id', evaluacionId)
+      .order('creado_en', { ascending: false });
+
+    if (estudianteId) consulta = consulta.eq('estudiante_id', estudianteId);
+
+    const { data, error } = await consulta;
+    if (error) {
+      console.error('[InkaQuest] Error cargando intentos:', error.message);
+      return [];
+    }
+    return (data ?? []) as IntentoEvaluacion[];
+  }
 
   // === EVALUACIONES ===
 
