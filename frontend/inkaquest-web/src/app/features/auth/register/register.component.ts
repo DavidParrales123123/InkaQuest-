@@ -37,10 +37,6 @@ import { mensajeErrorContrasena, validarContrasenaSegura } from '../../../core/v
           <h1 id="register-title" class="auth-title">Crea tu cuenta.</h1>
           <p class="auth-subtitle">Elige tu perfil y completa los datos. La activación de rol docente siempre requiere aprobación administrativa.</p>
 
-          @if (mensaje()) {
-            <p class="auth-alert" [class.auth-success]="exito()" role="status">{{ mensaje() }}</p>
-          }
-
           <form class="auth-form" [formGroup]="form" (ngSubmit)="enviar()" novalidate>
             <div class="auth-field">
               <label class="label mb-1.5" style="margin-bottom:0.4rem">Tipo de cuenta</label>
@@ -164,6 +160,10 @@ import { mensajeErrorContrasena, validarContrasenaSegura } from '../../../core/v
               {{ cargando() ? 'Creando cuenta…' : (form.controls.tipoCuenta.value === 'docente' ? 'Crear cuenta y enviar solicitud' : 'Crear cuenta') }}
             </button>
           </form>
+
+          @if (mensaje()) {
+            <p class="auth-alert" [class.auth-success]="exito()" role="status">{{ mensaje() }}</p>
+          }
 
           <div class="auth-footer">
             <p class="auth-note">

@@ -33,10 +33,6 @@ import { mensajeErrorContrasena, validarContrasenaSegura } from '../../../core/v
           <h1 id="reset-title" class="auth-title">Define tu nueva contraseña</h1>
           <p class="auth-subtitle">Elige una contraseña de al menos 8 caracteres con al menos una mayúscula y un símbolo.</p>
 
-          @if (mensaje()) {
-            <p class="auth-alert" [class.auth-success]="exito()" role="status">{{ mensaje() }}</p>
-          }
-
           @if (!tokenValido()) {
             <div class="auth-alert">
               <p class="font-bold">El enlace no es válido o ha expirado.</p>
@@ -59,6 +55,10 @@ import { mensajeErrorContrasena, validarContrasenaSegura } from '../../../core/v
                 {{ cargando() ? 'Guardando…' : 'Guardar nueva contraseña' }}
               </button>
             </form>
+
+            @if (mensaje()) {
+              <p class="auth-alert" [class.auth-success]="exito()" role="status">{{ mensaje() }}</p>
+            }
           }
 
           <div class="auth-footer">

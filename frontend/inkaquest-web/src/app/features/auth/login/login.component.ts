@@ -32,10 +32,6 @@ import { AuthService } from '../../../core/services/auth.service';
           <h1 id="login-title" class="auth-title">Qué bueno verte de nuevo.</h1>
           <p class="auth-subtitle">Ingresa para continuar tu ruta, resolver retos y seguir tu progreso real.</p>
 
-          @if (mensaje()) {
-            <p class="auth-alert" [class.auth-success]="exito()" role="status">{{ mensaje() }}</p>
-          }
-
           <form class="auth-form" [formGroup]="form" (ngSubmit)="enviar()" novalidate>
             <div class="auth-field">
               <label for="email">Correo electrónico</label>
@@ -91,6 +87,10 @@ import { AuthService } from '../../../core/services/auth.service';
               {{ cargando() ? 'Iniciando sesión…' : 'Iniciar sesión' }}
             </button>
           </form>
+
+          @if (mensaje()) {
+            <p class="auth-alert" [class.auth-success]="exito()" role="status">{{ mensaje() }}</p>
+          }
 
           <div class="auth-footer">
             <p class="auth-note">Acceso seguro con tu cuenta registrada en InkaQuest.</p>

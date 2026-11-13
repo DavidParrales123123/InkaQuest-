@@ -31,10 +31,6 @@ import { AuthService } from '../../../core/services/auth.service';
           <h1 id="forgot-title" class="auth-title">Recupera tu contraseña</h1>
           <p class="auth-subtitle">Escribe tu correo y te enviaremos un enlace para restablecerla.</p>
 
-          @if (mensaje()) {
-            <p class="auth-alert" [class.auth-success]="exito()" role="status">{{ mensaje() }}</p>
-          }
-
           <form class="auth-form" [formGroup]="form" (ngSubmit)="enviar()" novalidate>
             <div class="auth-field">
               <label for="email">Correo electrónico</label>
@@ -54,6 +50,10 @@ import { AuthService } from '../../../core/services/auth.service';
               {{ cargando() ? 'Enviando enlace…' : 'Enviar enlace de recuperación' }}
             </button>
           </form>
+
+          @if (mensaje()) {
+            <p class="auth-alert" [class.auth-success]="exito()" role="status">{{ mensaje() }}</p>
+          }
 
           <div class="auth-footer">
             <p class="auth-switch">¿Recordaste tu contraseña? <a routerLink="/login">Iniciar sesión</a></p>
