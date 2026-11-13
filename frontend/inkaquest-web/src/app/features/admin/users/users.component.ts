@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
 import { AdminService } from '../../../core/services/admin.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { Perfil } from '../../../core/models/domain.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
@@ -18,6 +19,9 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       <app-page-header titulo="Usuarios" descripcion="Listado de cuentas registradas y su estado." [acciones]="true">
         <div acciones><app-button variante="contorno" tamano="sm" (alPulsar)="cargar()">Actualizar</app-button></div>
       </app-page-header>
+      @if (mensaje()) {
+        <p class="text-sm" [class.text-success-600]="exito()" [class.text-danger-600]="!exito()">{{ mensaje() }}</p>
+      }
       <div class="card card-body">
         <form class="grid gap-4 md:grid-cols-4" [formGroup]="filtros">
           <div class="md:col-span-2"><label class="label" for="busqueda">Búsqueda</label><input id="busqueda" class="input" formControlName="busqueda" placeholder="Nombre o correo" /></div>
@@ -31,7 +35,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="filtrados().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
           <table class="table">
-            <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>XP</th><th>Creado</th></tr></thead>
+            <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>XP</th><th>Creado</th><th>Acciones</th></tr></thead>
             <tbody>
               @for (u of filtrados(); track u.id) {
                 <tr>
@@ -41,22 +45,51 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                   <td><app-status-badge [estado]="u.estado_cuenta" /></td>
                   <td>{{ u.xp }}</td>
                   <td>{{ u.creado_en | date: 'mediumDate' }}</td>
+                  <td>
+                    @if (u.id === auth.usuario()?.id) {
+                      <span class="text-xs text-marine-400">Tu cuenta</span>
+                    } @else if (u.rol === 'administrador') {
+                      <span class="text-xs text-marine-400">Administrador</span>
+                    } @else if (u.estado_cuenta === 'eliminado') {
+                      <span class="text-xs text-marine-400">Eliminada</span>
+                    } @else {
+                      <button type="button"
+                              class="btn btn-sm"
+                              [class.btn-danger]="u.estado_cuenta === 'activo'"
+                              [class.btn-outline]="u.estado_cuenta !== 'activo'"
+                              [disabled]="procesando() === u.id"
+                              (click)="alternarEstado(u)">
+                        @if (u.estado_cuenta === 'activo') {
+                          {{ confirmando() === u.id ? '¿Confirmar suspensión?' : 'Suspender' }}
+                        } @else if (u.estado_cuenta === 'suspendido') {
+                          Reactivar
+                        } @else {
+                          Activar
+                        }
+                      </button>
+                    }
+                  </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
       </app-data-panel>
-      <p class="text-xs text-marine-400">Cambios sensibles de rol/estado pueden requerir validaciones adicionales en backend; la visibilidad depende de RLS de administrador.</p>
+      <p class="text-xs text-marine-400">Suspender una cuenta bloquea su acceso (la confirmación es de doble clic). Los administradores y tu propia cuenta no se pueden modificar desde aquí. Cambios de rol, y otros cambios sensibles, pueden requerir validación adicional en backend/RLS.</p>
     </section>
   `,
 })
 export class UsersComponent implements OnInit {
   private readonly adminService = inject(AdminService);
+  protected readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly usuarios = signal<Perfil[]>([]);
+  protected readonly procesando = signal<string | null>(null);
+  protected readonly confirmando = signal<string | null>(null);
+  protected readonly mensaje = signal('');
+  protected readonly exito = signal(false);
   protected readonly filtros = this.fb.nonNullable.group({ busqueda: [''], rol: [''] });
   protected readonly filtrados = computed(() => {
     const b = this.filtros.controls.busqueda.value.toLowerCase().trim();
@@ -66,7 +99,29 @@ export class UsersComponent implements OnInit {
 
   ngOnInit(): void { void this.cargar(); }
   protected nombre(u: Perfil): string { return [u.nombre, u.apellido].filter(Boolean).join(' ') || u.email; }
-  protected limpiarFiltros(): void { this.filtros.reset({ busqueda: '', rol: '' }); }
+  protected limpiarFiltros(): void { this.filtros.reset({ busqueda: '', rol: '' }); this.confirmando.set(null); }
+  protected async alternarEstado(u: Perfil): Promise<void> {
+    const siguiente = u.estado_cuenta === 'activo' ? 'suspendido' : 'activo';
+    if (siguiente === 'suspendido' && this.confirmando() !== u.id) {
+      this.confirmando.set(u.id);
+      return;
+    }
+    this.confirmando.set(null);
+    this.procesando.set(u.id);
+    this.mensaje.set('');
+    this.exito.set(false);
+    try {
+      const res = await this.adminService.cambiarEstadoCuenta(u.id, siguiente);
+      this.exito.set(res.ok);
+      this.mensaje.set(res.mensaje);
+      if (res.ok) await this.cargar();
+    } catch (e) {
+      this.exito.set(false);
+      this.mensaje.set(e instanceof Error ? e.message : 'No se pudo actualizar el estado.');
+    } finally {
+      this.procesando.set(null);
+    }
+  }
   protected async cargar(): Promise<void> {
     this.cargando.set(true); this.error.set(null);
     try { this.usuarios.set(await this.adminService.listarUsuarios({ limite: 500 })); }
