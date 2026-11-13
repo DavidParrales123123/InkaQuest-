@@ -203,7 +203,7 @@ export class ActivityService {
           .maybeSingle()
       : await this.client
           .from(this.supabase.tabla.entrega)
-          .insert({ tarea_id: tareaId, contenido, estado: 'enviado', enviada_en: new Date().toISOString() })
+          .insert({ tarea_id: tareaId, estudiante_id: _estudianteId, contenido, estado: 'enviado', enviada_en: new Date().toISOString() })
           .select()
           .maybeSingle();
 
