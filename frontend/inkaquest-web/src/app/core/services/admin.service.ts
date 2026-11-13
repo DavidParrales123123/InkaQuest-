@@ -11,6 +11,7 @@ import {
   DocenteCurso,
   Evaluacion,
   Leccion,
+  Matricula,
   Notificacion,
   ParametroSistema,
   Perfil,
@@ -19,6 +20,7 @@ import {
   RegistroAccion,
   SolicitudDocente,
   EstadoSolicitudDocente,
+  Ticket,
   TiendaItem,
   Unidad,
 } from '../models/domain.models';
@@ -375,6 +377,33 @@ export class AdminService {
       throw new Error(error.message);
     }
     return (data ?? []) as Curso[];
+  }
+
+  /** Matrículas visibles para el administrador (todas; la RLS lo permite). */
+  async listarMatriculasAdmin(): Promise<Matricula[]> {
+    const { data, error } = await this.supabase.client
+      .from(this.supabase.tabla.matricula)
+      .select('*')
+      .order('matriculado_en', { ascending: false, nullsFirst: false });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+    return (data ?? []) as Matricula[];
+  }
+
+  /** Tickets de soporte visibles para el administrador (todos). */
+  async listarTicketsAdmin(limite = 200): Promise<Ticket[]> {
+    const { data, error } = await this.supabase.client
+      .from(this.supabase.tabla.ticket)
+      .select('*')
+      .order('creado_en', { ascending: false })
+      .limit(limite);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+    return (data ?? []) as Ticket[];
   }
 
   /** Cambia el estado de publicacion de un curso. */
