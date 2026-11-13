@@ -11,7 +11,7 @@ import { TeacherService } from '../../../core/services/teacher.service';
 import { Curso, Recurso } from '../../../core/models/domain.models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
-type TipoArchivo = 'word' | 'pdf' | 'ppt' | 'excel' | 'imagen' | 'zip' | 'other';
+type TipoArchivo = 'documento' | 'imagen' | 'archivo' | 'enlace' | 'video' | 'otro';
 type Modo = 'archivo' | 'enlace';
 
 /**
@@ -259,21 +259,19 @@ export class ResourcesComponent implements OnInit {
 
   protected etiquetaTipo(tipo: string): string {
     const map: Record<string, string> = {
-      word: 'Word', pdf: 'PDF', ppt: 'PowerPoint', excel: 'Excel', imagen: 'Imagen',
-      zip: 'ZIP', enlace: 'Enlace', archivo: 'Archivo',
+      documento: 'Documento', imagen: 'Imagen', video: 'Video',
+      zip: 'ZIP', enlace: 'Enlace', archivo: 'Archivo', otro: 'Otro',
     };
     return map[(tipo ?? '').toLowerCase()] ?? (tipo || 'Archivo');
   }
 
   protected tipoPorExtension(nombre: string): TipoArchivo {
     const ext = (nombre.split('.').pop() ?? '').toLowerCase();
-    if (['doc', 'docx'].includes(ext)) return 'word';
-    if (ext === 'pdf') return 'pdf';
-    if (['ppt', 'pptx'].includes(ext)) return 'ppt';
-    if (['xls', 'xlsx', 'csv'].includes(ext)) return 'excel';
+    if (['doc', 'docx', 'pdf', 'ppt', 'pptx', 'xls', 'xlsx', 'csv', 'rtf', 'odt', 'ods', 'odp', 'txt', 'md'].includes(ext)) return 'documento';
     if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) return 'imagen';
-    if (['zip', 'rar', '7z'].includes(ext)) return 'zip';
-    return 'other';
+    if (['mp4', 'mov', 'webm', 'mkv'].includes(ext)) return 'video';
+    if (['zip', 'rar', '7z', 'gz', 'tar'].includes(ext)) return 'archivo';
+    return 'otro';
   }
 
   private async cargar(): Promise<void> {
