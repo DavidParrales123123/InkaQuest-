@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { AdminService } from '../../../core/services/admin.service';
-import { Insignia, Mision, Curso } from '../../../core/models/domain.models';
+import { Insignia, Mision, Curso, EventoGamificacion } from '../../../core/models/domain.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -58,6 +58,10 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
             <div>
               <label class="label" for="m-curso">Curso (opcional)</label>
               <select id="m-curso" class="select" formControlName="curso_id"><option value="">General</option>@for (c of cursos(); track c.id) { <option [value]="c.id">{{ c.titulo }}</option> }</select>
+            </div>
+            <div>
+              <label class="label" for="m-evento">Evento (opcional)</label>
+              <select id="m-evento" class="select" formControlName="evento_id"><option value="">Sin evento</option>@for (e of eventos(); track e.id) { <option [value]="e.id">{{ e.nombre }}</option> }</select>
             </div>
             <div><label class="label" for="m-ini">Inicio (opcional)</label><input id="m-ini" class="input" type="datetime-local" formControlName="fecha_inicio" /></div>
             <div><label class="label" for="m-fin">Fin (opcional)</label><input id="m-fin" class="input" type="datetime-local" formControlName="fecha_fin" /></div>
@@ -147,6 +151,7 @@ export class RewardsComponent implements OnInit {
   protected readonly misiones = signal<Mision[]>([]);
   protected readonly insignias = signal<Insignia[]>([]);
   protected readonly cursos = signal<Curso[]>([]);
+  protected readonly eventos = signal<EventoGamificacion[]>([]);
 
   protected readonly editandoMisionId = signal<string | null>(null);
   protected readonly editandoInsigniaId = signal<string | null>(null);
@@ -164,6 +169,7 @@ export class RewardsComponent implements OnInit {
     monedas_recompensa: [0, [Validators.required, Validators.min(0)]],
     insignia_id: [''],
     curso_id: [''],
+    evento_id: [''],
     fecha_inicio: [''],
     fecha_fin: [''],
     activa: [true],
@@ -188,14 +194,16 @@ export class RewardsComponent implements OnInit {
   protected async cargar(): Promise<void> {
     this.cargando.set(true); this.error.set(null);
     try {
-      const [misiones, insignias, cursos] = await Promise.all([
+      const [misiones, insignias, cursos, eventos] = await Promise.all([
         this.adminService.listarMisionesAdmin().catch(() => [] as Mision[]),
         this.adminService.listarInsigniasAdmin().catch(() => [] as Insignia[]),
         this.adminService.listarTodosLosCursos().catch(() => [] as Curso[]),
+        this.adminService.listarEventosParaMision().catch(() => [] as EventoGamificacion[]),
       ]);
       this.misiones.set(misiones);
       this.insignias.set(insignias);
       this.cursos.set(cursos);
+      this.eventos.set(eventos);
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar las misiones/recompensas.');
     } finally { this.cargando.set(false); }
@@ -208,6 +216,7 @@ export class RewardsComponent implements OnInit {
       nombre: m.nombre, descripcion: m.descripcion ?? '', tipo: m.tipo, objetivo_tipo: m.objetivo_tipo,
       objetivo_cantidad: Number(m.objetivo_cantidad ?? 1), xp_recompensa: Number(m.xp_recompensa ?? 0),
       monedas_recompensa: Number(m.monedas_recompensa ?? 0), insignia_id: m.insignia_id ?? '', curso_id: m.curso_id ?? '',
+      evento_id: m.evento_id ?? '',
       fecha_inicio: m.fecha_inicio ? m.fecha_inicio.slice(0, 16) : '', fecha_fin: m.fecha_fin ? m.fecha_fin.slice(0, 16) : '',
       activa: !!m.activa,
     });
@@ -216,7 +225,7 @@ export class RewardsComponent implements OnInit {
 
   protected cancelarEdicionMision(): void {
     this.editandoMisionId.set(null);
-    this.formMision.reset({ nombre: '', descripcion: '', tipo: 'permanente', objetivo_tipo: 'lecciones_completadas', objetivo_cantidad: 1, xp_recompensa: 100, monedas_recompensa: 0, insignia_id: '', curso_id: '', fecha_inicio: '', fecha_fin: '', activa: true });
+    this.formMision.reset({ nombre: '', descripcion: '', tipo: 'permanente', objetivo_tipo: 'lecciones_completadas', objetivo_cantidad: 1, xp_recompensa: 100, monedas_recompensa: 0, insignia_id: '', curso_id: '', evento_id: '', fecha_inicio: '', fecha_fin: '', activa: true });
     this.mensaje.set(''); this.exito.set(false);
   }
 
@@ -229,7 +238,7 @@ export class RewardsComponent implements OnInit {
         nombre: v.nombre.trim(), descripcion: v.descripcion?.trim() || null, tipo: v.tipo,
         objetivo_tipo: v.objetivo_tipo, objetivo_cantidad: Number(v.objetivo_cantidad),
         xp_recompensa: Number(v.xp_recompensa), monedas_recompensa: Number(v.monedas_recompensa),
-        insignia_id: v.insignia_id || null, curso_id: v.curso_id || null,
+        insignia_id: v.insignia_id || null, curso_id: v.curso_id || null, evento_id: v.evento_id || null,
         fecha_inicio: v.fecha_inicio ? new Date(v.fecha_inicio).toISOString() : null,
         fecha_fin: v.fecha_fin ? new Date(v.fecha_fin).toISOString() : null,
         activa: !!v.activa,
