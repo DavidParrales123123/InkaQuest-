@@ -38,24 +38,12 @@
         </root>
     </springProfile>
 
-    <!-- === FORMATO JSON ESTRUCTURADO (Producción) === -->
+    <!-- === FORMATO CONSOLA (Producción) === -->
     <springProfile name="prod,production">
-        <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
-            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-                <!-- Campos personalizados -->
-                <provider class="net.logstash.logback.composite.loggingevent.ArgumentsJsonProvider"/>
-                <provider class="net.logstash.logback.composite.loggingevent.StackTraceJsonProvider"/>
-                
-                <!-- MDC personalizado -->
-                <customFields>{"app":"inkaquest-api"}</customFields>
-                
-                <!-- No incluir stack traces completos en producción (seguridad) -->
-                <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
-                    <maxDepthPerThrowable>20</maxDepthPerThrowable>
-                    <maxLength>2048</maxLength>
-                    <exclude>sun\..*</exclude>
-                    <exclude>java\.lang\.reflect.*</exclude>
-                </throwableConverter>
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                <charset>UTF-8</charset>
             </encoder>
         </appender>
 
@@ -68,7 +56,7 @@
         <logger name="org.hibernate.SQL" level="WARN"/>
 
         <root level="INFO">
-            <appender-ref ref="CONSOLE_JSON"/>
+            <appender-ref ref="CONSOLE"/>
         </root>
     </springProfile>
 
@@ -85,10 +73,10 @@
     
     <springProfile name="prod,production">
         <logger name="org.springframework.security" level="INFO" additivity="false">
-            <appender-ref ref="CONSOLE_JSON"/>
+            <appender-ref ref="CONSOLE"/>
         </logger>
         <logger name="com.inkaquest.modules.auditoria" level="INFO" additivity="false">
-            <appender-ref ref="CONSOLE_JSON"/>
+            <appender-ref ref="CONSOLE"/>
         </logger>
     </springProfile>
 
