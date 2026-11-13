@@ -342,6 +342,18 @@ export class CourseService {
     const { error } = await this.client.from(this.supabase.tabla.recurso).delete().eq('id', id);
     if (error) throw new Error(error.message);
   }
+
+  /** Actualiza parcialmente un bloque de contenido (título, cuerpo o tipo). */
+  async actualizarContenido(id: string, cambios: { titulo?: string | null; cuerpo?: string | null; tipo?: string }): Promise<void> {
+    const { error } = await this.client.from(this.supabase.tabla.contenido).update(cambios).eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  /** Actualiza parcialmente un recurso (nombre, tipo, url, ruta, mime, tamaño). */
+  async actualizarRecurso(id: string, cambios: { nombre?: string; tipo?: string; url?: string | null; ruta_storage?: string | null; mime_type?: string | null; tamano_bytes?: number | null; descargable?: boolean }): Promise<void> {
+    const { error } = await this.client.from(this.supabase.tabla.recurso).update(cambios).eq('id', id);
+    if (error) throw new Error(error.message);
+  }
 }
 
 // === INTERFACES ===

@@ -150,14 +150,63 @@ interface Estructura { unidades: (Unidad & { modulos: (Modulo & { lecciones: Lec
                                                       <span class="min-w-0 truncate font-medium text-marine-800" [title]="r.nombre">{{ r.nombre }}</span>
                                                       @if (r.tamano_bytes) { <span class="text-marine-400">· {{ (r.tamano_bytes / 1024) | number:'1.0-0' }} KB</span> }
                                                       @if (r.url) { <a [href]="r.url" target="_blank" rel="noopener" class="text-brand-700 underline">Abrir</a> }
-                                                      <button type="button" class="ml-auto text-danger-600 hover:underline" (click)="eliminarRecurso(l.id, r)">Quitar archivo</button>
                                                     </li>
                                                   }
                                                 </ul>
                                               }
                                             </div>
-                                            <button class="text-xs text-danger-600 hover:underline" type="button" (click)="eliminarContenido(l.id, ct)">Eliminar</button>
+                                            <div class="flex shrink-0 flex-col items-end gap-1">
+                                              <button class="text-xs font-semibold text-brand-700 hover:underline" type="button" (click)="iniciarEdicion(l, ct)">{{ materialEditorId() === ct.id ? 'Cerrar' : 'Editar' }}</button>
+                                              <button class="text-xs text-danger-600 hover:underline" type="button" (click)="eliminarContenido(l.id, ct)">Eliminar</button>
+                                            </div>
                                           </div>
+
+                                          <!-- Editor inline: título, descripción, tipo, URL y reemplazo de archivo -->
+                                          @if (materialEditorId() === ct.id) {
+                                            <form class="mt-2 space-y-2 rounded border border-brand-200 bg-surface-50 p-3" [formGroup]="editFormGroup" (ngSubmit)="guardarEdicion(l, ct)">
+                                              <p class="text-xs font-bold uppercase tracking-wide text-marine-500">Editar material</p>
+                                              <div>
+                                                <label class="label" for="edit-titulo">Título</label>
+                                                <input id="edit-titulo" class="input" formControlName="titulo" />
+                                              </div>
+                                              <div>
+                                                <label class="label" for="edit-desc">Descripción / instrucciones</label>
+                                                <textarea id="edit-desc" class="textarea" rows="2" formControlName="cuerpo"></textarea>
+                                              </div>
+                                              @let adj = adjuntoEditar(l.id, ct.id);
+                                              <div class="grid gap-2 sm:grid-cols-2">
+                                                <div>
+                                                  <label class="label" for="edit-tipo">Tipo</label>
+                                                  <select id="edit-tipo" class="select" formControlName="tipo">
+                                                    <option value="texto">Texto</option>
+                                                    <option value="video">Video</option>
+                                                    <option value="enlace">Enlace</option>
+                                                    <option value="documento">Documento</option>
+                                                    <option value="imagen">Imagen</option>
+                                                    <option value="otro">Otro</option>
+                                                  </select>
+                                                </div>
+                                                @if (adj && adj.url != null || adj?.tipo === 'enlace' || adj?.tipo === 'video' || adj?.url) {
+                                                  <div>
+                                                    <label class="label" for="edit-url">URL</label>
+                                                    <input id="edit-url" class="input" formControlName="url" placeholder="https://…" />
+                                                  </div>
+                                                }
+                                              </div>
+                                              <div class="flex flex-wrap items-center justify-between gap-2">
+                                                @if (adj?.ruta_storage) {
+                                                  <input #reemplazarInput type="file" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip,.json,.png,.jpg,.jpeg,.webp,.gif,.svg,.mp4,.webm,.mov" [disabled]="reemplazando() === ct.id" (change)="reemplazarArchivo($event, l, ct, adj)" />
+                                                  <button type="button" class="btn btn-outline btn-sm" [disabled]="reemplazando() === ct.id" (click)="reemplazarInput.click()">{{ reemplazando() === ct.id ? 'Reemplazando…' : 'Reemplazar archivo' }}</button>
+                                                } @else {
+                                                  <span class="text-xs text-marine-500">Sin archivo adjunto en este bloque.</span>
+                                                }
+                                                <div class="flex flex-wrap gap-2">
+                                                  <button type="button" class="btn btn-outline btn-sm" (click)="cancelarEdicion()">Cancelar</button>
+                                                  <button type="submit" class="btn btn-primary btn-sm" [disabled]="editFormGroup.invalid || guardandoEdicion() === ct.id">{{ guardandoEdicion() === ct.id ? 'Guardando…' : 'Guardar cambios' }}</button>
+                                                </div>
+                                              </div>
+                                            </form>
+                                          }
                                         </li>
                                       }
                                       @for (r of recursosHuerfanos()[l.id] ?? []; track r.id) {
@@ -168,8 +217,30 @@ interface Estructura { unidades: (Unidad & { modulos: (Modulo & { lecciones: Lec
                                               <span class="ml-1 truncate" [title]="r.nombre">{{ r.nombre }}</span>
                                               @if (r.tamano_bytes) { <span class="ml-1">· {{ (r.tamano_bytes / 1024) | number:'1.0-0' }} KB</span> }
                                             </div>
-                                            <button class="text-xs text-danger-600 hover:underline" type="button" (click)="eliminarRecurso(l.id, r)">Eliminar</button>
+                                            <div class="flex shrink-0 items-center gap-2">
+                                              <button class="text-xs font-semibold text-brand-700 hover:underline" type="button" (click)="iniciarEdicionSuelta(r)">{{ materialEditorId() === 'res-' + r.id ? 'Cerrar' : 'Editar' }}</button>
+                                              @if (r.ruta_storage) {
+                                                <input #reemplazarSuelta type="file" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip,.json,.png,.jpg,.jpeg,.webp,.gif,.svg,.mp4,.webm,.mov" [disabled]="reemplazando() === 'res-' + r.id" (change)="reemplazarArchivo($event, l, null, r)" />
+                                                <button class="text-xs text-brand-700 hover:underline" type="button" [disabled]="reemplazando() === 'res-' + r.id" (click)="reemplazarSuelta.click()">{{ reemplazando() === 'res-' + r.id ? 'Reemplazando…' : 'Reemplazar' }}</button>
+                                              }
+                                              <button class="text-xs text-danger-600 hover:underline" type="button" (click)="eliminarRecurso(l.id, r)">Eliminar</button>
+                                            </div>
                                           </div>
+                                          <!-- Editor inline para recursos sueltos -->
+                                          @if (materialEditorId() === 'res-' + r.id) {
+                                            <form class="mt-2 space-y-2 rounded border border-brand-200 bg-surface-50 p-3" [formGroup]="editFormGroup" (ngSubmit)="guardarEdicionRecurso(l, r)">
+                                              <p class="text-xs font-bold uppercase tracking-wide text-marine-500">Editar recurso</p>
+                                              <div><label class="label" for="edit-res-tit">Título</label><input id="edit-res-tit" class="input" formControlName="titulo" placeholder="Nombre del archivo/enlace" /></div>
+                                              <div class="grid gap-2 sm:grid-cols-2">
+                                                <div><label class="label" for="edit-res-tipo">Tipo</label><select id="edit-res-tipo" class="select" formControlName="tipo"><option value="documento">Documento</option><option value="imagen">Imagen</option><option value="video">Video</option><option value="archivo">Archivo</option><option value="enlace">Enlace</option><option value="otro">Otro</option></select></div>
+                                                <div><label class="label" for="edit-res-url">URL</label><input id="edit-res-url" class="input" formControlName="url" placeholder="https://…" /></div>
+                                              </div>
+                                              <div class="flex items-center justify-end gap-2">
+                                                <button type="button" class="btn btn-outline btn-sm" (click)="cancelarEdicion()">Cancelar</button>
+                                                <button type="submit" class="btn btn-primary btn-sm" [disabled]="editFormGroup.invalid || guardandoEdicion() === 'res-' + r.id">{{ guardandoEdicion() === 'res-' + r.id ? 'Guardando…' : 'Guardar cambios' }}</button>
+                                              </div>
+                                            </form>
+                                          }
                                         </li>
                                       }
                                     </ol>
@@ -300,6 +371,19 @@ export class CourseEditorComponent implements OnInit {
   protected readonly archivoMaterial = signal<File | null>(null);
   /** Nombre legible del archivo elegido. */
   protected readonly archivoMaterialNombre = signal<string>('');
+  /** Bloque de contenido (o 'res-<id>' para recurso suelto) en edición desde la lista. */
+  protected readonly materialEditorId = signal<string | null>(null);
+  /** Id del bloque/recurso guardándose o reemplazando archivo. */
+  protected readonly guardandoEdicion = signal<string | null>(null);
+  /** Id del bloque cuyo adjunto se está reemplazando. */
+  protected readonly reemplazando = signal<string | null>(null);
+  /** Formulario activo para la fila en edición. */
+  protected readonly editFormGroup = this.fb.nonNullable.group({
+    titulo: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
+    cuerpo: [''],
+    tipo: ['texto' as string],
+    url: [''],
+  });
 
   private cursoId(): string | null { return this.route.snapshot.paramMap.get('id'); }
 
@@ -453,6 +537,132 @@ export class CourseEditorComponent implements OnInit {
   /** Recursos adjuntos a un bloque de contenido (mismo material). */
   protected adjuntosDe(leccionId: string, contenidoId: string): Recurso[] {
     return (this.recursos()[leccionId] ?? []).filter((r) => r.contenido_id === contenidoId);
+  }
+
+  /** Primer adjunto editable/reemplazable de un bloque (null si es texto puro). */
+  protected adjuntoEditar(leccionId: string, contenidoId: string): Recurso | null {
+    return this.adjuntosDe(leccionId, contenidoId)[0] ?? null;
+  }
+
+  protected iniciarEdicion(l: Leccion, ct: Contenido): void {
+    this.materialEditorId.set(ct.id);
+    const r = this.adjuntoEditar(l.id, ct.id);
+    this.editFormGroup.reset({
+      titulo: ct.titulo ?? '',
+      cuerpo: ct.cuerpo ?? '',
+      tipo: ct.tipo ?? 'texto',
+      url: r?.url ?? '',
+    });
+  }
+
+  protected iniciarEdicionSuelta(r: Recurso): void {
+    this.materialEditorId.set('res-' + r.id);
+    this.editFormGroup.reset({
+      titulo: r.nombre,
+      cuerpo: '',
+      tipo: r.tipo ?? 'archivo',
+      url: r.url ?? '',
+    });
+  }
+
+  protected cancelarEdicion(): void {
+    this.materialEditorId.set(null);
+  }
+
+  /** Guarda título/descripción/tipo del bloque + (si hay) ajusta su adjunto. */
+  protected async guardarEdicion(l: Leccion, ct: Contenido): Promise<void> {
+    if (this.editFormGroup.invalid) {
+      this.editFormGroup.markAllAsTouched();
+      this.setMsgL(l.id, false, 'El título es obligatorio.');
+      return;
+    }
+    const v = this.editFormGroup.getRawValue();
+    this.guardandoEdicion.set(ct.id);
+    try {
+      await this.courseService.actualizarContenido(ct.id, {
+        titulo: v.titulo.trim(),
+        cuerpo: v.cuerpo?.trim() || null,
+        tipo: v.tipo,
+      });
+      const r = this.adjuntoEditar(l.id, ct.id);
+      if (r) {
+        const tipoRec = ['texto', 'otro'].includes(v.tipo) ? 'otro' : ['enlace', 'video', 'imagen', 'documento'].includes(v.tipo) ? v.tipo : 'documento';
+        await this.courseService.actualizarRecurso(r.id, {
+          nombre: v.titulo.trim(),
+          tipo: tipoRec,
+          url: v.url?.trim() || null,
+        });
+      }
+      await this.cargarDetalleLeccion(l.id);
+      this.materialEditorId.set(null);
+      this.setMsgL(l.id, true, 'Material actualizado.');
+    } catch (e) {
+      this.setMsgL(l.id, false, e instanceof Error ? e.message : 'No se pudo actualizar.');
+    } finally {
+      this.guardandoEdicion.set(null);
+    }
+  }
+
+  /** Guarda cambios de un recurso suelto (rename/url/tipo). */
+  protected async guardarEdicionRecurso(l: Leccion, r: Recurso): Promise<void> {
+    if (this.editFormGroup.invalid) {
+      this.editFormGroup.markAllAsTouched();
+      this.setMsgL(l.id, false, 'El título es obligatorio.');
+      return;
+    }
+    const v = this.editFormGroup.getRawValue();
+    this.guardandoEdicion.set('res-' + r.id);
+    try {
+      await this.courseService.actualizarRecurso(r.id, {
+        nombre: v.titulo.trim(),
+        tipo: v.tipo,
+        url: v.url?.trim() || null,
+      });
+      await this.cargarDetalleLeccion(l.id);
+      this.materialEditorId.set(null);
+      this.setMsgL(l.id, true, 'Recurso actualizado.');
+    } catch (e) {
+      this.setMsgL(l.id, false, e instanceof Error ? e.message : 'No se pudo actualizar.');
+    } finally {
+      this.guardandoEdicion.set(null);
+    }
+  }
+
+  /** Reemplaza el archivo adjunto de un bloque/recurso (actualiza el mismo, no duplica). */
+  protected async reemplazarArchivo(event: Event, l: Leccion, ct: Contenido | null, r: Recurso | null): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file || !r) return;
+    if (file.size > 50 * 1024 * 1024) { this.setMsgL(l.id, false, 'El archivo supera 50 MB.'); return; }
+    const curso = this.curso();
+    if (!curso) return;
+    const clave = r.contenido_id ?? ('res-' + r.id);
+    this.reemplazando.set(clave);
+    try {
+      const rutaAntigua = r.ruta_storage ?? '';
+      const up = await this.storageService.subirRecursoCurso(curso.id, file);
+      const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+      const tipoRec = ['doc', 'docx', 'pdf', 'ppt', 'pptx', 'xls', 'xlsx', 'csv', 'rtf', 'odt', 'ods', 'odp', 'txt', 'md'].includes(ext)
+        ? 'documento'
+        : file.type.startsWith('image/') ? 'imagen'
+        : file.type.startsWith('video/') ? 'video'
+        : ['zip', 'rar', '7z', 'gz', 'tar'].includes(ext) ? 'archivo'
+        : 'otro';
+      await this.courseService.actualizarRecurso(r.id, {
+        ruta_storage: up.ruta,
+        mime_type: file.type || null,
+        tamano_bytes: file.size,
+        tipo: tipoRec,
+      });
+      if (rutaAntigua) await this.storageService.eliminarRecurso(rutaAntigua).catch(() => undefined);
+      await this.cargarDetalleLeccion(l.id);
+      this.setMsgL(l.id, true, 'Archivo reemplazado.');
+    } catch (e) {
+      this.setMsgL(l.id, false, e instanceof Error ? e.message : 'No se pudo reemplazar el archivo.');
+    } finally {
+      this.reemplazando.set(null);
+    }
   }
 
   /** Recursos sin bloque de contenido asociado (antiguos o sueltos). */
