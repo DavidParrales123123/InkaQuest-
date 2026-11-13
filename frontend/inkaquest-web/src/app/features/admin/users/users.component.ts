@@ -5,6 +5,7 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { AdminService } from '../../../core/services/admin.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { Perfil } from '../../../core/models/domain.models';
+import { filtrarUsuarios, puedeAlternarEstado, siguienteEstadoCuenta } from './users-admin.util';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -92,16 +93,21 @@ export class UsersComponent implements OnInit {
   protected readonly exito = signal(false);
   protected readonly filtros = this.fb.nonNullable.group({ busqueda: [''], rol: [''] });
   protected readonly filtrados = computed(() => {
-    const b = this.filtros.controls.busqueda.value.toLowerCase().trim();
-    const r = this.filtros.controls.rol.value;
-    return this.usuarios().filter((u) => (!r || u.rol === r) && (!b || `${u.nombre} ${u.apellido ?? ''} ${u.email}`.toLowerCase().includes(b)));
+    const { busqueda, rol } = this.filtros.getRawValue();
+    return filtrarUsuarios(this.usuarios(), busqueda, rol);
   });
 
   ngOnInit(): void { void this.cargar(); }
   protected nombre(u: Perfil): string { return [u.nombre, u.apellido].filter(Boolean).join(' ') || u.email; }
   protected limpiarFiltros(): void { this.filtros.reset({ busqueda: '', rol: '' }); this.confirmando.set(null); }
   protected async alternarEstado(u: Perfil): Promise<void> {
-    const siguiente = u.estado_cuenta === 'activo' ? 'suspendido' : 'activo';
+    const propio = this.auth.usuario()?.id ?? '';
+    if (!puedeAlternarEstado(u, propio, u.id)) {
+      this.exito.set(false);
+      this.mensaje.set('No puedes suspender/reactivar esta cuenta.');
+      return;
+    }
+    const siguiente = siguienteEstadoCuenta(u.estado_cuenta);
     if (siguiente === 'suspendido' && this.confirmando() !== u.id) {
       this.confirmando.set(u.id);
       return;
