@@ -11,6 +11,7 @@ import { AuthService } from './auth.service';
 import {
   Monedero,
   TransaccionMoneda,
+  TransaccionXp,
   EventoGamificacion,
   ReglaProgresion,
   Temporada,
@@ -221,16 +222,22 @@ export class GamificationService {
 
   // === HISTORIAL ===
 
-  /** Obtiene el historial de transacciones de XP paginado. */
-  async listarHistorialXp(page = 0, size = 20): Promise<PaginatedResponse<TransaccionXpResponse>> {
-    const params = { page: page.toString(), size: size.toString() };
-    const res = await firstValueFrom(
-      this.http.get<ApiResponse<PaginatedResponse<TransaccionXpResponse>>>(
-        `${this.baseUrl}/transacciones-xp`,
-        { params }
-      )
-    );
-    return res.data!;
+  /** Historial de XP del estudiante, desde Supabase (fila propia con RLS). */
+  async listarHistorialXp(usuarioId?: string, limite = 20): Promise<TransaccionXp[]> {
+    let consulta = this.client
+      .from(this.supabase.tabla.transaccionXp)
+      .select('*')
+      .order('creado_en', { ascending: false })
+      .limit(limite);
+
+    if (usuarioId) consulta = consulta.eq('usuario_id', usuarioId);
+
+    const { data, error } = await consulta;
+    if (error) {
+      console.error('[InkaQuest] Error cargando historial de XP:', error.message);
+      return [];
+    }
+    return (data ?? []) as TransaccionXp[];
   }
 }
 
