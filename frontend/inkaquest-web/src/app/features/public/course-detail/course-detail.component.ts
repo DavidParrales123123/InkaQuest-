@@ -623,6 +623,14 @@ export class CourseDetailComponent implements OnInit {
       this.mensaje.set(resultado.mensaje);
       this.exito.set(resultado.ok);
       if (resultado.ok) {
+        // Si el mensaje indica que ya está matriculado, lleva al aula.
+        const yaMatriculado = resultado.mensaje.includes('aula');
+        if (yaMatriculado) {
+          this.estadoMatricula.set('activa');
+          this.yaMatriculado.set(true);
+          await this.router.navigate(['/estudiante/aula', curso.id]);
+          return;
+        }
         this.estadoMatricula.set('pendiente_pago');
         this.yaMatriculado.set(false);
         this.mensaje.set('Solicitud registrada. Te estamos llevando a la sección de pagos…');

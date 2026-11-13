@@ -118,13 +118,28 @@ export class EnrollmentService {
 
   // === INSCRIPCIÓN DESDE EL CATÁLOGO ===
 
-  /** Inscripción gratuita: matricula directa vía API. */
-  async inscribirCursoGratis(curso: { slug?: string } | null): Promise<{ ok: boolean; mensaje: string }> {
-    if (!curso?.slug) {
+  /** Inscripción gratuita: matricula directa vía API (con guard contra duplicados). */
+  async inscribirCursoGratis(curso: { slug?: string; id?: string } | null): Promise<{ ok: boolean; mensaje: string }> {
+    if (!curso?.slug && !curso?.id) {
       return { ok: false, mensaje: 'No pudimos identificar el curso.' };
     }
+    // Guard de negocio: si ya existe la matrícula (p. ej. doble clic o desde
+    // la pestaña del aula), no relanzar la inscripción.
     try {
-      await this.matricularme(curso.slug);
+      const matriculas = await this.listarMisMatriculas();
+      const existente = matriculas.find((m) => {
+        const slugCurso = m.curso?.slug ?? null;
+        return (curso?.slug && slugCurso === curso.slug) || (curso?.id && m.cursoId === curso.id);
+      });
+      if (existente && (existente.estado === 'activa' || existente.estado === 'completada' || existente.estado === 'pendiente_pago')) {
+        return { ok: true, mensaje: 'Ya estás matriculado en este curso. Te llevamos al aula…', yaMatriculado: true } as any;
+      }
+    } catch {
+      // Si la lectura de matrículas falla, seguimos intentando la inscripción.
+    }
+
+    try {
+      await this.matricularme(curso?.slug ?? '');
       return { ok: true, mensaje: '¡Listo! Ya estás matriculado. Nos vemos en el aula.' };
     } catch (error: any) {
       return { ok: false, mensaje: this.mensajeDeError(error, 'No pudimos completar la inscripción.') };
@@ -134,17 +149,34 @@ export class EnrollmentService {
   /**
    * Inscripción de curso de pago: crea un pedido (la activación de la
    * matrícula corresponde al flujo de pagos/Culqi en el backend).
+   * No relanza un pedido si ya tienes una solicitud pendiente o matrícula activa.
    */
-  async solicitarMatricula(curso: { slug?: string } | null): Promise<{ ok: boolean; mensaje: string }> {
-    if (!curso?.slug) {
+  async solicitarMatricula(curso: { slug?: string; id?: string } | null): Promise<{ ok: boolean; mensaje: string }> {
+    if (!curso?.slug && !curso?.id) {
       return { ok: false, mensaje: 'No pudimos identificar el curso.' };
     }
+    try {
+      const matriculas = await this.listarMisMatriculas();
+      const existente = matriculas.find((m) => {
+        const slugCurso = m.curso?.slug ?? null;
+        return (curso?.slug && slugCurso === curso.slug) || (curso?.id && m.cursoId === curso.id);
+      });
+      if (existente) {
+        if (existente.estado === 'pendiente_pago') {
+          return { ok: true, mensaje: 'Ya tienes una solicitud de compra pendiente para este curso. Completa el pago en la sección de Pagos.' };
+        }
+        return { ok: true, mensaje: 'Ya estás matriculado en este curso. Te llevamos al aula…' };
+      }
+    } catch {
+      // Si la lectura de matrículas falla, seguimos intentando la solicitud.
+    }
+
     try {
       await firstValueFrom(
         this.http.post<ApiResponse<any>>(
           `${environment.apiUrl}/pedidos/iniciar`,
           {
-            cursoSlug: curso.slug,
+            cursoSlug: curso?.slug ?? '',
             claveIdempotencia: this.claveIdempotencia(),
           },
         ),
