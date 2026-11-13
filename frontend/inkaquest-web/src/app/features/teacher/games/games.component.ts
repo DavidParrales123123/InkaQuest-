@@ -39,291 +39,192 @@ type LeccionCtx = Leccion & { moduloTitulo: string; unidadTitulo: string; unidad
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, ReactiveFormsModule, DataPanelComponent, PageHeaderComponent, StatusBadgeComponent, CrearMinijuegoModalComponent],
   template: `
-    <section class="space-y-6">
-      <!-- Header -->
+    <section class="space-y-5">
       <app-page-header
         titulo="Minijuegos"
-        descripcion="Crea minijuegos sobre motores listos, asígnalos a lecciones y deja que tus estudiantes jueguen aprendiendo."
+        descripcion="Crea un minijuego a partir de un motor, publícalo para un curso y compártelo en la lección."
         [acciones]="true"
       >
-        <div acciones class="flex flex-wrap gap-2">
-          <button class="btn btn-primary btn-sm" type="button" (click)="abrirModalLibre()" [disabled]="!filtroCurso()">+ Crear minijuego</button>
-        </div>
+        <div acciones><button class="btn btn-primary btn-sm" type="button" (click)="abrirModalLibre()" [disabled]="!cursoIdSel()">+ Nuevo minijuego</button></div>
       </app-page-header>
 
-      <!-- ═══ STATS ROW ═══ -->
-      <div class="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <div class="card card-body">
-          <p class="text-[0.7rem] font-extrabold uppercase tracking-[0.16em] text-marine-400">Motores en catálogo</p>
-          <p class="mt-1 text-3xl font-extrabold text-marine-800">{{ stats().total }}</p>
-          <p class="mt-1 text-xs text-marine-500">Disponibles para crear juegos</p>
-        </div>
-        <div class="card card-body">
-          <p class="text-[0.7rem] font-extrabold uppercase tracking-[0.16em] text-marine-400">Genéricos</p>
-          <p class="mt-1 text-3xl font-extrabold text-brand-700">{{ stats().genericos }}</p>
-          <p class="mt-1 text-xs text-marine-500">Quiz Rápido · Memoria · Emparejamiento · Arrastrar</p>
-        </div>
-        <div class="card card-body">
-          <p class="text-[0.7rem] font-extrabold uppercase tracking-[0.16em] text-marine-400">Específicos</p>
-          <p class="mt-1 text-3xl font-extrabold text-info-600">{{ stats().especificos }}</p>
-          <p class="mt-1 text-xs text-marine-500">Motores por curso</p>
-        </div>
-        <div class="card card-body">
-          <p class="text-[0.7rem] font-extrabold uppercase tracking-[0.16em] text-marine-400">Tus juegos publicados</p>
-          <p class="mt-1 text-3xl font-extrabold text-gold-700">{{ stats().misPublicados }}</p>
-          <p class="mt-1 text-xs text-marine-500">Listos para asignar por lección</p>
-        </div>
-      </div>
-
-      @if (msgGlobal()) {
-        <div class="px-4 py-2 text-sm rounded-lg border" [class.border-success-200]="okGlobal()" [class.bg-success-50]="okGlobal()" [class.text-success-700]="okGlobal()" [class.border-danger-200]="!okGlobal()" [class.bg-danger-50]="!okGlobal()" [class.text-danger-700]="!okGlobal()">{{ msgGlobal() }}</div>
-      }
-
-      <!-- ═══ PASO 0 · FILTROS DEL CATÁLOGO ═══ -->
-      <div class="card card-body space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 class="text-lg font-semibold text-marine-800">Catálogo de motores</h2>
-            <p class="text-xs text-marine-500">96 motores especializados por curso. Crea el tuyo directamente aquí.</p>
+      <!-- ═══ PASO 1 · ELIGE MOTOR Y CREA ═══ -->
+      <section class="card card-body space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-start gap-2">
+            <span class="flex size-7 items-center justify-center rounded-full bg-brand-500 text-xs font-extrabold text-white">1</span>
+            <div>
+              <h2 class="text-base font-semibold text-marine-800">Elige un motor</h2>
+              <p class="text-xs text-marine-500">{{ totalMotores() }} motores en el catálogo · filtros por familia y búsqueda.</p>
+            </div>
           </div>
-          <div class="flex gap-1.5 flex-wrap">
+          <div class="flex flex-wrap gap-1.5">
             @for (t of familiaTabs; track t.value) {
               <button type="button" class="btn btn-outline btn-sm !py-1" [class.bg-marine-800]="filtroFamiliaMotor() === t.value" [class.text-white]="filtroFamiliaMotor() === t.value" (click)="filtroFamiliaMotor.set(t.value)">{{ t.label }}</button>
             }
           </div>
         </div>
-        <div class="grid gap-2 sm:grid-cols-3">
-          <div class="sm:col-span-1">
-            <input class="input" [value]="buscadorMotor()" (input)="buscadorMotor.set($any($event.target).value)" placeholder="Buscar motor…" autocomplete="off" aria-label="Buscar motor" />
-          </div>
-          <div>
-            <select class="select" [value]="filtroCurso()" (change)="filtroCurso.set($any($event.target).value)" aria-label="Curso para crear">
-              <option value="">Elige el curso</option>
-              @for (c of cursos(); track c.id) {
-                <option [value]="c.id">{{ c.titulo }}</option>
-              }
-            </select>
-          </div>
-          <div class="flex items-center gap-2 text-xs text-marine-500"><span class="badge badge-neutral">{{ motoresFiltrados().length }}</span> motores visibles</div>
+        <div class="grid gap-2 sm:grid-cols-[1fr_220px_auto]">
+          <input class="input" [value]="buscadorMotor()" (input)="buscadorMotor.set($any($event.target).value)" placeholder="Buscar motor…" autocomplete="off" aria-label="Buscar motor" />
+          <select class="select" [value]="cursoIdSel()" (change)="onCursoChange($any($event.target).value)" aria-label="Curso asignado">
+            <option value="">Elige un curso</option>
+            @for (c of cursos(); track c.id) { <option [value]="c.id">{{ c.titulo }}</option> }
+          </select>
+          <span class="flex items-center gap-2 text-xs text-marine-500"><span class="badge badge-neutral">{{ motoresFiltrados().length }}</span> visibles</span>
         </div>
-      </div>
+        <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          @for (m of motoresFiltrados(); track m.id) {
+            <article class="rounded-xl border border-surface-200 p-3 flex flex-col gap-1.5">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xl leading-none">{{ iconoFamilia(m) }}</span>
+                <span class="text-[0.6rem] font-extrabold uppercase text-marine-400">{{ m.familia }}</span>
+              </div>
+              <h3 class="text-sm font-semibold text-marine-800 leading-snug">{{ m.nombre }}</h3>
+              <button type="button" class="btn btn-primary btn-sm mt-auto !py-1.5" (click)="abrirModalConMotor(m)" [disabled]="!cursoIdSel()">Crear aquí</button>
+            </article>
+          } @empty {
+            <p class="col-span-full py-4 text-center text-xs text-marine-500">Ningún motor coincide con el filtro.</p>
+          }
+        </div>
+      </section>
 
-      <!-- ═══ GRID DE MOTORES ═══ -->
-      <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        @for (m of motoresFiltrados(); track m.id) {
-          <article class="card overflow-hidden flex flex-col p-4 gap-2 transition-all hover:-translate-y-0.5 hover:shadow-card-hover">
-            <div class="flex items-start justify-between gap-2">
-              <span class="text-2xl leading-none">{{ iconoFamilia(m) }}</span>
-              <span class="rounded-full bg-surface-100 px-2 py-0.5 text-[0.65rem] font-extrabold uppercase text-marine-600">{{ m.familia }}</span>
-            </div>
-            <h3 class="font-semibold text-marine-800 leading-snug">{{ m.nombre }}</h3>
-            <p class="line-clamp-2 text-[0.72rem] text-marine-500">{{ m.descripcion }}</p>
-            <p class="text-[0.65rem] font-mono text-marine-400">{{ m.codigo }}</p>
-            <div class="mt-auto flex items-center justify-between gap-2 border-t border-surface-100 pt-2">
-              <button type="button" class="btn btn-primary btn-sm !py-1.5" (click)="abrirModalConMotor(m)" [disabled]="!filtroCurso()">Crear aquí</button>
-              <button type="button" class="btn btn-ghost btn-sm !py-1.5" (click)="onMotorDemo(m)" title="Previsualizar">👁</button>
-            </div>
-          </article>
-        } @empty {
-          <p class="col-span-full py-6 text-center text-sm text-marine-500">Ningún motor aparece con este filtro.</p>
-        }
-      </div>
-
-      <!-- Cursor empty state -->
-      @if (!filtroCurso()) {
-        <p class="text-center text-xs text-marine-500 bg-surface-50 border border-surface-200 rounded-xl p-3">Selecciona un curso arriba para habilitar "Crear aquí".</p>
+      @if (msgGlobal()) {
+        <div class="px-4 py-2 text-sm rounded-lg border" [class.border-success-200]="okGlobal()" [class.bg-success-50]="okGlobal()" [class.text-success-700]="okGlobal()" [class.border-danger-200]="!okGlobal()" [class.bg-danger-50]="!okGlobal()" [class.text-danger-700]="!okGlobal()">{{ msgGlobal() }}</div>
       }
 
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="cursos().length === 0" tituloVacio="Sin cursos asignados" descripcionVacia="Asignación pendiente del administrador." (alReintentar)="cargar()">
-        <div contenido class="space-y-6">
-          <!-- ═══ MIS MINIJUEGOS PUBLICADOS ═══ -->
-          <div class="card card-body space-y-3">
-            <h2 class="text-lg font-semibold text-marine-800">Mis minijuegos publicados</h2>
-            <p class="text-xs text-marine-500">Tus juegos listos para asignar a lecciones como actividades.</p>
+        <div contenido class="grid gap-6 lg:grid-cols-3">
+          <!-- ═══ PASO 2 · MIS MINIJUEGOS ═══ -->
+          <section class="card card-body space-y-3 lg:col-span-1">
+            <div class="flex items-start gap-2">
+              <span class="flex size-7 items-center justify-center rounded-full bg-gold-500 text-xs font-extrabold text-marine-800">2</span>
+              <h2 class="text-base font-semibold text-marine-800">Mis minijuegos publicados</h2>
+            </div>
+            <p class="text-xs text-marine-500 -mt-1">Están listos para asignarse a lecciones desde el paso 3.</p>
             @if (misJuegos().length === 0) {
-              <p class="text-sm text-marine-500">Aún no has publicado un minijuego. Elige un motor arriba y haz clic en "Crear aquí".</p>
+              <p class="text-sm text-marine-500">Aún no publicaste minijuegos. Elige un motor arriba.</p>
             } @else {
-              <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <ul class="space-y-2">
                 @for (j of misJuegos(); track j.id) {
-                  <li class="rounded-xl border border-surface-200 p-3 text-sm">
-                    <p class="font-medium text-marine-800">{{ j.nombre }}</p>
-                    <p class="text-[0.7rem] text-marine-500">{{ j.motor?.nombre || 'Motor' }} · {{ j.dificultad }} · {{ j.xp_otorgado }} XP</p>
-                    <app-status-badge [estado]="j.estado" />
+                  <li class="rounded-lg border border-surface-200 p-2 text-sm">
+                    <p class="font-semibold text-marine-800">{{ j.nombre }}</p>
+                    <p class="text-[0.65rem] text-marine-500">{{ j.motor?.nombre || 'Motor' }} · {{ j.dificultad }} · {{ j.xp_otorgado }} XP <app-status-badge class="ml-1 align-middle" [estado]="j.estado" /></p>
                   </li>
                 }
               </ul>
             }
-          </div>
+          </section>
 
-          <!-- ═══ GESTIÓN DE ACTIVIDADES POR CURSO ═══ -->
-          <div class="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
-            <div class="space-y-6">
-              <div class="card card-body space-y-4">
-                <div class="flex items-center justify-between gap-2">
-                  <h2 class="text-lg font-semibold text-marine-800">Actividades de juego del curso</h2>
-                  <span class="badge badge-neutral">{{ actividades().length }} en total</span>
-                </div>
-                @if (cargandoCurso()) {
-                  <p class="text-sm text-marine-500">Cargando actividades, lecciones y catálogo…</p>
-                } @else if (actividades().length === 0) {
-                  <p class="text-sm text-marine-500">Aún no hay actividades de juego asignadas en este curso. Crea una desde el formulario.</p>
-                } @else {
-                  <div class="space-y-3">
-                    @for (a of actividades(); track a.id) {
-                      <article class="rounded-lg border border-surface-200 p-4 space-y-3">
-                        <div class="flex flex-wrap items-start justify-between gap-3">
-                          <div class="min-w-0">
-                            <div class="flex flex-wrap items-center gap-2">
-                              <p class="font-semibold text-marine-800">{{ a.titulo }}</p>
-                              <app-status-badge [estado]="a.publicado ? 'publicado' : 'borrador'" />
-                            </div>
-                            <p class="mt-1 text-sm text-marine-600">{{ nombreJuego(a.juego_id) || 'Juego: ' + a.juego_id.slice(0, 8) + '…' }}</p>
-                            <p class="text-xs text-marine-500">Lección: {{ nombreLeccion(a.leccion_id) }}</p>
-                            @if (a.descripcion) { <p class="mt-1 text-sm text-marine-600">{{ a.descripcion }}</p> }
-                            <div class="mt-2 flex flex-wrap gap-2 text-xs text-marine-500">
-                              <span class="badge badge-neutral">Orden {{ a.orden }}</span>
-                              <span class="badge badge-neutral">{{ a.puntos }} pts</span>
-                              <span class="badge badge-neutral">{{ a.xp_otorgado }} XP</span>
-                              <span class="badge badge-neutral">Intentos: {{ a.intentos_permitidos || 'ilimitados' }}</span>
-                            </div>
-                          </div>
-                          <div class="flex flex-wrap gap-2">
-                            <button class="btn btn-outline btn-sm" type="button" (click)="editar(a)">Editar</button>
-                            <button class="btn btn-outline btn-sm" type="button" (click)="togglePublicado(a)" [disabled]="guardando() === a.id">{{ a.publicado ? 'Ocultar' : 'Publicar' }}</button>
-                            <button class="btn btn-outline btn-sm text-danger-600" type="button" (click)="eliminar(a)" [disabled]="guardando() === a.id">Eliminar</button>
-                          </div>
-                        </div>
-                        @if (configResumen(a.juego_id).length > 0) {
-                          <div class="rounded bg-surface-50 p-2 text-xs text-marine-600">
-                            <span class="font-medium">Configuración del juego (solo lectura):</span>
-                            {{ configResumen(a.juego_id).join(' · ') }}
-                          </div>
-                        }
-                      </article>
-                    }
-                  </div>
-                }
-              </div>
-
-              <div class="card card-body space-y-3">
-                <h2 class="text-lg font-semibold text-marine-800">Motores asociados al curso</h2>
-                <p class="text-sm text-marine-500">Asocia motores a tu curso para garantizar que los juegos estén disponibles. La disponibilidad depende de motores activos y permisos.</p>
-                @if (motoresCurso().length === 0) {
-                  <p class="text-sm text-marine-500">No hay motores asociados explícitamente a este curso.</p>
-                } @else {
-                  <ul class="space-y-2">
-                    @for (mc of motoresCurso(); track mc.id) {
-                      <li class="flex flex-wrap items-center justify-between gap-2 rounded border border-surface-200 p-2 text-sm">
-                        <div>
-                          <p class="font-medium text-marine-800">{{ nombreMotor(mc.motor_id) }}</p>
-                          <p class="text-xs text-marine-500">{{ mc.activo ? 'Activo' : 'Inactivo' }}{{ mc.es_comun ? ' · Común' : '' }}</p>
-                        </div>
-                        <div class="flex gap-2">
-                          <button class="btn btn-outline btn-sm" type="button" (click)="toggleMotorCurso(mc)">{{ mc.activo ? 'Desactivar' : 'Activar' }}</button>
-                          <button class="btn btn-outline btn-sm text-danger-600" type="button" (click)="quitarMotorCurso(mc)">Quitar</button>
-                        </div>
-                      </li>
-                    }
-                  </ul>
-                }
-                <form class="flex flex-wrap items-end gap-2 border-t border-surface-200 pt-3" [formGroup]="formMotor" (ngSubmit)="asociarMotor()">
-                  <div class="min-w-[220px] flex-1">
-                    <label class="label" for="motor-add">Asociar motor</label>
-                    <select id="motor-add" class="select" formControlName="motor_id">
-                      <option value="">Selecciona un motor</option>
-                      @for (m of motoresDisponiblesParaAsociar(); track m.id) {
-                        <option [value]="m.id">{{ m.nombre }} ({{ m.codigo }})</option>
-                      }
-                    </select>
-                  </div>
-                  <button class="btn btn-primary btn-sm" type="submit" [disabled]="formMotor.invalid || guardando() === 'motor'">Asociar</button>
-                </form>
+          <!-- ═══ PASO 3 · ASIGNA A UNA LECCIÓN ═══ -->
+          <section class="card card-body space-y-3 lg:col-span-2">
+            <div class="flex items-start gap-2">
+              <span class="flex size-7 items-center justify-center rounded-full bg-marine-700 text-xs font-extrabold text-gold-400">3</span>
+              <div class="min-w-0">
+                <h2 class="text-base font-semibold text-marine-800">Asigna tu juego a una lección</h2>
+                <p class="text-xs text-marine-500">{{ cursoSel()?.titulo ?? 'Sin curso' }}. Los estudiantes lo verán cuando se publique.</p>
               </div>
             </div>
 
-            <div class="space-y-6">
-              <div class="card card-body space-y-4">
-                <h2 class="text-lg font-semibold text-marine-800">{{ editandoId() ? 'Editar actividad de juego' : 'Nueva actividad de juego' }}</h2>
-                <label class="label" for="curso-cf">Curso</label>
-                <select id="curso-cf" class="select max-w-xl mb-1" [value]="cursoIdSel()" (change)="onCursoChange($any($event.target).value)">
-                  @for (c of cursos(); track c.id) {
-                    <option [value]="c.id">{{ c.titulo }}</option>
-                  }
-                </select>
-                @if (lecciones().length === 0) {
-                  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
-                    Este curso no tiene lecciones registradas. Crea la estructura en <a [routerLink]="['/docente/cursos']" class="underline font-medium">Mis cursos</a> antes de asignar minijuegos.
-                  </div>
-                }
-                @if (misJuegos().length === 0 && juegos().length === 0) {
-                  <div class="rounded-lg bg-surface-50 border border-surface-200 p-3 text-sm text-marine-700">
-                    Aún no tienes juegos disponibles. Elige un motor arriba y haz clic en "Crear aquí" para publicar tu primer minijuego.
-                  </div>
-                }
-
-                <form class="space-y-3" [formGroup]="form" (ngSubmit)="guardar()">
+            @if (lecciones().length === 0) {
+              <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+                Este curso no tiene lecciones. Crea la estructura en <a [routerLink]="['/docente/cursos']" class="underline font-medium">Mis cursos</a>.
+              </div>
+            } @else {
+              <form class="space-y-3" [formGroup]="form" (ngSubmit)="guardar()">
+                <div class="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label class="label" for="juego">Juego (catálogo publicado)</label>
+                    <label class="label" for="juego">Juego</label>
                     <select id="juego" class="select" formControlName="juego_id">
-                      <option value="">Selecciona un juego</option>
-                      @for (j of juegos(); track j.id) {
-                        <option [value]="j.id">{{ j.nombre }}{{ j.motor?.nombre ? ' · ' + j.motor!.nombre : '' }} ({{ j.dificultad }})</option>
-                      }
+                      <option value="">Elige un juego</option>
+                      @for (j of juegos(); track j.id) { <option [value]="j.id">{{ j.nombre }} ({{ j.dificultad }})</option> }
                     </select>
                   </div>
                   <div>
-                    <label class="label" for="leccion">Lección del curso</label>
+                    <label class="label" for="leccion">Lección</label>
                     <select id="leccion" class="select" formControlName="leccion_id">
-                      <option value="">Selecciona una lección</option>
-                      @for (l of lecciones(); track l.id) {
-                        <option [value]="l.id">U{{ l.unidadNumero }} {{ l.unidadTitulo }} · {{ l.moduloTitulo }} · {{ l.titulo }}</option>
-                      }
+                      <option value="">Elige una lección</option>
+                      @for (l of lecciones(); track l.id) { <option [value]="l.id">U{{ l.unidadNumero }} · {{ l.titulo }}</option> }
                     </select>
                   </div>
-                  <div>
-                    <label class="label" for="titulo">Título de la actividad</label>
-                    <input id="titulo" class="input" formControlName="titulo" placeholder="Ej. Quiz de repaso · Unidad 1" />
-                  </div>
-                  <div>
-                    <label class="label" for="desc">Descripción (opcional)</label>
-                    <textarea id="desc" class="textarea" rows="3" formControlName="descripcion" placeholder="Instrucciones o contexto para el estudiante"></textarea>
-                  </div>
-                  <div class="grid grid-cols-2 gap-3">
-                    <div><label class="label" for="orden">Orden</label><input id="orden" type="number" min="0" class="input" formControlName="orden" /></div>
-                    <div><label class="label" for="intentos">Intentos permitidos (0 = ilimitado)</label><input id="intentos" type="number" min="0" class="input" formControlName="intentos_permitidos" /></div>
-                    <div><label class="label" for="puntos">Puntos</label><input id="puntos" type="number" min="0" class="input" formControlName="puntos" /></div>
-                    <div><label class="label" for="xp">XP otorgado</label><input id="xp" type="number" min="0" class="input" formControlName="xp_otorgado" /></div>
-                  </div>
-                  <label class="inline-flex items-center gap-2 text-sm text-marine-700"><input type="checkbox" formControlName="publicado" /> Publicar para estudiantes (visible en la lección/curso si hay acceso)</label>
+                </div>
+                <div>
+                  <label class="label" for="titulo">Título de la actividad</label>
+                  <input id="titulo" class="input" formControlName="titulo" placeholder="Ej. Quiz de repaso · Unidad 1" />
+                </div>
+                <div class="grid gap-2 sm:grid-cols-4 text-xs">
+                  <div><label class="label" for="orden">Orden</label><input id="orden" type="number" min="0" class="input" formControlName="orden" /></div>
+                  <div><label class="label" for="intentos">Intentos (0=ilimitado)</label><input id="intentos" type="number" min="0" class="input" formControlName="intentos_permitidos" /></div>
+                  <div><label class="label" for="puntos">Puntos</label><input id="puntos" type="number" min="0" class="input" formControlName="puntos" /></div>
+                  <div><label class="label" for="xp">XP otorgado</label><input id="xp" type="number" min="0" class="input" formControlName="xp_otorgado" /></div>
+                </div>
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" formControlName="publicado" /> Publicado</label>
+                  <button class="btn btn-primary btn-sm" type="submit" [disabled]="form.invalid || guardando() === 'form'">{{ guardando() === 'form' ? 'Guardando…' : (editandoId() ? 'Guardar cambios' : 'Crear actividad') }}</button>
+                </div>
+              </form>
+            }
+          </section>
 
-                  @if (juegoSeleccionado(); as jsel) {
-                    <div class="rounded-lg bg-surface-50 border border-surface-200 p-3 text-sm space-y-1">
-                      <p class="font-medium text-marine-800">Juego seleccionado</p>
-                      <p class="text-marine-700">{{ jsel.nombre }} · {{ jsel.dificultad }} · {{ jsel.estado }}</p>
-                      @if (jsel.descripcion) { <p class="text-marine-600">{{ jsel.descripcion }}</p> }
-                      <p class="text-xs text-marine-500">Motor: {{ jsel.motor?.nombre || '—' }} · XP base: {{ jsel.xp_otorgado }} · Monedas: {{ jsel.monedas_otorgadas }}</p>
-                    </div>
-                  }
-
-                  <div class="flex flex-wrap gap-2 pt-1">
-                    <button class="btn btn-primary" type="submit" [disabled]="form.invalid || lecciones().length === 0 || guardando() === 'form'">
-                      {{ guardando() === 'form' ? 'Guardando…' : (editandoId() ? 'Guardar cambios' : 'Crear actividad de juego') }}
-                    </button>
-                    @if (editandoId()) {
-                      <button class="btn btn-outline" type="button" (click)="cancelarEdicion()">Cancelar</button>
-                    }
-                  </div>
-                </form>
-              </div>
+          <!-- ═══ LISTA DE ACTIVIDADES DEL CURSO ═══ -->
+          <section class="card card-body space-y-3 lg:col-span-3">
+            <div class="flex items-center justify-between gap-2">
+              <h2 class="text-base font-semibold text-marine-800">Actividades del curso</h2>
+              <span class="badge badge-neutral">{{ actividades().length }}</span>
             </div>
-          </div>
+            @if (cargandoCurso()) {
+              <p class="text-sm text-marine-500">Cargando actividades…</p>
+            } @else if (actividades().length === 0) {
+              <p class="text-sm text-marine-500">Aún no hay actividades asignadas. Crea una en el formulario superior.</p>
+            } @else {
+              <ul class="grid gap-3 sm:grid-cols-2">
+                @for (a of actividades(); track a.id) {
+                  <li class="rounded-xl border border-surface-200 p-3 space-y-2 text-sm">
+                    <div class="flex items-center gap-2"><app-status-badge [estado]="a.publicado ? 'publicado' : 'borrador'" /><p class="font-semibold text-marine-800">{{ a.titulo }}</p></div>
+                    <p class="text-xs text-marine-500">{{ nombreJuego(a.juego_id) || ('Juego ' + a.juego_id.slice(0, 8)) }} · {{ nombreLeccion(a.leccion_id) }}</p>
+                    <p class="text-xs text-marine-400">{{ a.puntos }} pts · {{ a.xp_otorgado }} XP · Intentos: {{ a.intentos_permitidos || '∞' }}</p>
+                    <div class="flex flex-wrap gap-1.5 pt-1">
+                      <button class="btn btn-outline btn-sm" type="button" (click)="editar(a)">Editar</button>
+                      <button class="btn btn-outline btn-sm" type="button" (click)="togglePublicado(a)" [disabled]="guardando() === a.id">{{ a.publicado ? 'Ocultar' : 'Publicar' }}</button>
+                      <button class="btn btn-outline btn-sm text-danger-600" type="button" (click)="eliminar(a)" [disabled]="guardando() === a.id">Eliminar</button>
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+          </section>
         </div>
       </app-data-panel>
 
-      <!-- Modal: crear minijuego desde un motor del catálogo -->
-      @if (filtroCurso() && modalCrear()) {
+      @if (cursoIdSel()) {
+        <details class="rounded-xl border border-surface-100 bg-surface-50 p-3 text-sm">
+          <summary class="cursor-pointer font-medium text-marine-700">Opciones avanzadas de motores del curso ({{ motoresCurso().length }})</summary>
+          <div class="mt-3 space-y-2">
+            @if (motoresCurso().length === 0) {
+              <p class="text-xs text-marine-500">Sin motores asociados. Por defecto, el catálogo completo está disponible.</p>
+            } @else {
+              <ul class="grid gap-2 sm:grid-cols-2">
+                @for (mc of motoresCurso(); track mc.id) {
+                  <li class="flex items-center justify-between gap-2 rounded border border-surface-200 bg-white p-2">
+                    <div class="min-w-0"><p class="font-medium text-marine-800">{{ nombreMotor(mc.motor_id) }}</p><p class="text-xs text-marine-500">{{ mc.activo ? 'Activo' : 'Inactivo' }}</p></div>
+                    <div class="flex gap-1"><button class="btn btn-outline btn-sm text-xs" type="button" (click)="toggleMotorCurso(mc)">{{ mc.activo ? 'Off' : 'On' }}</button><button class="btn btn-outline btn-sm text-xs text-danger-600" type="button" (click)="quitarMotorCurso(mc)">✕</button></div>
+                  </li>
+                }
+              </ul>
+            }
+            <form class="flex flex-wrap items-end gap-2 border-t border-surface-200 pt-2" [formGroup]="formMotor" (ngSubmit)="asociarMotor()">
+              <select class="select flex-1" formControlName="motor_id">
+                <option value="">Asociar motor…</option>
+                @for (m of motoresDisponiblesParaAsociar(); track m.id) { <option [value]="m.id">{{ m.nombre }} ({{ m.codigo }})</option> }
+              </select>
+              <button class="btn btn-primary btn-sm" type="submit" [disabled]="formMotor.invalid || guardando() === 'motor'">Asociar</button>
+            </form>
+          </div>
+        </details>
+      }
+
+      @if (cursoIdSel() && modalCrear()) {
         <app-crear-minijuego-modal
-          [cursoId]="filtroCurso()"
+          [cursoId]="cursoIdSel()"
           [motorPreseleccionado]="motorPreseleccionado()"
           (cerrado)="modalCrear.set(false)"
           (creado)="onJuegoCreado()"
@@ -350,7 +251,6 @@ export class GamesComponent implements OnInit {
   // ─── Panel admin (modo catálogo) ───
   protected readonly buscadorMotor = signal('');
   protected readonly filtroFamiliaMotor = signal<'generico' | 'especifico' | 'adicional' | ''>('');
-  protected readonly filtroCurso = signal<string>('');
   protected readonly modalCrear = signal(false);
   protected readonly motorPreseleccionado = signal<Motor | null>(null);
 
@@ -393,13 +293,7 @@ export class GamesComponent implements OnInit {
     );
   });
 
-  protected readonly stats = computed(() => ({
-    total: this.motores().length,
-    genericos: this.motores().filter((m) => m.familia === 'generico').length,
-    especificos: this.motores().filter((m) => m.familia === 'especifico').length,
-    adicionales: this.motores().filter((m) => m.familia === 'adicional').length,
-    misPublicados: this.misJuegos().filter((j) => j.estado === 'publicado').length,
-  }));
+  protected readonly totalMotores = computed(() => this.motores().length);
 
   protected readonly form = this.fb.nonNullable.group({
     juego_id: ['', Validators.required],
@@ -435,7 +329,6 @@ export class GamesComponent implements OnInit {
       this.misJuegos.set(misJuegos);
       this.motores.set(motores);
       if (!this.cursoIdSel() && cursos.length > 0) this.cursoIdSel.set(cursos[0].curso.id);
-      if (!this.filtroCurso() && cursos.length > 0) this.filtroCurso.set(cursos[0].curso.id);
       if (this.cursoIdSel()) await this.cargarCurso(this.cursoIdSel());
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'No se pudo cargar la gestión de minijuegos.');
