@@ -101,9 +101,8 @@ interface GrupoFaq {
       <div class="card mt-12 overflow-hidden bg-brand-gradient p-8 text-center md:p-10">
         <h2 class="text-white">¿Tu duda no está aquí?</h2>
         <p class="mx-auto mt-3 max-w-xl text-marine-100">Escríbenos y crearemos un ticket de soporte para darle seguimiento desde tu cuenta.</p>
-        <div class="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+        <div class="mt-7 flex justify-center">
           <a routerLink="/contacto" class="btn btn-gold btn-lg">Contáctanos</a>
-          <a routerLink="/solicitud-docente" class="btn btn-outline-light btn-lg">Solicitar acceso docente</a>
         </div>
       </div>
     </section>
@@ -251,12 +250,6 @@ export class FaqComponent {
           pregunta: '¿Cómo contacto con soporte?',
           respuesta:
             'Desde la página de contacto, si tienes cuenta, se crea un ticket real con tu asunto y tu mensaje. Puedes seguir su estado desde el panel de soporte de tu cuenta. Cada ticket queda asociado a tu usuario para que solo tú veas el historial.',
-        },
-        {
-          id: 'soporte-docente',
-          pregunta: '¿Cómo puedo dictar un curso en InkaQuest?',
-          respuesta:
-            'Crea tu cuenta como estudiante y envía una solicitud de acceso docente desde el formulario de solicitud. Un administrador revisa los datos de tu institución, tu especialidad y tu código de docente. El rol de docente lo concede un administrador: la plataforma no lo autoasigna.',
         },
         {
           id: 'soporte-responsetiempo',
