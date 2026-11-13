@@ -157,8 +157,8 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                               @for (ct of det.contenidos; track ct.id) {
                                                 <article class="rounded-lg border border-surface-200 bg-white p-3">
                                                   <div class="flex flex-wrap items-center gap-2">
-                                                    <span class="badge badge-default">{{ ct.tipo }}</span>
-                                                    <p class="font-medium text-marine-800">{{ ct.titulo || ('Contenido ' + ct.orden) }}</p>
+                                                    <span class="badge badge-neutral">{{ ct.tipo }}</span>
+                                                    <p class="font-medium text-marine-800">{{ ct.titulo }}</p>
                                                   </div>
                                                   @if (ct.cuerpo) {
                                                     @if (esEnlace(ct.cuerpo)) {
@@ -167,6 +167,18 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                                       <p class="mt-2 whitespace-pre-wrap text-sm text-marine-700">{{ ct.cuerpo }}</p>
                                                     }
                                                   }
+                                                  @if (adjuntosDe(l.id, ct.id).length) {
+                                                    <ul class="mt-2 space-y-1">
+                                                      @for (r of adjuntosDe(l.id, ct.id); track r.id) {
+                                                        <li class="flex items-center gap-2 rounded bg-surface-50 px-2 py-1.5 text-xs text-marine-600">
+                                                          <span>Adjunto:</span>
+                                                          <span class="min-w-0 truncate font-medium text-marine-800" [title]="r.nombre">{{ r.nombre }}</span>
+                                                          @if (r.tamano_bytes) { <span class="text-marine-400">· {{ (r.tamano_bytes / 1024) | number:'1.0-0' }} KB</span> }
+                                                          @if (urlRecurso(r)) { <a [href]="urlRecurso(r)!" target="_blank" rel="noopener" class="ml-auto font-semibold text-brand-700 underline" download>Descargar</a> }
+                                                        </li>
+                                                      }
+                                                    </ul>
+                                                  }
                                                 </article>
                                               }
                                             </div>
@@ -174,12 +186,10 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                         </div>
 
                                         <div>
-                                          <h5 class="text-sm font-semibold text-marine-800">Materiales y recursos subidos por el docente</h5>
-                                          @if (det.recursos.length === 0) {
-                                            <p class="mt-1 text-sm text-marine-500">No hay materiales/archivos adjuntos en esta lección.</p>
-                                          } @else {
+                                          @if (recursosSueltos(det).length > 0) {
+                                            <h5 class="text-sm font-semibold text-marine-800">Otros materiales subidos por el docente</h5>
                                             <ul class="mt-2 grid gap-2 sm:grid-cols-2">
-                                              @for (r of det.recursos; track r.id) {
+                                              @for (r of recursosSueltos(det); track r.id) {
                                                 <li class="flex flex-col rounded-lg border border-surface-200 bg-white p-3">
                                                   <div class="flex items-start justify-between gap-3">
                                                     <div class="min-w-0">
@@ -213,7 +223,6 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                                 </li>
                                               }
                                             </ul>
-                                            <p class="mt-2 text-xs text-marine-400">El acceso a archivos depende de tu matrícula/permisos y de las políticas de Storage.</p>
                                           }
                                         </div>
                                       }
@@ -289,6 +298,12 @@ export class ClassroomComponent implements OnInit {
   }
   protected urlRecurso(r: Recurso & { urlResuelta?: string | null }): string | null { return r.urlResuelta || r.url || null; }
   protected urlPrevia(u: string | null): SafeResourceUrl | null { return u ? this.sanitizer.bypassSecurityTrustResourceUrl(u) : null; }
+  protected adjuntosDe(leccionId: string, contenidoId: string): (Recurso & { urlResuelta?: string | null })[] {
+    return (this.detalles()[leccionId]?.recursos ?? []).filter((r) => r.contenido_id === contenidoId);
+  }
+  protected recursosSueltos(det: LeccionDetalle): (Recurso & { urlResuelta?: string | null })[] {
+    return det.recursos.filter((r) => !r.contenido_id);
+  }
   protected esEnlace(texto: string | null | undefined): boolean { return !!texto && /^https?:\/\//i.test(texto.trim()); }
 
   protected async cargar(): Promise<void> {
