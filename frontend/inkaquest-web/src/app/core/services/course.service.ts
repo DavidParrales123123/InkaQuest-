@@ -318,10 +318,11 @@ export class CourseService {
     if (error) throw new Error(error.message);
   }
 
-  /** Crea un bloque de contenido ordenado dentro de una lección. */
-  async crearContenido(leccionId: string, datos: { orden: number; tipo: string; titulo?: string | null; cuerpo?: string | null; datos?: Record<string, unknown> }): Promise<void> {
-    const { error } = await this.client.from(this.supabase.tabla.contenido).insert({ leccion_id: leccionId, orden: datos.orden, tipo: datos.tipo, titulo: datos.titulo ?? null, cuerpo: datos.cuerpo ?? null, datos: datos.datos ?? {} });
+  /** Crea un bloque de contenido ordenado dentro de una lección. Devuelve la fila creada. */
+  async crearContenido(leccionId: string, datos: { orden: number; tipo: string; titulo?: string | null; cuerpo?: string | null; datos?: Record<string, unknown> }): Promise<Contenido> {
+    const { data, error } = await this.client.from(this.supabase.tabla.contenido).insert({ leccion_id: leccionId, orden: datos.orden, tipo: datos.tipo, titulo: datos.titulo?.trim() || null, cuerpo: datos.cuerpo ?? null, datos: datos.datos ?? {} }).select().single();
     if (error) throw new Error(error.message);
+    return data as Contenido;
   }
 
   /** Elimina un bloque de contenido. */

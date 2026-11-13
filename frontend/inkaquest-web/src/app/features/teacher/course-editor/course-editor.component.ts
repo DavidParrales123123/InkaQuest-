@@ -131,77 +131,96 @@ interface Estructura { unidades: (Unidad & { modulos: (Modulo & { lecciones: Lec
 
                             @if (leccionAbierta() === l.id) {
                               <div class="mt-3 space-y-4 border-t border-surface-200 pt-3">
-                                <div class="grid gap-4 lg:grid-cols-2">
-                                  <div class="space-y-3">
-                                    <h4 class="font-semibold text-marine-800">Contenidos</h4>
-                                    @if (contenidos()[l.id]?.length) {
-                                      <ul class="space-y-2 text-sm">
-                                        @for (ct of contenidos()[l.id]; track ct.id) {
-                                          <li class="rounded border border-surface-200 p-2">
-                                            <div class="flex items-start justify-between gap-2">
-                                              <div>
-                                                <p class="font-medium">{{ ct.orden }}. {{ ct.titulo || '(Sin titulo)' }} <span class="text-marine-400">[{{ ct.tipo }}]</span></p>
-                                                @if (ct.cuerpo) { <p class="mt-1 whitespace-pre-wrap text-marine-600">{{ ct.cuerpo }}</p> }
-                                              </div>
-                                              <button class="text-xs text-danger-600 hover:underline" type="button" (click)="eliminarContenido(l.id, ct)">Eliminar</button>
-                                            </div>
-                                          </li>
-                                        }
-                                      </ul>
-                                    } @else {
-                                      <p class="text-sm text-marine-500">Sin contenidos. Agrega texto o material de apoyo.</p>
-                                    }
-                                    <form class="space-y-2 rounded bg-surface-50 p-3" [formGroup]="formContenido" (ngSubmit)="crearContenido(l)">
-                                      <p class="text-sm font-medium text-marine-700">Agregar contenido</p>
-                                      <div class="grid gap-2 sm:grid-cols-3">
-                                        <div><label class="label">Orden</label><input type="number" min="1" class="input" formControlName="orden" /></div>
-                                        <div><label class="label">Tipo</label>
-                                          <select class="select" formControlName="tipo">
-                                            <option value="texto">Texto</option><option value="video">Video</option><option value="enlace">Enlace</option><option value="archivo">Archivo</option><option value="html">HTML</option>
-                                          </select>
-                                        </div>
-                                        <div><label class="label">Titulo</label><input class="input" formControlName="titulo" /></div>
-                                      </div>
-                                      <div><label class="label">Cuerpo / descripción</label><textarea class="textarea" rows="3" formControlName="cuerpo" placeholder="Texto, URL o instrucciones"></textarea></div>
-                                      <button class="btn btn-primary btn-sm" type="submit" [disabled]="guardando() || formContenido.invalid">Guardar contenido</button>
-                                    </form>
-                                  </div>
-
-                                  <div class="space-y-3">
-                                    <h4 class="font-semibold text-marine-800">Recursos y archivos</h4>
-                                    @if (recursos()[l.id]?.length) {
-                                      <ul class="space-y-2 text-sm">
-                                        @for (r of recursos()[l.id]; track r.id) {
-                                          <li class="flex items-center justify-between gap-2 rounded border border-surface-200 p-2">
+                                <div class="space-y-3">
+                                  <h4 class="font-semibold text-marine-800">Contenido de la lección</h4>
+                                  <p class="text-xs text-marine-500">Esto es exactamente lo que el estudiante verá en su aula, en este orden. Cada bloque es numerado y titulado.</p>
+                                  @if (contenidos()[l.id]?.length || recursosHuerfanos()[l.id]?.length) {
+                                    <ol class="space-y-2 text-sm">
+                                      @for (ct of contenidos()[l.id] ?? []; track ct.id) {
+                                        <li class="rounded border border-surface-200 p-2.5">
+                                          <div class="flex items-start justify-between gap-2">
                                             <div class="min-w-0">
-                                              <p class="truncate font-medium">{{ r.nombre }}</p>
-                                              <p class="text-xs text-marine-500">{{ r.tipo }} @if (r.tamano_bytes) { · {{ (r.tamano_bytes / 1024) | number:'1.0-0' }} KB } @if (r.ruta_storage) { · almacenamiento }</p>
+                                              <p class="font-medium">{{ ct.orden }}. {{ ct.titulo }} <span class="text-marine-400">[{{ etiquetaTipoContenido(ct.tipo) }}]</span></p>
+                                              @if (ct.cuerpo) { <p class="mt-1 whitespace-pre-wrap text-marine-600">{{ ct.cuerpo }}</p> }
+                                              @if (adjuntosDe(l.id, ct.id).length) {
+                                                <ul class="mt-2 space-y-1">
+                                                  @for (r of adjuntosDe(l.id, ct.id); track r.id) {
+                                                    <li class="flex items-center gap-2 rounded bg-surface-50 px-2 py-1 text-xs text-marine-600">
+                                                      <span>{{ iconoTipoRecurso(r.tipo) }}</span>
+                                                      <span class="min-w-0 truncate font-medium text-marine-800" [title]="r.nombre">{{ r.nombre }}</span>
+                                                      @if (r.tamano_bytes) { <span class="text-marine-400">· {{ (r.tamano_bytes / 1024) | number:'1.0-0' }} KB</span> }
+                                                      @if (r.url) { <a [href]="r.url" target="_blank" rel="noopener" class="text-brand-700 underline">Abrir</a> }
+                                                      <button type="button" class="ml-auto text-danger-600 hover:underline" (click)="eliminarRecurso(l.id, r)">Quitar archivo</button>
+                                                    </li>
+                                                  }
+                                                </ul>
+                                              }
                                             </div>
-                                            <div class="flex items-center gap-2">
-                                              @if (r.url) { <a [href]="r.url" target="_blank" rel="noopener" class="text-xs text-brand-600 hover:underline">Abrir</a> }
-                                              <button class="text-xs text-danger-600 hover:underline" type="button" (click)="eliminarRecurso(l.id, r)">Eliminar</button>
+                                            <button class="text-xs text-danger-600 hover:underline" type="button" (click)="eliminarContenido(l.id, ct)">Eliminar</button>
+                                          </div>
+                                        </li>
+                                      }
+                                      @for (r of recursosHuerfanos()[l.id] ?? []; track r.id) {
+                                        <li class="rounded border border-dashed border-surface-200 p-2.5 text-xs text-marine-500">
+                                          <div class="flex items-center justify-between gap-2">
+                                            <div class="min-w-0">
+                                              <span class="font-semibold text-marine-700">Archivo:</span>
+                                              <span class="ml-1 truncate" [title]="r.nombre">{{ r.nombre }}</span>
+                                              @if (r.tamano_bytes) { <span class="ml-1">· {{ (r.tamano_bytes / 1024) | number:'1.0-0' }} KB</span> }
                                             </div>
-                                          </li>
-                                        }
-                                      </ul>
-                                    } @else {
-                                      <p class="text-sm text-marine-500">Sin recursos. Sube archivos (PDF, imagen, etc.) o agrega enlaces.</p>
-                                    }
+                                            <button class="text-xs text-danger-600 hover:underline" type="button" (click)="eliminarRecurso(l.id, r)">Eliminar</button>
+                                          </div>
+                                        </li>
+                                      }
+                                    </ol>
+                                  } @else {
+                                    <p class="text-sm text-marine-500">Aún no agregas material a esta lección. Usa el formulario de abajo: creas el contenido y (opcionalmente) el archivo adjunto en un solo paso.</p>
+                                  }
 
-                                    <div class="space-y-2 rounded bg-surface-50 p-3">
-                                      <p class="text-sm font-medium text-marine-700">Subir archivo (Storage)</p>
-                                      <input type="file" class="block w-full text-sm" (change)="onArchivoRecurso($event, l)" [disabled]="subiendo() === l.id" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.zip,.png,.jpg,.jpeg,.webp,.gif,.svg,.txt,.json,.mp4,.webm,.mov" />
-                                      @if (subiendo() === l.id) { <p class="text-xs text-marine-500">Subiendo archivo...</p> }
-                                      <p class="text-xs text-marine-500">El archivo se guarda en el bucket <code>recursos</code> bajo la carpeta del curso (según políticas de Storage/RLS).</p>
+                                  <!-- Formulario único: creas todo en un solo paso (orden auto) -->
+                                  <form class="space-y-3 rounded-lg border border-brand-100 bg-brand-50/40 p-3" [formGroup]="formMaterial" (ngSubmit)="agregarMaterial(l)">
+                                    <p class="text-sm font-semibold text-marine-800">Agregar material a la lección</p>
+                                    <div>
+                                      <label class="label" for="material-titulo">Título <span class="text-danger-600">*</span></label>
+                                      <input id="material-titulo" class="input" formControlName="titulo" placeholder="Ej. Clase: normalización (FN1–FN3)" required />
+                                      @if (formMaterial.controls.titulo.invalid && formMaterial.controls.titulo.touched) { <p class="mt-1 text-xs text-danger-600">El título es obligatorio.</p> }
                                     </div>
-
-                                    <form class="space-y-2 rounded bg-surface-50 p-3" [formGroup]="formRecurso" (ngSubmit)="crearRecursoEnlace(l)">
-                                      <p class="text-sm font-medium text-marine-700">Agregar recurso por enlace</p>
-                                      <div><label class="label">Nombre</label><input class="input" formControlName="nombre" /></div>
-                                      <div><label class="label">URL</label><input class="input" formControlName="url" placeholder="https://…" /></div>
-                                      <button class="btn btn-outline btn-sm" type="submit" [disabled]="formRecurso.invalid || guardando()">Guardar enlace</button>
-                                    </form>
-                                  </div>
+                                    <div>
+                                      <label class="label" for="material-desc">Descripción / instrucciones</label>
+                                      <textarea id="material-desc" class="textarea" rows="3" formControlName="cuerpo" placeholder="(Opcional) Qué debe hacer el estudiante aquí"></textarea>
+                                    </div>
+                                    <div class="grid gap-3 sm:grid-cols-2">
+                                      <div>
+                                        <label class="label" for="material-tipo">Tipo de material</label>
+                                        <select id="material-tipo" class="select" formControlName="tipo">
+                                          <option value="texto">Texto (el estudiante lo lee aquí)</option>
+                                          <option value="video">Video (pega el enlace del video)</option>
+                                          <option value="enlace">Enlace externo</option>
+                                          <option value="archivo">Archivo (PDF/Word/Imagen/Video/ZIP)</option>
+                                        </select>
+                                      </div>
+                                      @if (formMaterial.controls.tipo.value === 'archivo') {
+                                        <div>
+                                          <label class="label" for="material-file">Archivo</label>
+                                          <input id="material-file" #archivoInput type="file" class="block w-full text-sm" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip,.json,.png,.jpg,.jpeg,.webp,.gif,.svg,.mp4,.webm,.mov" [disabled]="subiendo() === l.id" (change)="onArchivoMaterial($event, l)" />
+                                          @if (subiendo() === l.id) { <p class="mt-1 text-xs text-marine-500">Subiendo archivo…</p> }
+                                          @else if (archivoMaterialNombre()) { <p class="mt-1 text-xs text-success-600">Listo: {{ archivoMaterialNombre() }}</p> }
+                                        </div>
+                                      } @else if (formMaterial.controls.tipo.value === 'texto') {
+                                        <p class="self-end text-xs text-marine-500">Sin archivo ni enlace: el texto va directo dentro del aula.</p>
+                                      } @else {
+                                        <div>
+                                          <label class="label" for="material-url">URL</label>
+                                          <input id="material-url" class="input" formControlName="url" placeholder="https://…" />
+                                          @if (formMaterial.controls.url.invalid && formMaterial.controls.url.touched) { <p class="mt-1 text-xs text-danger-600">Ingresa una URL (https://…).</p> }
+                                        </div>
+                                      }
+                                    </div>
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                      <p class="text-[0.7rem] text-marine-400">El orden se numera solo (1, 2, 3…). El archivo y el contenido se crean juntos.</p>
+                                      <button class="btn btn-primary btn-sm" type="submit" [disabled]="guardando() || formMaterial.invalid || (formMaterial.controls.tipo.value === 'archivo' && !archivoMaterial()) || ((formMaterial.controls.tipo.value === 'video' || formMaterial.controls.tipo.value === 'enlace') && formMaterial.controls.url.invalid)">{{ subiendo() === l.id ? 'Subiendo…' : 'Guardar en la lección' }}</button>
+                                    </div>
+                                  </form>
                                 </div>
                                 @if (mensajeLeccion() && leccionMensajeId() === l.id) {
                                   <p class="text-sm" [class.text-success-600]="exitoLeccion()" [class.text-danger-600]="!exitoLeccion()">{{ mensajeLeccion() }}</p>
@@ -271,20 +290,28 @@ export class CourseEditorComponent implements OnInit {
     }
     return this.formsLeccion[id];
   }
-  protected readonly formContenido = this.fb.nonNullable.group({
-    orden: [1, [Validators.required, Validators.min(1)]],
-    tipo: ['texto'],
-    titulo: [''],
+  protected readonly formMaterial = this.fb.nonNullable.group({
+    tipo: ['texto' as 'texto' | 'video' | 'enlace' | 'archivo'],
+    titulo: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
     cuerpo: [''],
+    url: [''],
   });
-  protected readonly formRecurso = this.fb.nonNullable.group({
-    nombre: ['', [Validators.required]],
-    url: ['', [Validators.required]],
-  });
+  /** Archivo elegido con el tipo 'archivo' (se sube adentro de agregarMaterial). */
+  protected readonly archivoMaterial = signal<File | null>(null);
+  /** Nombre legible del archivo elegido. */
+  protected readonly archivoMaterialNombre = signal<string>('');
 
   private cursoId(): string | null { return this.route.snapshot.paramMap.get('id'); }
 
-  ngOnInit(): void { void this.cargar(); }
+  ngOnInit(): void {
+    void this.cargar();
+    this.formMaterial.controls.tipo.valueChanges.subscribe((t) => {
+      if (t !== 'archivo') {
+        this.archivoMaterial.set(null);
+        this.archivoMaterialNombre.set('');
+      }
+    });
+  }
 
   protected async cargar(): Promise<void> {
     const user = this.auth.usuario();
@@ -410,7 +437,7 @@ export class CourseEditorComponent implements OnInit {
     await this.cargarDetalleLeccion(l.id);
   }
 
-  private async cargarDetalleLeccion(leccionId: string): Promise<void> {
+  protected async cargarDetalleLeccion(leccionId: string): Promise<void> {
     try {
       const [cs, rs] = await Promise.all([
         this.courseService.listarContenido(leccionId),
@@ -418,78 +445,141 @@ export class CourseEditorComponent implements OnInit {
       ]);
       this.contenidos.update((m) => ({ ...m, [leccionId]: cs }));
       this.recursos.update((m) => ({ ...m, [leccionId]: rs }));
-      this.formContenido.patchValue({ orden: (cs.length || 0) + 1, tipo: 'texto', titulo: '', cuerpo: '' });
     } catch (e) {
       this.setMsgL(leccionId, false, e instanceof Error ? e.message : 'No se pudo cargar el detalle de la lección.');
     }
   }
 
-  protected async crearContenido(l: Leccion): Promise<void> {
-    if (this.formContenido.invalid) {
-      this.setMsgL(l.id, false, 'Revisa los campos del contenido (el orden debe ser 1 o más).');
-      this.formContenido.markAllAsTouched();
-      return;
-    }
-    this.guardando.set(true);
-    try {
-      const v = this.formContenido.getRawValue();
-      await this.courseService.crearContenido(l.id, { orden: Number(v.orden), tipo: v.tipo, titulo: v.titulo || null, cuerpo: v.cuerpo || null });
-      await this.cargarDetalleLeccion(l.id);
-      this.setMsgL(l.id, true, 'Contenido agregado.');
-    } catch (e) { this.setMsgL(l.id, false, e instanceof Error ? e.message : 'No se pudo crear el contenido.'); }
-    finally { this.guardando.set(false); }
-  }
-  protected async eliminarContenido(leccionId: string, c: Contenido): Promise<void> {
-    if (!confirm('¿Eliminar este contenido?')) return;
-    try { await this.courseService.eliminarContenido(c.id); await this.cargarDetalleLeccion(leccionId); this.setMsgL(leccionId, true, 'Contenido eliminado.'); }
-    catch (e) { this.setMsgL(leccionId, false, e instanceof Error ? e.message : 'No se pudo eliminar.'); }
+  /** Recursos adjuntos a un bloque de contenido (mismo material). */
+  protected adjuntosDe(leccionId: string, contenidoId: string): Recurso[] {
+    return (this.recursos()[leccionId] ?? []).filter((r) => r.contenido_id === contenidoId);
   }
 
-  protected async onArchivoRecurso(event: Event, l: Leccion): Promise<void> {
+  /** Recursos sin bloque de contenido asociado (antiguos o sueltos). */
+  protected recursosHuerfanos(leccionId: string): Recurso[] {
+    return (this.recursos()[leccionId] ?? []).filter((r) => !r.contenido_id);
+  }
+
+  protected etiquetaTipoContenido(tipo: string): string {
+    const map: Record<string, string> = {
+      texto: 'Texto', video: 'Video', imagen: 'Imagen', documento: 'Documento',
+      enlace: 'Enlace', quiz: 'Quiz', examen: 'Examen', reto: 'Reto',
+      minijuego: 'Minijuego', foro: 'Foro', otro: 'Otro',
+    };
+    return map[(tipo ?? '').toLowerCase()] ?? tipo;
+  }
+
+  protected iconoTipoRecurso(tipo: string): string {
+    const map: Record<string, string> = {
+      documento: '📄', imagen: '🖼️', video: '🎬', archivo: '🗜️', enlace: '🔗', otro: '📎',
+    };
+    return map[(tipo ?? '').toLowerCase()] ?? '📎';
+  }
+
+  /** Archivo elegido en el formulario único (se sube dentro de agregarMaterial). */
+  protected onArchivoMaterial(event: Event, l: Leccion): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.archivoMaterial.set(file);
+    this.archivoMaterialNombre.set(file.name);
+    this.setMsgL(l.id, true, '');
+  }
+
+  /** Formulario único de material: crea el bloque de contenido + (si corresponde) el recurso adjunto, enlazados. */
+  protected async agregarMaterial(l: Leccion): Promise<void> {
+    const v = this.formMaterial.getRawValue();
+    if (!v.titulo.trim()) {
+      this.setMsgL(l.id, false, 'El título es obligatorio.');
+      this.formMaterial.controls.titulo.markAsTouched();
+      return;
+    }
+    const tipo = v.tipo;
+    const url = (v.url ?? '').trim();
+    const file = this.archivoMaterial();
+    if (tipo === 'archivo' && !file) { this.setMsgL(l.id, false, 'Elige el archivo a subir.'); return; }
+    if ((tipo === 'video' || tipo === 'enlace') && !url) { this.setMsgL(l.id, false, 'Ingresa la URL del video o enlace.'); return; }
     const curso = this.curso();
-    if (!file || !curso) return;
+    if (!curso) return;
+
+    this.guardando.set(true);
     this.subiendo.set(l.id);
+    const cs = this.contenidos()[l.id] ?? [];
+    const orden = cs.length ? Math.max(...cs.map((c) => c.orden ?? 0)) + 1 : 1;
+
     try {
-      const up = await this.storageService.subirRecursoCurso(curso.id, file);
-      const ext = (file.name.split('.').pop() ?? '').toLowerCase();
-      const tipo = ['doc', 'docx', 'pdf', 'ppt', 'pptx', 'xls', 'xlsx', 'csv', 'rtf', 'odt', 'ods', 'odp', 'txt', 'md'].includes(ext)
-        ? 'documento'
-        : file.type.startsWith('image/') ? 'imagen'
-        : file.type.startsWith('video/') ? 'video'
-        : ['zip', 'rar', '7z', 'gz', 'tar'].includes(ext) ? 'archivo'
-        : 'otro';
-      await this.courseService.crearRecurso(l.id, {
-        nombre: file.name,
-        tipo,
-        ruta_storage: up.ruta,
-        tamano_bytes: file.size,
-        mime_type: file.type || null,
-        descargable: true,
+      const mime = (file?.type ?? '').toLowerCase();
+      const tipoContenido = tipo === 'texto' ? 'texto'
+        : tipo === 'video' ? 'video'
+        : tipo === 'enlace' ? 'enlace'
+        : mime.startsWith('image/') ? 'imagen' : 'documento';
+
+      const ct = await this.courseService.crearContenido(l.id, {
+        orden,
+        tipo: tipoContenido,
+        titulo: v.titulo.trim(),
+        cuerpo: v.cuerpo?.trim() || null,
       });
+
+      if (tipo === 'archivo' && file) {
+        const up = await this.storageService.subirRecursoCurso(curso.id, file);
+        const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+        const tipoRec = ['doc', 'docx', 'pdf', 'ppt', 'pptx', 'xls', 'xlsx', 'csv', 'rtf', 'odt', 'ods', 'odp', 'txt', 'md'].includes(ext)
+          ? 'documento'
+          : file.type.startsWith('image/') ? 'imagen'
+          : file.type.startsWith('video/') ? 'video'
+          : ['zip', 'rar', '7z', 'gz', 'tar'].includes(ext) ? 'archivo'
+          : 'otro';
+        await this.courseService.crearRecurso(l.id, {
+          nombre: v.titulo.trim(),
+          tipo: tipoRec,
+          ruta_storage: up.ruta,
+          tamano_bytes: file.size,
+          mime_type: file.type || null,
+          descargable: true,
+          contenido_id: ct.id,
+        });
+      } else if ((tipo === 'video' || tipo === 'enlace') && url) {
+        await this.courseService.crearRecurso(l.id, {
+          nombre: v.titulo.trim(),
+          tipo: tipo === 'video' ? 'video' : 'enlace',
+          url,
+          descargable: false,
+          contenido_id: ct.id,
+        });
+      }
+
       await this.cargarDetalleLeccion(l.id);
-      this.setMsgL(l.id, true, 'Archivo subido y registrado como recurso.');
+      this.formMaterial.reset({ tipo: 'texto', titulo: '', cuerpo: '', url: '' });
+      this.archivoMaterial.set(null);
+      this.archivoMaterialNombre.set('');
+      this.setMsgL(l.id, true, 'Material guardado en la lección.');
     } catch (e) {
-      this.setMsgL(l.id, false, e instanceof Error ? e.message : 'No se pudo subir el archivo (revisa permisos de Storage/RLS y tu asignacion al curso).');
+      this.setMsgL(l.id, false, e instanceof Error ? e.message : 'No se pudo guardar el material.');
     } finally {
+      this.guardando.set(false);
       this.subiendo.set(null);
-      input.value = '';
     }
   }
 
-  protected async crearRecursoEnlace(l: Leccion): Promise<void> {
-    if (this.formRecurso.invalid) return;
-    this.guardando.set(true);
+  protected async eliminarContenido(leccionId: string, c: Contenido): Promise<void> {
+    if (!confirm('¿Eliminar este bloque de contenido y sus archivos adjuntos?')) return;
     try {
-      const v = this.formRecurso.getRawValue();
-      await this.courseService.crearRecurso(l.id, { nombre: v.nombre, tipo: 'enlace', url: v.url, descargable: false });
-      this.formRecurso.reset({ nombre: '', url: '' });
-      await this.cargarDetalleLeccion(l.id);
-      this.setMsgL(l.id, true, 'Recurso agregado.');
-    } catch (e) { this.setMsgL(l.id, false, e instanceof Error ? e.message : 'No se pudo agregar el recurso.'); }
-    finally { this.guardando.set(false); }
+      // Best-effort: borra los adjuntos asociados primero (si el docente quiere, elimina desde aquí).
+      const adjuntos = this.adjuntosDe(leccionId, c.id);
+      for (const r of adjuntos) {
+        try { if (r.ruta_storage) await this.storageService.eliminarRecurso(r.ruta_storage); } catch { /* best effort */ }
+        await this.courseService.eliminarRecurso(r.id);
+      }
+      await this.courseService.eliminarContenido(c.id);
+      await this.cargarDetalleLeccion(leccionId);
+      this.setMsgL(leccionId, true, 'Contenido eliminado.');
+    } catch (e) {
+      this.setMsgL(leccionId, false, e instanceof Error ? e.message : 'No se pudo eliminar.');
+    }
   }
+
   protected async eliminarRecurso(leccionId: string, r: Recurso): Promise<void> {
     if (!confirm(`¿Eliminar el recurso "${r.nombre}"?`)) return;
     try {
