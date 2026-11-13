@@ -153,9 +153,9 @@ interface ParItem {
                 <input id="dur" type="number" min="0" class="input" formControlName="tiempoLimiteSeg" placeholder="0 = sin límite" />
               </div>
               <div>
-                <label class="label" for="lec">Lección (opcional)</label>
+                <label class="label" for="lec">Lección <span class="text-xs text-marine-400">(recomendado: así aparece al alumno)</span></label>
                 <select id="lec" class="select" formControlName="leccionId">
-                  <option value="">Sin lección</option>
+                  <option value="">— Sin lección (solo crea el juego, no lo asigna)</option>
                   @for (l of lecciones(); track l.id) {
                     <option [value]="l.id">U{{ l.unidadNumero }} · {{ l.titulo }}</option>
                   }
@@ -510,7 +510,7 @@ export class CrearMinijuegoModalComponent implements OnInit {
         contenido = { generico: true, instrucciones: v.descripcion, items, config: extra };
       }
 
-      await this.gameService.crearJuegoDocente({
+      const juegoId = await this.gameService.crearJuegoDocente({
         cursoId: this.cursoId(),
         motorCodigo: motor.codigo,
         nombre: v.titulo,
@@ -520,6 +520,31 @@ export class CrearMinijuegoModalComponent implements OnInit {
         tiempoLimiteSeg: v.tiempoLimiteSeg === 0 ? null : v.tiempoLimiteSeg,
         contenido,
       });
+
+      // Vincular el juego a la lección (asignar la actividad de juego al curso)
+      const leccionId = v.leccionId?.trim();
+      if (leccionId) {
+        try {
+          await this.gameService.crearActividadJuego({
+            juego_id: juegoId,
+            leccion_id: leccionId,
+            curso_id: this.cursoId(),
+            titulo: v.titulo.trim(),
+            descripcion: v.descripcion?.trim() || null,
+            orden: 0,
+            puntos: 0,
+            xp_otorgado: Number(v.xpOtorgado) || 0,
+            intentos_permitidos: 0,
+            publicado: true,
+          });
+        } catch (eAsignar) {
+          this.error.set('Minijuego publicado, pero no se pudo asignar a la lección: ' + (eAsignar instanceof Error ? eAsignar.message : String(eAsignar)));
+          this.publicando.set(false);
+          this.creado.emit();
+          this.cerrado.emit();
+          return;
+        }
+      }
 
       this.creado.emit();
       this.cerrado.emit();
