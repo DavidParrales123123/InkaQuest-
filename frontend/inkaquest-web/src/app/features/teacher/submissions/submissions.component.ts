@@ -281,7 +281,7 @@ export class SubmissionsComponent implements OnInit {
     this.msg.set('');
     try {
       const comentario = this.comentarios()[f.id] ?? '';
-      const resultado = await this.activityService.calificarEntrega(f.id, this.auth.usuario()!.id, nota, f.notaMaxima, comentario);
+      const resultado = await this.activityService.calificarEntrega(f.id, nota, comentario, f.notaMaxima);
       this.msg.set(resultado.mensaje);
       this.ok.set(resultado.ok);
       if (resultado.ok) {

@@ -532,7 +532,7 @@ export class AssignmentsComponent implements OnInit {
     const user = this.auth.usuario(); if (!user) return;
     this.calificando.set(e.id);
     try {
-      const res = await this.activityService.calificarEntrega(e.id, user.id, this.nota(e.id), 20, this.comentario(e.id));
+      const res = await this.activityService.calificarEntrega(e.id, this.nota(e.id), this.comentario(e.id), 20);
       this.msgs.update((m) => ({ ...m, [e.id]: res.mensaje }));
       this.oks.update((m) => ({ ...m, [e.id]: res.ok }));
       if (res.ok) {
