@@ -1,4 +1,5 @@
 // @ts-nocheck
+﻿// @ts-nocheck
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -43,10 +44,6 @@ export class AuthService {
   private readonly _iniciandoSesion = signal(false);
   /** Indica si un login esta en curso (usado por interceptores/guards). */
   readonly iniciandoSesion = this._iniciandoSesion.asReadonly();
-
-  /** Diagnóstico del último fallo de carga de perfil (visible en la pantalla de login). */
-  private readonly _debugPerfilError = signal<string | null>(null);
-  readonly debugPerfilError = this._debugPerfilError.asReadonly();
 
   /** Rol efectivo del usuario. */
   readonly rol = computed<RolUsuario | null>(() => this._perfil()?.rol ?? null);
@@ -131,7 +128,7 @@ export class AuthService {
     return null;
   }
 
-  /** Lectura del perfil vía API REST. Devuelve null si falla o viene vacío. */
+  /** Lectura del perfil vÃ­a API REST. Devuelve null si falla o viene vacÃ­o. */
   private async cargarPerfilDesdeApi(): Promise<Perfil | null> {
     try {
       // El backend es la unica fuente de verdad del perfil de aplicacion.
@@ -142,16 +139,13 @@ export class AuthService {
       if (datos) {
         return adaptarPerfil(datos);
       }
-      this._debugPerfilError.set('api-empty');
       return null;
-    } catch (e: any) {
-      const status = e?.status ?? e?.name ?? 'err';
-      this._debugPerfilError.set(`api-fail-${status}`);
+    } catch {
       return null;
     }
   }
 
-  /** Lectura del perfil vía Supabase directo (+ autocreación si falta). */
+  /** Lectura del perfil vÃ­a Supabase directo (+ autocreaciÃ³n si falta). */
   private async cargarPerfilDesdeSupabase(usuarioId: string): Promise<Perfil | null> {
     try {
       const { data, error } = await this.supabase.client
@@ -161,9 +155,6 @@ export class AuthService {
         .maybeSingle();
       if (!error && data) {
         return data as unknown as Perfil;
-      }
-      if (error) {
-        this._debugPerfilError.set(`select-${(error as any).code ?? 'err'}-${((error as any).message ?? '').slice(0, 80)}`);
       }
       const perfil = await this.asegurarPerfilPropioSupabase();
       if (perfil) {
@@ -176,7 +167,7 @@ export class AuthService {
   }
 
   /**
-   * Crea el perfil propio en public.perfil via Supabase (política INSERT del
+   * Crea el perfil propio en public.perfil via Supabase (polÃ­tica INSERT del
    * propio usuario). Devuelve el perfil creado o null si no se pudo crear.
    */
   private async asegurarPerfilPropioSupabase(): Promise<Perfil | null> {
@@ -195,7 +186,6 @@ export class AuthService {
         .insert({ id: usuario.id, email: usuario.email ?? '', nombre });
       if (error) {
         console.warn('[InkaQuest] No se pudo crear el perfil propio:', error.message);
-        this._debugPerfilError.set(`insert-${(error as any).code ?? 'err'}-${((error as any).message ?? '').slice(0, 100)}`);
         return null;
       }
       const { data, error: err2 } = await this.supabase.client
@@ -204,7 +194,6 @@ export class AuthService {
         .eq('id', usuario.id)
         .maybeSingle();
       if (err2 || !data) {
-        this._debugPerfilError.set(`select-after-insert-${(err2 as any)?.code ?? 'none'}`);
         return null;
       }
       return data as unknown as Perfil;
@@ -214,9 +203,9 @@ export class AuthService {
   }
 
   /**
-   * Si el usuario se registró como docente pero la verificación de correo impidió
-   * crear la solicitud (sin sesión activa), se guarda localmente y se envía aquí
-   * al iniciar sesión como estudiante. No autoasigna rol.
+   * Si el usuario se registrÃ³ como docente pero la verificaciÃ³n de correo impidiÃ³
+   * crear la solicitud (sin sesiÃ³n activa), se guarda localmente y se envÃ­a aquÃ­
+   * al iniciar sesiÃ³n como estudiante. No autoasigna rol.
    */
   async procesarSolicitudDocentePendiente(): Promise<{ ok: boolean; mensaje?: string }> {
     if (typeof localStorage === 'undefined') return { ok: false };
@@ -239,11 +228,11 @@ export class AuthService {
       payload = JSON.parse(raw) as { institucion?: string; especialidad?: string; codigoDocente?: string; motivo?: string };
     } catch {
       localStorage.removeItem(key);
-      return { ok: false, mensaje: 'La solicitud guardada localmente no es válida.' };
+      return { ok: false, mensaje: 'La solicitud guardada localmente no es vÃ¡lida.' };
     }
     if (!payload?.institucion || !payload?.especialidad || !payload?.motivo) {
       localStorage.removeItem(key);
-      return { ok: false, mensaje: 'La solicitud guardada está incompleta. Vuelve a enviarla.' };
+      return { ok: false, mensaje: 'La solicitud guardada estÃ¡ incompleta. Vuelve a enviarla.' };
     }
 
     try {
@@ -267,11 +256,11 @@ export class AuthService {
   }
 
   /**
-   * Crea el perfil mínimo del usuario si no existe (idempotente).
+   * Crea el perfil mÃ­nimo del usuario si no existe (idempotente).
    *
-   * <p>La creación la hace el backend (que siempre asigna rol 'estudiante';
-   * el cliente nunca puede elegir el rol). Esta función solo fuerza la
-   * sincronización.</p>
+   * <p>La creaciÃ³n la hace el backend (que siempre asigna rol 'estudiante';
+   * el cliente nunca puede elegir el rol). Esta funciÃ³n solo fuerza la
+   * sincronizaciÃ³n.</p>
    */
   async asegurarPerfilBasico(
     nombre?: string,
@@ -285,10 +274,10 @@ export class AuthService {
       await firstValueFrom(this.api.post<unknown>('/usuarios/asegurar', { nombre: nombre ?? '' }));
     } catch {
       // Si el backend falla, seguimos sin romantizar un perfil incompleto;
-      // la siguiente navegación volverá a intentarlo.
+      // la siguiente navegaciÃ³n volverÃ¡ a intentarlo.
     }
 
-    // Datos complementarios (género/nacimiento) solo si el ajuste los pide.
+    // Datos complementarios (gÃ©nero/nacimiento) solo si el ajuste los pide.
     if (genero && (genero === 'masculino' || genero === 'femenino')) {
       try {
         await firstValueFrom(this.api.put('/usuarios/yo', { genero }));
@@ -402,11 +391,11 @@ export class AuthService {
       }
       await this.procesarSolicitudDocentePendiente();
 
-      return { ok: true, mensaje: 'Sesión iniciada.' };
+      return { ok: true, mensaje: 'SesiÃ³n iniciada.' };
     } catch (e) {
       return {
         ok: false,
-        mensaje: e instanceof Error ? e.message : 'Error inesperado al iniciar sesión.',
+        mensaje: e instanceof Error ? e.message : 'Error inesperado al iniciar sesiÃ³n.',
       };
     } finally {
       this._iniciandoSesion.set(false);
@@ -441,12 +430,12 @@ export class AuthService {
 
       return {
         ok: true,
-        mensaje: 'Si el correo está registrado, te enviaremos un enlace para restablecer la contraseña.',
+        mensaje: 'Si el correo estÃ¡ registrado, te enviaremos un enlace para restablecer la contraseÃ±a.',
       };
     } catch (e) {
       return {
         ok: false,
-        mensaje: e instanceof Error ? e.message : 'Error inesperado al recuperar la contraseña.',
+        mensaje: e instanceof Error ? e.message : 'Error inesperado al recuperar la contraseÃ±a.',
       };
     }
   }
@@ -460,11 +449,11 @@ export class AuthService {
       if (error) {
         return { ok: false, mensaje: this.traducirError(error.message) };
       }
-      return { ok: true, mensaje: 'Contraseña actualizada correctamente.' };
+      return { ok: true, mensaje: 'ContraseÃ±a actualizada correctamente.' };
     } catch (e) {
       return {
         ok: false,
-        mensaje: e instanceof Error ? e.message : 'Error inesperado al actualizar la contraseña.',
+        mensaje: e instanceof Error ? e.message : 'Error inesperado al actualizar la contraseÃ±a.',
       };
     }
   }
@@ -475,16 +464,16 @@ export class AuthService {
   private traducirError(mensaje: string): string {
     const m = mensaje.toLowerCase();
     if (m.includes('invalid login credentials')) {
-      return 'El correo o la contraseña no son correctos.';
+      return 'El correo o la contraseÃ±a no son correctos.';
     }
     if (m.includes('email not confirmed')) {
-      return 'Debes confirmar tu correo electrónico antes de iniciar sesión.';
+      return 'Debes confirmar tu correo electrÃ³nico antes de iniciar sesiÃ³n.';
     }
     if (m.includes('user already registered')) {
-      return 'Ya existe una cuenta con ese correo electrónico.';
+      return 'Ya existe una cuenta con ese correo electrÃ³nico.';
     }
     if (m.includes('password should be at least')) {
-      return 'La contraseña debe tener al menos 8 caracteres.';
+      return 'La contraseÃ±a debe tener al menos 8 caracteres.';
     }
     if (m.includes('rate limit') || m.includes('too many')) {
       return 'Demasiados intentos. Espera un momento e intenta de nuevo.';

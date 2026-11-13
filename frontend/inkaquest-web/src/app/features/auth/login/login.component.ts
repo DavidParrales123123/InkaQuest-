@@ -91,9 +91,6 @@ import { AuthService } from '../../../core/services/auth.service';
           @if (mensaje()) {
             <p class="auth-alert" [class.auth-success]="exito()" role="status">{{ mensaje() }}</p>
           }
-          @if (auth.debugPerfilError(); as diagnostico) {
-            <p class="mt-2 rounded-lg bg-surface-100 px-3 py-2 text-center text-xs font-semibold text-marine-600" role="note">{{ diagnostico }}</p>
-          }
 
           <div class="auth-footer">
             <p class="auth-note">Acceso seguro con tu cuenta registrada en InkaQuest.</p>
