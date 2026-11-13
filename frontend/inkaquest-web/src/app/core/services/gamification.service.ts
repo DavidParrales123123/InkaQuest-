@@ -32,6 +32,7 @@ import {
 export class GamificationService {
   private readonly http = inject(HttpClient);
   private readonly supabase = inject(SupabaseService);
+  private readonly client = this.supabase.client;
   private readonly auth = inject(AuthService);
   private readonly baseUrl = `${environment.apiUrl}/gamificacion`;
 

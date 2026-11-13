@@ -133,7 +133,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
               @if (mensaje()) {
                 <p class="text-sm" [class.text-success-600]="exito()" [class.text-danger-600]="!exito()">{{ mensaje() }}</p>
               }
-              <app-button type="submit" variante="primario" [cargando]="guardando()" [deshabilitado]="form.invalid || guardando()">Guardar cambios</app-button>
+              <app-button type="submit" variante="primario" [cargando]="guardando()" [deshabilitado]="guardando()">Guardar cambios</app-button>
               <p class="text-xs text-marine-400">Algunos campos (correo, rol) son gestionados por el sistema y no pueden modificarse aquí.</p>
             </form>
 
@@ -205,7 +205,7 @@ export class ProfileComponent implements OnInit {
     documento: [''],
     genero: [''],
     fecha_nacimiento: [''],
-    telefono: ['', [Validators.pattern(/^[0-9+()\-\s]{7,20}$/)]],
+    telefono: [''],
     bio: [''],
   });
 
@@ -465,7 +465,14 @@ export class ProfileComponent implements OnInit {
 
   protected async guardar(): Promise<void> {
     const user = this.auth.usuario();
-    if (!user || this.form.invalid) return;
+    if (!user) { this.mensaje.set('Debes iniciar sesión.'); this.exito.set(false); return; }
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      const nombreInvalido = this.form.controls.nombre?.invalid;
+      this.mensaje.set(nombreInvalido ? 'El nombre debe tener al menos 2 caracteres.' : 'Revisa los campos marcados en rojo.');
+      this.exito.set(false);
+      return;
+    }
     this.guardando.set(true);
     this.mensaje.set('');
     try {
