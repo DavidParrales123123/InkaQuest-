@@ -9,6 +9,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
 import { StorageService } from '../../../core/services/storage.service';
 import { TeacherService } from '../../../core/services/teacher.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
@@ -324,6 +325,7 @@ export class CourseEditorComponent implements OnInit {
   private readonly teacherService = inject(TeacherService);
   private readonly courseService = inject(CourseService);
   private readonly storageService = inject(StorageService);
+  private readonly confirm = inject(ConfirmService);
 
   protected readonly cargando = signal(true);
   protected readonly guardando = signal(false);
@@ -466,7 +468,7 @@ export class CourseEditorComponent implements OnInit {
     catch (e) { this.setMsg(false, e instanceof Error ? e.message : 'No se pudo actualizar la unidad.'); }
   }
   protected async eliminarUnidad(u: Unidad): Promise<void> {
-    if (!confirm(`¿Eliminar la unidad "${u.titulo}" y su contenido?`)) return;
+    if (!(await this.confirm.ask({ title: 'Eliminar unidad', mensaje: `¿Eliminar la unidad "${u.titulo}" y su contenido?`, textoConfirmar: 'Eliminar' }))) return;
     try { await this.courseService.eliminarUnidad(u.id); await this.refrescar(); this.setMsg(true, 'Unidad eliminada.'); }
     catch (e) { this.setMsg(false, e instanceof Error ? e.message : 'No se pudo eliminar la unidad.'); }
   }
@@ -488,7 +490,7 @@ export class CourseEditorComponent implements OnInit {
     catch (e) { this.setMsg(false, e instanceof Error ? e.message : 'No se pudo actualizar el módulo.'); }
   }
   protected async eliminarModulo(m: Modulo): Promise<void> {
-    if (!confirm(`¿Eliminar el módulo "${m.titulo}" y sus lecciones?`)) return;
+    if (!(await this.confirm.ask({ title: 'Eliminar módulo', mensaje: `¿Eliminar el módulo "${m.titulo}" y sus lecciones?`, textoConfirmar: 'Eliminar' }))) return;
     try { await this.courseService.eliminarModulo(m.id); await this.refrescar(); this.setMsg(true, 'Módulo eliminado.'); }
     catch (e) { this.setMsg(false, e instanceof Error ? e.message : 'No se pudo eliminar el módulo.'); }
   }
@@ -510,7 +512,7 @@ export class CourseEditorComponent implements OnInit {
     catch (e) { this.setMsg(false, e instanceof Error ? e.message : 'No se pudo actualizar la lección.'); }
   }
   protected async eliminarLeccion(l: Leccion): Promise<void> {
-    if (!confirm(`¿Eliminar la lección "${l.titulo}" y sus contenidos/recursos?`)) return;
+    if (!(await this.confirm.ask({ title: 'Eliminar lección', mensaje: `¿Eliminar la lección "${l.titulo}" y sus contenidos/recursos?`, textoConfirmar: 'Eliminar' }))) return;
     try { await this.courseService.eliminarLeccion(l.id); if (this.leccionAbierta() === l.id) this.leccionAbierta.set(null); await this.refrescar(); this.setMsg(true, 'Lección eliminada.'); }
     catch (e) { this.setMsg(false, e instanceof Error ? e.message : 'No se pudo eliminar la lección.'); }
   }
@@ -774,7 +776,7 @@ export class CourseEditorComponent implements OnInit {
   }
 
   protected async eliminarContenido(leccionId: string, c: Contenido): Promise<void> {
-    if (!confirm('¿Eliminar este bloque de contenido y sus archivos adjuntos?')) return;
+    if (!(await this.confirm.ask({ title: 'Eliminar contenido', mensaje: '¿Eliminar este bloque de contenido y sus archivos adjuntos?', textoConfirmar: 'Eliminar' }))) return;
     try {
       // Best-effort: borra los adjuntos asociados primero (si el docente quiere, elimina desde aquí).
       const adjuntos = this.adjuntosDe(leccionId, c.id);
@@ -791,7 +793,7 @@ export class CourseEditorComponent implements OnInit {
   }
 
   protected async eliminarRecurso(leccionId: string, r: Recurso): Promise<void> {
-    if (!confirm(`¿Eliminar el recurso "${r.nombre}"?`)) return;
+    if (!(await this.confirm.ask({ title: 'Eliminar recurso', mensaje: `¿Eliminar el recurso "${r.nombre}"?`, textoConfirmar: 'Eliminar' }))) return;
     try {
       // eliminar registro; opcionalmente podríamos borrar del storage si ruta_storage existe, pero para evitar fallos por permisos lo dejamos como best-effort separado si se requiere
       if (r.ruta_storage) {

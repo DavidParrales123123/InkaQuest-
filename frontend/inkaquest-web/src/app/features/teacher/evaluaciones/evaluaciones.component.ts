@@ -6,6 +6,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
 import { EvaluationService } from '../../../core/services/evaluation.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { TeacherService } from '../../../core/services/teacher.service';
 import {
   Actividad,
@@ -277,6 +278,7 @@ export class EvaluationsComponent implements OnInit {
   private readonly courseService = inject(CourseService);
   private readonly evaluationService = inject(EvaluationService);
   private readonly fb = inject(FormBuilder);
+  private readonly confirm = inject(ConfirmService);
 
   protected readonly cursos = signal<{ curso: Curso }[]>([]);
   protected readonly cargando = signal(true);
@@ -518,9 +520,7 @@ export class EvaluationsComponent implements OnInit {
   protected async eliminarPregunta(p: Pregunta & { opciones: Opcion[] }): Promise<void> {
     const sel = this.evaluacionSel();
     if (!sel) return;
-    const confirmado = confirm(
-      `¿Eliminar la pregunta "${p.enunciado.substring(0, 80)}"? Se borrarán también sus opciones y respuestas registradas.`,
-    );
+    const confirmado = await this.confirm.ask({ title: 'Eliminar pregunta', mensaje: `¿Eliminar la pregunta "${p.enunciado.substring(0, 80)}"? Se borrarán también sus opciones y respuestas registradas.`, textoConfirmar: 'Eliminar' });
     if (!confirmado) return;
     try {
       await this.evaluationService.eliminarPregunta(p.id);
@@ -532,9 +532,7 @@ export class EvaluationsComponent implements OnInit {
   }
 
   protected async eliminarEvaluacion(e: Evaluacion & { actividad: Actividad }): Promise<void> {
-    const confirmado = confirm(
-      `¿Eliminar la evaluación "${e.actividad.titulo}"? Esta acción no se puede deshacer y borra sus preguntas.`,
-    );
+    const confirmado = await this.confirm.ask({ title: 'Eliminar evaluación', mensaje: `¿Eliminar la evaluación "${e.actividad.titulo}"? Esta acción no se puede deshacer y borra sus preguntas.`, textoConfirmar: 'Eliminar' });
     if (!confirmado) return;
     try {
       await this.evaluationService.eliminarEvaluacion(e.actividad.id, e.id);

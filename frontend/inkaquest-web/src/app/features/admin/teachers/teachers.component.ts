@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { AdminService } from '../../../core/services/admin.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { Curso, DocenteCurso, Perfil } from '../../../core/models/domain.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
@@ -152,6 +153,7 @@ export class TeachersComponent implements OnInit {
   private readonly adminService = inject(AdminService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
+  private readonly confirm = inject(ConfirmService);
 
   protected readonly cargando = signal(true);
   protected readonly guardando = signal(false);
@@ -259,7 +261,7 @@ export class TeachersComponent implements OnInit {
   }
 
   protected async eliminar(a: DocenteCurso): Promise<void> {
-    if (typeof window !== 'undefined' && !window.confirm('¿Eliminar esta asignación docente-curso?')) return;
+    if (!(await this.confirm.ask({ title: 'Eliminar asignación', mensaje: '¿Eliminar esta asignación docente-curso?', textoConfirmar: 'Eliminar' }))) return;
     const r = await this.adminService.eliminarAsignacionDocenteCurso(a.id);
     this.setMensaje(r.ok, r.mensaje);
     if (r.ok) await this.cargar();

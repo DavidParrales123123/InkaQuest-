@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { GameService } from '../../../core/services/game.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { TeacherService } from '../../../core/services/teacher.service';
 import {
   ActividadJuego,
@@ -353,6 +354,7 @@ export class GamesComponent implements OnInit {
   private readonly teacherService = inject(TeacherService);
   private readonly gameService = inject(GameService);
   private readonly fb = inject(FormBuilder);
+  private readonly confirm = inject(ConfirmService);
 
   // ─── UI general ───
   protected readonly cargando = signal(true);
@@ -628,7 +630,7 @@ export class GamesComponent implements OnInit {
   }
 
   protected async eliminar(a: ActividadJuego): Promise<void> {
-    if (!confirm(`¿Eliminar la actividad de juego "${a.titulo}"? Esta acción no se puede deshacer.`)) return;
+    if (!(await this.confirm.ask({ title: 'Eliminar actividad', mensaje: `¿Eliminar la actividad de juego "${a.titulo}"? Esta acción no se puede deshacer.`, textoConfirmar: 'Eliminar' }))) return;
     this.guardando.set(a.id);
     try {
       await this.gameService.eliminarActividadJuego(a.id);
@@ -666,7 +668,7 @@ export class GamesComponent implements OnInit {
   }
 
   protected async quitarMotorCurso(mc: MotorCurso): Promise<void> {
-    if (!confirm('¿Quitar este motor del curso?')) return;
+    if (!(await this.confirm.ask({ title: 'Quitar motor del curso', mensaje: '¿Quitar este motor del curso?', textoConfirmar: 'Quitar' }))) return;
     this.guardando.set(mc.id);
     try {
       await this.gameService.eliminarMotorCurso(mc.id);

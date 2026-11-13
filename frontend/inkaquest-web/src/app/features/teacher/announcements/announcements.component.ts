@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { AnuncioService } from '../../../core/services/anuncio.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { TeacherService } from '../../../core/services/teacher.service';
 import { Anuncio, Curso, DocenteCurso, EstadoAnuncio } from '../../../core/models/domain.models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -128,6 +129,7 @@ export class AnnouncementsComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly anuncioService = inject(AnuncioService);
   private readonly teacherService = inject(TeacherService);
+  private readonly confirm = inject(ConfirmService);
 
   protected readonly cargando = signal(true);
   protected readonly enviando = signal(false);
@@ -242,7 +244,7 @@ export class AnnouncementsComponent implements OnInit {
   }
 
   protected async eliminar(a: Anuncio): Promise<void> {
-    if (!confirm(`¿Eliminar el anuncio "${a.titulo}"?`)) return;
+    if (!(await this.confirm.ask({ title: 'Eliminar anuncio', mensaje: `¿Eliminar el anuncio "${a.titulo}"?`, textoConfirmar: 'Eliminar' }))) return;
     try {
       await this.anuncioService.eliminar(a.id);
       await this.cargar();

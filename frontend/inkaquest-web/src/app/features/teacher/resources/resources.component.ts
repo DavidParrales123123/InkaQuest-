@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 
 import { AuthService } from '../../../core/services/auth.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { CourseService } from '../../../core/services/course.service';
 import { StorageService } from '../../../core/services/storage.service';
 import { TeacherService } from '../../../core/services/teacher.service';
@@ -192,6 +193,7 @@ export class ResourcesComponent implements OnInit {
   private readonly teacherService = inject(TeacherService);
   private readonly courseService = inject(CourseService);
   private readonly storageService = inject(StorageService);
+  private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
 
   protected readonly cargando = signal(true);
@@ -404,7 +406,7 @@ export class ResourcesComponent implements OnInit {
   }
 
   protected async eliminarRecurso(r: Recurso): Promise<void> {
-    if (!confirm(`¿Eliminar "${r.nombre}"?`)) return;
+    if (!(await this.confirm.ask({ title: 'Eliminar recurso', mensaje: `¿Eliminar "${r.nombre}"?`, textoConfirmar: 'Eliminar' }))) return;
     try {
       if (r.ruta_storage) {
         try { await this.storageService.eliminarRecurso(r.ruta_storage); } catch { /* best effort */ }

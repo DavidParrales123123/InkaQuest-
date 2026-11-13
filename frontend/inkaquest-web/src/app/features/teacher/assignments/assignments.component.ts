@@ -6,6 +6,7 @@ import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { ActivityService } from '../../../core/services/activity.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { CourseService } from '../../../core/services/course.service';
 import { TeacherService } from '../../../core/services/teacher.service';
 import {
@@ -275,6 +276,7 @@ export class AssignmentsComponent implements OnInit {
   private readonly activityService = inject(ActivityService);
   private readonly courseService = inject(CourseService);
   private readonly fb = inject(FormBuilder);
+  private readonly confirm = inject(ConfirmService);
 
   protected readonly cargando = signal(true);
   protected readonly creando = signal(false);
@@ -475,7 +477,7 @@ export class AssignmentsComponent implements OnInit {
   }
 
   protected async eliminarTarea(t: TareaConActividad): Promise<void> {
-    const confirmado = confirm(`¿Eliminar la tarea "${t.actividad.titulo}"? Se eliminarán sus adjuntos y los registros de entrega ligados en cascada.`);
+    const confirmado = await this.confirm.ask({ title: 'Eliminar tarea', mensaje: `¿Eliminar la tarea "${t.actividad.titulo}"? Se eliminarán sus adjuntos y los registros de entrega ligados en cascada.`, textoConfirmar: 'Eliminar' });
     if (!confirmado) return;
     try {
       await this.activityService.eliminarActividad(t.actividad.id);

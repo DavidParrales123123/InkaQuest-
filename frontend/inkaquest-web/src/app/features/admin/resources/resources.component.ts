@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { AdminService } from '../../../core/services/admin.service';
 import { StorageService } from '../../../core/services/storage.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { Curso, Recurso } from '../../../core/models/domain.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
@@ -127,6 +128,7 @@ interface LeccionCtx { id: string; titulo: string; numero: number; moduloTitulo:
 })
 export class ResourcesComponent implements OnInit {
   private readonly adminService = inject(AdminService);
+  private readonly confirm = inject(ConfirmService);
   private readonly storage = inject(StorageService);
   private readonly fb = inject(FormBuilder);
 
@@ -259,7 +261,7 @@ export class ResourcesComponent implements OnInit {
   }
 
   protected async eliminar(r: Recurso): Promise<void> {
-    if (typeof window !== 'undefined' && !window.confirm(`¿Eliminar el recurso "${r.nombre}"?`)) return;
+    if (!(await this.confirm.ask({ title: 'Eliminar recurso', mensaje: `¿Eliminar el recurso "${r.nombre}"?`, textoConfirmar: 'Eliminar' }))) return;
     this.eliminandoId.set(r.id);
     try {
       const res = await this.adminService.eliminarRecursoAdmin(r.id);
