@@ -55,8 +55,15 @@ sql_paths = ["./seed/seed.sql"]
 # -----------------------------------------------------------------------------
 [auth]
 enabled = true
-site_url = "http://localhost:4200"
-additional_redirect_urls = ["http://localhost:4200"]
+# Frontend en Railway: el enlace de confirmación de correo y el de recuperación
+# deben redirigir aquí. NO usar dominios Vercel (descartados).
+site_url = "https://athletic-quietude-production.up.railway.app"
+additional_redirect_urls = [
+  "https://athletic-quietude-production.up.railway.app",
+  "https://athletic-quietude-production.up.railway.app/**",
+  "http://localhost:4200",
+  "http://127.0.0.1:4200",
+]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
