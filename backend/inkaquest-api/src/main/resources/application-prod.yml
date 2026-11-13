@@ -45,10 +45,12 @@ springdoc:
 
 app:
   cors:
-    # Por defecto se admite el frontend de producción en Vercel y el dev local.
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:https://inkaquest-web.vercel.app,http://localhost:4200,http://127.0.0.1:4200}
+    # Por defecto: dev local + cualquier dominio de Railway (el frontend se despliega allí).
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:https://*.up.railway.app}
   security:
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:https://inkaquest-web.vercel.app,http://localhost:4200,http://127.0.0.1:4200}
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:https://*.up.railway.app}
 
 logging:
   level:

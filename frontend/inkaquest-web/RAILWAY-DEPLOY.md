@@ -1,45 +1,40 @@
 ﻿# Deploy Frontend Angular a Railway
 
-## Configuracion Automatica
+## Estado actual (2026-11-12)
 
-Este proyecto ya esta configurado para Railway con:
-- nixpacks.toml: Configuracion de build
-- railway.json: Comandos de deploy
+- Frontend: **https://athletic-quietude-production.up.railway.app** (servicio Railway con Dockerfile)
+- Backend: **https://inkaquest-production.up.railway.app/api/v1** (mismo proyecto Railway)
+- Vercel: **descartado**; nada se publica allí. Los archivos `vercel.json` / `deploy-vercel*.ps1` en la raíz son históricos.
 
-## Variables de Entorno en Railway
+## Cómo funciona el frontend en Railway
 
-Configura estas variables en el dashboard de Railway:
+- El Dockerfile (`frontend/inkaquest-web/Dockerfile`) compila la app con `npm run build` y la sirve con `serve -s dist -l ${PORT:-8080}`.
+- Railway inyecta `$PORT`; si no está definida, usa 8080. El dominio público es `https://athletic-quietude-production.up.railway.app`.
+- El `environment.ts` (commiteado) tiene horneado `apiUrl: https://inkaquest-production.up.railway.app/api/v1`. No hay `VITE_*` en runtime; cualquier cambio de API requiere rebuild.
 
-\\\
-NODE_ENV=production
-PORT=8080
-\\\
+## CORS (causa de "no aparecen los cursos")
 
-## URL del Backend
+El backend (`application-*.yml`) ya admite por defecto:
+- `https://*.up.railway.app` vía `APP_CORS_ALLOWED_ORIGIN_PATTERNS` (cubre este y futuros dominios Railway)
+- `http://localhost:4200` y `http://127.0.0.1:4200` exactos vía `APP_CORS_ALLOWED_ORIGINS`
 
-El frontend se conectara automaticamente al backend de Railway usando:
-- VITE_API_URL (configurado en environment.prod.ts)
+Para restringir solo al dominio real del frontend, define en Railway (servicio BACKEND):
 
-## Pasos para Deploy
+```
+APP_CORS_ALLOWED_ORIGINS=https://athletic-quietude-production.up.railway.app,http://localhost:4200
+APP_CORS_ALLOWED_ORIGIN_PATTERNS=
+```
 
-1. Ve a https://railway.app/dashboard
-2. Click en New Project
-3. Selecciona Deploy from GitHub repo
-4. Selecciona InkaQuest-/frontend/inkaquest-web
-5. Railway detectara automaticamente nixpacks.toml
-6. El build se ejecutara automaticamente
-7. Railway asignara un dominio publico
+## Redeploy
 
-## Verificar Deploy
+- Backend: push a `main` → Railway redepliega, o botón Redeploy en el servicio backend.
+- Frontend: push a `main` → Railway redepliega, o botón Redeploy en el servicio frontend.
 
-Despues del deploy, tu frontend estara disponible en:
-https://[tu-proyecto].up.railway.app
+## Verificar que los cursos aparecen
 
-## Conectar con Backend
+```bash
+curl -i "https://inkaquest-production.up.railway.app/api/v1/cursos?page=0&size=3" \
+  -H "Origin: https://athletic-quietude-production.up.railway.app"
+```
 
-El frontend ya esta configurado para conectarse a:
-https://inkaquest-production.up.railway.app/api/v1
-
-Y con Supabase:
-- URL: https://nrfdifzechrjikrvzhdl.supabase.co
-- Anon Key: Ya configurada en environment files
+Debe responder `200` con `Access-Control-Allow-Origin: https://athletic-quietude-production.up.railway.app`.

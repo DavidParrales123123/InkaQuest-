@@ -12,8 +12,10 @@ import java.util.List;
  */
 @ConfigurationProperties(prefix = "app.cors")
 public record CorsProperties(
-        /** Orígenes permitidos del frontend. */
+        /** Orígenes permitidos exactos del frontend. */
         List<String> allowedOrigins,
+        /** Patrones de origen permitidos (p.ej. dominios generados por Railway). */
+        List<String> allowedOriginPatterns,
         /** Métodos HTTP permitidos. */
         List<String> allowedMethods,
         /** Cabeceras permitidos. */
@@ -25,6 +27,7 @@ public record CorsProperties(
 
     public CorsProperties {
         allowedOrigins = allowedOrigins == null ? List.of() : List.copyOf(allowedOrigins);
+        allowedOriginPatterns = allowedOriginPatterns == null ? List.of() : List.copyOf(allowedOriginPatterns);
         allowedMethods = allowedMethods == null ? List.of() : List.copyOf(allowedMethods);
         allowedHeaders = allowedHeaders == null ? List.of() : List.copyOf(allowedHeaders);
     }

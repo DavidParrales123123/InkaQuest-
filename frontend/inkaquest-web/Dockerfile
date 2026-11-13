@@ -27,8 +27,8 @@ RUN npm install -g serve
 # Copiar el build desde la etapa anterior
 COPY --from=builder /app/dist/inkaquest-web/browser ./dist
 
-# Exponer puerto
+# Exponer puerto (Railway inyecta $PORT; por defecto 8080)
 EXPOSE 8080
 
-# Comando para iniciar
-CMD ["serve", "dist", "-s", "-l", "8080"]
+# Comando para iniciar (escuchar en $PORT que asigna Railway, con fallback 8080)
+CMD ["sh", "-c", "serve dist -s -l ${PORT:-8080}"]

@@ -23,7 +23,7 @@ railway up
 - `DB_USERNAME=postgres.nrfdifzechrjikrvzhdl`
 - `DB_PASSWORD=<tu-password>`
 - `SUPABASE_JWT_SECRET=<tu-secret>`
-- `APP_CORS_ALLOWED_ORIGINS=https://inkaquest-web.vercel.app,http://localhost:4200`
+- `APP_CORS_ALLOWED_ORIGIN_PATTERNS=https://*.up.railway.app` (o `APP_CORS_ALLOWED_ORIGINS=<dominio exacto del frontend>`)
 
 ---
 
@@ -74,7 +74,7 @@ curl https://tu-backend.up.railway.app/actuator/health
 ## Troubleshooting Rápido
 
 ### ❌ "Failed to fetch" en frontend
-→ Verifica `APP_CORS_ALLOWED_ORIGINS` en Railway incluye tu dominio de Vercel
+→ Verifica `APP_CORS_ALLOWED_ORIGIN_PATTERNS`/`APP_CORS_ALLOWED_ORIGINS` en Railway incluye tu dominio del frontend en Railway
 
 ### ❌ "Invalid JWT"
 → Copia el JWT Secret correcto desde Supabase → Settings → API
