@@ -14,25 +14,45 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
   imports: [DataPanelComponent, PageHeaderComponent, StatCardComponent],
   template: `
     <section class="space-y-6">
-      <app-page-header titulo="Estudiantes" descripcion="Estudiantes matriculados en tus cursos asignados. Filtra por curso para ver cuántos hay en cada uno." />
+      <app-page-header titulo="Estudiantes" descripcion="Distribución y consulta de estudiantes matriculados en tus cursos. Filtra por curso o mira el total global." [acciones]="true">
+        <div acciones><button class="btn btn-outline btn-sm" type="button" (click)="cargar()" [disabled]="cargando()">Actualizar</button></div>
+      </app-page-header>
+
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="estudiantes().length === 0" tituloVacio="Sin estudiantes visibles" descripcionVacia="No se encontraron estudiantes o la política de acceso no permite listar perfiles en este contexto." (alReintentar)="cargar()">
-        <div contenido class="space-y-4">
-          <!-- ════ Distribución por curso: tarjetas con conteo + filtro ════ -->
+        <div contenido class="space-y-5">
+          <!-- ════ Stats de contexto ════ -->
+          <div class="grid gap-3 sm:grid-cols-3">
+            <app-stat-card etiqueta="Estudiantes totales" [valor]="estudiantes().length" tono="brand" [icono]="true">
+              <span icono><svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+            </app-stat-card>
+            <app-stat-card etiqueta="Cursos asignados" [valor]="porCurso().length" tono="info" [icono]="true">
+              <span icono><svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+            </app-stat-card>
+            <app-stat-card etiqueta="Con más estudiantes" [valor]="cursoMayor()?.curso?.titulo ?? '—'" tono="gold" [icono]="true">
+              <span icono><svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg></span>
+            </app-stat-card>
+          </div>
+
+          <!-- ════ Distribución por curso (tarjetas) ════ -->
           <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             @for (item of porCurso(); track item.curso.id) {
-              <button type="button" class="card card-body flex items-center justify-between gap-3 text-left transition hover:ring-2 hover:ring-brand-400" [class.ring-2]="filtroCurso() === item.curso.id" [class.ring-brand-500]="filtroCurso() === item.curso.id" (click)="toggleFiltroCurso(item.curso.id)" [attr.aria-pressed]="filtroCurso() === item.curso.id">
-                <span class="min-w-0">
-                  <span class="block text-xs font-semibold uppercase tracking-wide text-marine-400">Curso</span>
-                  <span class="mt-0.5 block truncate font-semibold text-marine-800" [title]="item.curso.titulo">{{ item.curso.titulo }}</span>
-                  <span class="mt-1 block text-xs text-marine-500">{{ item.estudiantes.length }} estudiante(s)</span>
+              <button type="button" class="group card card-body relative overflow-hidden text-left transition duration-150 ring-1 ring-transparent hover:ring-brand-400" [class.ring-2]="filtroCurso() === item.curso.id" [class.ring-brand-500]="filtroCurso() === item.curso.id" (click)="toggleFiltroCurso(item.curso.id)" [attr.aria-pressed]="filtroCurso() === item.curso.id">
+                <span class="absolute right-0 top-0 h-full w-1.5 bg-gradient-to-b from-gold-400 to-brand-500" aria-hidden="true"></span>
+                <span class="block text-[0.65rem] font-bold uppercase tracking-[0.14em] text-marine-400">Curso</span>
+                <span class="mt-1 block truncate font-semibold text-marine-800" [title]="item.curso.titulo">{{ item.curso.titulo }}</span>
+                <span class="mt-3 flex items-end justify-between gap-2">
+                  <span class="text-4xl font-extrabold leading-none text-marine-800">{{ item.estudiantes.length }}</span>
+                  <span class="text-[0.7rem] font-semibold text-marine-500">estudiante(s)</span>
                 </span>
-                <span class="text-2xl font-extrabold text-marine-800">{{ item.estudiantes.length }}</span>
+                <span class="mt-2 block h-1.5 w-full overflow-hidden rounded-full bg-surface-100">
+                  <span class="block h-full rounded-full bg-brand-500 transition-all" [style.width.%]="item.estudiantes.length === 0 ? 0 : Math.min(100, (item.estudiantes.length / mayor()) * 100)"></span>
+                </span>
               </button>
             }
           </div>
 
-          <!-- ════ Filtro + tabla ════ -->
-          <div class="flex flex-wrap items-center justify-between gap-3">
+          <!-- ════ Filtro + contador ════ -->
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-200 bg-surface-50 p-3">
             <div class="flex flex-wrap items-center gap-2">
               <label class="text-sm font-semibold text-marine-700" for="students-filter">Filtrar por curso</label>
               <select id="students-filter" class="select w-auto" [value]="filtroCurso()" (change)="filtroCurso.set($any($event.target).value)">
@@ -45,19 +65,24 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
                 <button type="button" class="btn btn-outline btn-sm" (click)="filtroCurso.set('')">Limpiar</button>
               }
             </div>
-            <p class="text-xs text-marine-500">{{ visibles().length }} estudiante(s) mostrando{{ filtroCurso() ? ' en el curso seleccionado' : ' en todos los cursos' }}</p>
+            <p class="text-xs font-medium text-marine-500">{{ visibles().length }} mostrando{{ filtroCurso() ? ' (curso seleccionado)' : ' (todos los cursos)' }}</p>
           </div>
 
           @if (visibles().length > 0) {
-            <div class="table-wrap">
+            <div class="table-wrap rounded-xl border border-surface-200 overflow-hidden">
               <table class="table">
-                <thead><tr><th>Curso</th><th>Nombre</th><th>Correo</th><th>XP</th><th>Nivel</th></tr></thead>
+                <thead><tr><th>Curso</th><th>Estudiante</th><th>Correo</th><th>XP</th><th>Nivel</th></tr></thead>
                 <tbody>
                   @for (v of visibles(); track v.estudiante.id + ':' + v.curso.id) {
                     <tr>
                       <td class="text-xs text-marine-500">{{ v.curso.titulo }}</td>
-                      <td class="font-medium text-marine-800">{{ nombre(v.estudiante) }}</td>
-                      <td>{{ v.estudiante.email }}</td>
+                      <td>
+                        <div class="flex items-center gap-2">
+                          <span class="flex size-8 items-center justify-center rounded-full bg-brand-100 text-[0.7rem] font-extrabold text-brand-800">{{ iniciales(nombre(v.estudiante)) }}</span>
+                          <span class="font-medium text-marine-800">{{ nombre(v.estudiante) }}</span>
+                        </div>
+                      </td>
+                      <td class="text-sm">{{ v.estudiante.email }}</td>
                       <td>{{ v.estudiante.xp }}</td>
                       <td>{{ v.estudiante.nivel }}</td>
                     </tr>
@@ -66,9 +91,9 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
               </table>
             </div>
           } @else {
-            <p class="rounded-lg bg-surface-50 p-4 text-sm text-marine-500">Ningún estudiante coincide con el filtro elegido.</p>
+            <p class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-sm text-marine-600">Ningún estudiante coincide con el filtro.</p>
           }
-          <p class="mt-3 text-xs text-marine-400">Los administradores no se listan como estudiantes · La visibilidad de datos de perfil depende de las políticas RLS.</p>
+          <p class="text-xs text-marine-400">Los administradores no se listan como estudiantes · La visibilidad depende de las políticas RLS (docente del curso).</p>
         </div>
       </app-data-panel>
     </section>
@@ -82,13 +107,18 @@ export class StudentsComponent implements OnInit {
   protected readonly porCurso = signal<{ curso: Curso; estudiantes: Perfil[] }[]>([]);
   protected readonly filtroCurso = signal<string>('');
 
+  protected readonly Math = Math;
   protected readonly estudiantes = computed(() => {
-    // Únicos por id para el conteo global (mismo estudiante puede estar en varios de tus cursos).
     const mapa = new Map<string, Perfil>();
-    for (const item of this.porCurso()) {
-      for (const e of item.estudiantes) mapa.set(e.id, e);
-    }
+    for (const item of this.porCurso()) for (const e of item.estudiantes) mapa.set(e.id, e);
     return [...mapa.values()];
+  });
+  protected readonly mayor = computed(() => Math.max(1, ...this.porCurso().map((i) => i.estudiantes.length)));
+
+  protected readonly cursoMayor = computed(() => {
+    const items = this.porCurso();
+    if (!items.length) return null;
+    return [...items].sort((a, b) => b.estudiantes.length - a.estudiantes.length)[0];
   });
 
   protected readonly visibles = computed(() => {
@@ -103,6 +133,10 @@ export class StudentsComponent implements OnInit {
 
   ngOnInit(): void { void this.cargar(); }
   protected nombre(p: Perfil): string { return [p.nombre, p.apellido].filter(Boolean).join(' ') || p.email; }
+
+  protected iniciales(nombre: string): string {
+    return (nombre || '').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || 'E';
+  }
 
   protected toggleFiltroCurso(cursoId: string): void {
     this.filtroCurso.update((actual) => (actual === cursoId ? '' : cursoId));

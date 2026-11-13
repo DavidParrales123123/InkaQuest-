@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { TeacherService } from '../../../core/services/teacher.service';
 import { ActivityService } from '../../../core/services/activity.service';
-import { Actividad, Curso, Entrega, Perfil, Tarea, DocenteCurso } from '../../../core/models/domain.models';
+import { Actividad, Curso, Entrega, EntregaArchivo, Perfil, Tarea, DocenteCurso } from '../../../core/models/domain.models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 
@@ -110,6 +110,18 @@ interface FilaEntrega {
                   @if (f.contenido) {
                     <p class="mt-1 line-clamp-2 text-sm text-marine-600">{{ f.contenido }}</p>
                   }
+                  @if ((archivosDeEntrega()[f.id] ?? []).length > 0) {
+                    <ul class="mt-1.5 flex flex-wrap gap-1.5">
+                      @for (a of archivosDeEntrega()[f.id] ?? []; track a.id) {
+                        <li>
+                          <button type="button" class="inline-flex items-center gap-1 rounded-md border border-brand-200 bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-800 transition hover:bg-brand-100" (click)="abrirArchivo(a)" [attr.aria-label]="'Descargar ' + a.nombre">
+                            <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                            {{ a.nombre }} <span class="text-marine-400">({{ tamanoKb(a.tamano_bytes) }})</span>
+                          </button>
+                        </li>
+                      }
+                    </ul>
+                  }
                   @if (f.nota !== null) {
                     <p class="mt-1 text-xs font-semibold text-success-600">Calificada: {{ f.nota }} / {{ f.notaMaxima }}</p>
                   }
@@ -152,6 +164,7 @@ export class SubmissionsComponent implements OnInit {
   protected readonly entregas = signal<(Entrega & { tarea: Tarea; actividad: Actividad })[]>([]);
   protected readonly estudiantes = signal<Perfil[]>([]);
   protected readonly cursoId = signal<string | null>(null);
+  protected readonly archivosDeEntrega = signal<Record<string, EntregaArchivo[]>>({});
   protected readonly tab = signal<TabEntrega>('pendientes');
   protected readonly notas = signal<Record<string, number>>({});
   protected readonly comentarios = signal<Record<string, string>>({});
@@ -215,16 +228,31 @@ export class SubmissionsComponent implements OnInit {
   protected iniciales(nombre: string): string {
     return nombre
       .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((p) => p[0]?.toUpperCase() ?? '')
-      .join('') || 'E';
+      .filter(Boolean)[0][0]?.toUpperCase() + (nombre.split(/\s+/).filter(Boolean)[1]?.[0]?.toUpperCase() ?? '');
   }
 
   protected formatearFecha(fecha: string | null): string {
     if (!fecha) return '—';
     const d = new Date(fecha);
     return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  protected tamanoKb(bytes: number | null | undefined): string {
+    const n = Number(bytes ?? 0);
+    if (!Number.isFinite(n) || n <= 0) return '—';
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  protected async abrirArchivo(a: EntregaArchivo): Promise<void> {
+    try {
+      const url = await this.activityService.descargarUrlEntregaArchivo(a.ruta_storage);
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      else this.msg.set('No se pudo generar el enlace de descarga.');
+    } catch {
+      this.msg.set('No se pudo generar el enlace de descarga.');
+    }
   }
 
   protected seleccionarCurso(id: string | null): void {
@@ -267,6 +295,13 @@ export class SubmissionsComponent implements OnInit {
       this.cursos.set(cursos);
       this.entregas.set(entregas);
       this.estudiantes.set(estudiantes);
+
+      // Cargar adjuntos de las entregas para calificar en la misma vista.
+      const ids = entregas.map((e) => e.id);
+      const archivos = await this.activityService.listarEntregaArchivosDeVarias(ids).catch(() => [] as EntregaArchivo[]);
+      const mapa: Record<string, EntregaArchivo[]> = {};
+      for (const a of archivos) (mapa[a.entrega_id] ??= []).push(a);
+      this.archivosDeEntrega.set(mapa);
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar las entregas.');
     } finally {
