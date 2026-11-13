@@ -41,8 +41,8 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                   </div>
                   <p class="mt-2 text-sm text-marine-600">{{ c.descripcion }}</p>
                   <div class="mt-3 flex flex-wrap gap-2 text-xs text-marine-500">
-                    <span class="badge badge-default">{{ unidades().length }} unidad(es) / semanas</span>
-                    <span class="badge badge-default">{{ totalLecciones() }} lección(es)</span>
+                    <span class="badge badge-neutral">{{ unidades().length }} unidad(es) / semanas</span>
+                    <span class="badge badge-neutral">{{ totalLecciones() }} lección(es)</span>
                     <span class="badge badge-gold">{{ c.xp_total }} XP</span>
                   </div>
                   @if (progreso()) {
@@ -168,13 +168,25 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                                     }
                                                   }
                                                   @if (adjuntosDe(l.id, ct.id).length) {
-                                                    <ul class="mt-2 space-y-1">
+                                                    <ul class="mt-2 space-y-3">
                                                       @for (r of adjuntosDe(l.id, ct.id); track r.id) {
-                                                        <li class="flex items-center gap-2 rounded bg-surface-50 px-2 py-1.5 text-xs text-marine-600">
-                                                          <span>Adjunto:</span>
-                                                          <span class="min-w-0 truncate font-medium text-marine-800" [title]="r.nombre">{{ r.nombre }}</span>
-                                                          @if (r.tamano_bytes) { <span class="text-marine-400">· {{ (r.tamano_bytes / 1024) | number:'1.0-0' }} KB</span> }
-                                                          @if (urlRecurso(r)) { <a [href]="urlRecurso(r)!" target="_blank" rel="noopener" class="ml-auto font-semibold text-brand-700 underline" download>Descargar</a> }
+                                                        <li class="rounded bg-surface-50 p-2.5">
+                                                          <div class="flex items-center gap-2 text-xs text-marine-600">
+                                                            <span>Adjunto:</span>
+                                                            <span class="min-w-0 truncate font-medium text-marine-800" [title]="r.nombre">{{ r.nombre }}</span>
+                                                            @if (r.tamano_bytes) { <span class="text-marine-400">· {{ (r.tamano_bytes / 1024) | number:'1.0-0' }} KB</span> }
+                                                            @if (urlRecurso(r)) { <a [href]="urlRecurso(r)!" target="_blank" rel="noopener" class="ml-auto text-brand-700 underline" download>Descargar</a> }
+                                                          </div>
+                                                          <!-- Visor grande: PDF interactivo / imagen dentro de la lección -->
+                                                          @if (urlRecurso(r) && esVistaPrevia(r)) {
+                                                            <div class="mx-auto mt-2 max-w-6xl overflow-hidden rounded-md border border-surface-200">
+                                                              @if (extensionRecurso(r) === 'pdf') {
+                                                                <iframe [src]="urlPrevia(urlRecurso(r)!)!" title="Visor PDF: {{ r.nombre }}" class="h-[70vh] w-full bg-white"></iframe>
+                                                              } @else {
+                                                                <img [src]="urlRecurso(r)!" [alt]="r.nombre" class="max-h-[70vh] w-full object-contain bg-surface-100" decoding="async" loading="lazy" />
+                                                              }
+                                                            </div>
+                                                          }
                                                         </li>
                                                       }
                                                     </ul>
@@ -209,14 +221,14 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                                     }
                                                   </div>
                                                   @if (urlRecurso(r) && esVistaPrevia(r)) {
-                                                    <div class="mt-3 overflow-hidden rounded-md border border-surface-200">
+                                                    <div class="mx-auto mt-3 max-w-6xl overflow-hidden rounded-md border border-surface-200">
                                                       @if (extensionRecurso(r) === 'pdf') {
-                                                        <iframe [src]="urlPrevia(urlRecurso(r)!)!" title="Vista previa del PDF: {{ r.nombre }}" class="h-96 w-full bg-surface-50"></iframe>
+                                                        <iframe [src]="urlPrevia(urlRecurso(r)!)!" title="Visor PDF: {{ r.nombre }}" class="h-[70vh] w-full bg-white"></iframe>
                                                         <div class="flex items-center justify-end border-t border-surface-200 bg-surface-50 px-3 py-1.5">
                                                           <a class="text-xs font-semibold text-brand-700 underline" [href]="urlRecurso(r)!" target="_blank" rel="noopener">Abrir el PDF en una pestaña nueva</a>
                                                         </div>
                                                       } @else {
-                                                        <img [src]="urlRecurso(r)!" [alt]="r.nombre" class="max-h-80 w-full object-contain bg-surface-100" decoding="async" loading="lazy" />
+                                                        <img [src]="urlRecurso(r)!" [alt]="r.nombre" class="max-h-[70vh] w-full object-contain bg-surface-100" decoding="async" loading="lazy" />
                                                       }
                                                     </div>
                                                   }
