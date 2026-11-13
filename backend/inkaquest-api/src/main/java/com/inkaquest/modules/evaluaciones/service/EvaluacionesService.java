@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.Objects;
 
 /**
  * Servicio de gestión de evaluaciones/cuestionarios.
@@ -118,11 +119,13 @@ public class EvaluacionesService {
             // Verificar intentos disponibles
             int intentosRealizados = intentoRepository
                     .countByEstudianteIdIdAndEvaluacionIdId(usuarioId, evaluacionId);
-            
+
+            // Cargar preguntas de una sola vez: reusar para el máximo y para armar el DTO.
+            List<Pregunta> preguntas = preguntaRepository.findByEvaluacionIdIdOrderByOrdenAsc(evaluacionId);
             if (intentosRealizados >= evaluacion.getIntentosPermitidos()) {
                 throw new BadRequestException("Has agotado tus intentos permitidos para esta evaluación");
             }
-            
+
             // Crear nuevo intento
             IntentoEvaluacion intento = new IntentoEvaluacion();
             intento.setEvaluacionId(evaluacion);
@@ -131,15 +134,16 @@ public class EvaluacionesService {
             intento.setNumero(intentosRealizados + 1);
             intento.setEstado(EstadoIntento.en_curso);
             intento.setPuntaje(BigDecimal.ZERO);
-            intento.setPuntajeMaximo(evaluacion.getNotaMaxima());
+            BigDecimal sumPoints = preguntas.stream()
+                    .map(Pregunta::getPuntos)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            intento.setPuntajeMaximo(sumPoints.signum() > 0 ? sumPoints : BigDecimal.ONE);
             intento.setTiempoInicio(Instant.now());
             intento.setCreadoEn(Instant.now());
             intento.setActualizadoEn(Instant.now());
             
             intento = intentoRepository.save(intento);
-            
-            // Obtener preguntas
-            List<Pregunta> preguntas = preguntaRepository.findByEvaluacionIdIdOrderByOrdenAsc(evaluacionId);
             
             // Aleatorizar si está configurado
             if (evaluacion.getAleatorizarPreguntas()) {
@@ -165,7 +169,7 @@ public class EvaluacionesService {
                     intento.getNumero(),
                     intento.getTiempoInicio(),
                     tiempoLimite,
-                    evaluacion.getNotaMaxima(),
+                    intento.getPuntajeMaximo(),
                     preguntasDto
             );
         });
@@ -218,24 +222,28 @@ public class EvaluacionesService {
             intento.setTiempoFin(Instant.now());
             intento.setActualizadoEn(Instant.now());
             
-            // Calcular porcentaje y si aprobó
+            // Calcular porcentaje y si aprobó (basado en la suma de puntos de preguntas).
+            BigDecimal puntajeMaximo = intento.getPuntajeMaximo() != null && intento.getPuntajeMaximo().signum() > 0
+                    ? intento.getPuntajeMaximo()
+                    : BigDecimal.ONE;
             BigDecimal porcentaje = puntajeTotal
-                    .divide(evaluacion.getNotaMaxima(), 4, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(100));
-            
+                    .divide(puntajeMaximo, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100))
+                    .setScale(2, RoundingMode.HALF_UP);
+
             boolean aprobado = porcentaje.compareTo(evaluacion.getPorcentajeAprobacion()) >= 0;
             intento.setAprobado(aprobado);
-            
+
             intentoRepository.save(intento);
-            
-            log.info("Intento {} finalizado con puntaje {} de {} ({}%)", 
-                    intentoId, puntajeTotal, evaluacion.getNotaMaxima(), porcentaje);
-            
+
+            log.info("Intento {} finalizado con puntaje {} de {} ({}%)",
+                    intentoId, puntajeTotal, puntajeMaximo, porcentaje);
+
             return new ResultadoIntentoResponse(
                     intento.getId(),
                     intento.getEstado().name(),
                     puntajeTotal,
-                    evaluacion.getNotaMaxima(),
+                    puntajeMaximo,
                     porcentaje,
                     aprobado,
                     intento.getTiempoInicio(),
@@ -270,9 +278,13 @@ public class EvaluacionesService {
                 }
             }
             
+            BigDecimal puntajeMaximoObt = intento.getPuntajeMaximo() != null && intento.getPuntajeMaximo().signum() > 0
+                    ? intento.getPuntajeMaximo()
+                    : BigDecimal.ONE;
             BigDecimal porcentaje = intento.getPuntaje()
-                    .divide(intento.getPuntajeMaximo(), 4, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(100));
+                    .divide(puntajeMaximoObt, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100))
+                    .setScale(2, RoundingMode.HALF_UP);
             
             return new ResultadoIntentoResponse(
                     intento.getId(),

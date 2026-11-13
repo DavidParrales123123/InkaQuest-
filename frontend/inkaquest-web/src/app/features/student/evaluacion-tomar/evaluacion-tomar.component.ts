@@ -111,7 +111,6 @@ type Fase = 'cargando' | 'intro' | 'jugando' | 'enviando' | 'resultado';
             }
             <dl class="grid gap-3 rounded-xl bg-surface-50 p-4 text-sm text-marine-700 sm:grid-cols-2">
               <div><dt class="text-xs uppercase tracking-wide text-marine-400">Preguntas</dt><dd class="font-semibold">{{ r.totalPreguntas }}</dd></div>
-              <div><dt class="text-xs uppercase tracking-wide text-marine-400">Nota máxima</dt><dd class="font-semibold">{{ r.notaMaxima }}</dd></div>
               <div><dt class="text-xs uppercase tracking-wide text-marine-400">Intentos permitidos</dt><dd class="font-semibold">{{ r.intentosPermitidos }}</dd></div>
               <div><dt class="text-xs uppercase tracking-wide text-marine-400">Intentos realizados</dt><dd class="font-semibold">{{ r.misIntentos }}</dd></div>
               @if (r.duracionMinutos) { <div><dt class="text-xs uppercase tracking-wide text-marine-400">Duración</dt><dd class="font-semibold">{{ r.duracionMinutos }} minuto(s)</dd></div> }

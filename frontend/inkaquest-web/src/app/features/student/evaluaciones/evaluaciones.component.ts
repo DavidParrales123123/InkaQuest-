@@ -19,6 +19,7 @@ type FilaEvaluacion = Evaluacion & {
   estadoCard: EstadoEvaluacion;
   ultimo?: IntentoEvaluacion;
   resultadoTexto: string;
+  puntosMax: number;
 };
 
 @Component({
@@ -42,7 +43,7 @@ type FilaEvaluacion = Evaluacion & {
                       <div class="flex flex-wrap items-start justify-between gap-2">
                         <div class="min-w-0">
                           <p class="font-medium text-marine-800">{{ e.actividad.titulo }}</p>
-                          <p class="mt-1 text-xs text-marine-500">Tipo: {{ e.actividad.tipo }} · Nota máx: {{ e.nota_maxima }}</p>
+                          <p class="mt-1 text-xs text-marine-500">Tipo: {{ e.actividad.tipo }} · Puntos máx: {{ e.puntosMax ?? e.nota_maxima }}</p>
                           <p class="mt-0.5 text-xs text-marine-400">{{ e.intentosHechos }} de {{ e.intentosPermitidos }} intento(s) usado(s)</p>
                           @if (e.estadoCard === 'rendida' && e.ultimo) {
                             <p class="mt-1.5 text-xs font-semibold text-success-700">
@@ -88,16 +89,20 @@ export class EvaluationsComponent implements OnInit {
         const evals = await this.evaluationService.listarEvaluacionesCurso(curso.id).catch(() => []);
         const rows = await Promise.all(
           evals.map(async (e) => {
-            const intentos = await this.evaluationService.listarIntentos(e.id, user.id).catch(() => [] as IntentoEvaluacion[]);
+            const [intentos, preguntas] = await Promise.all([
+              this.evaluationService.listarIntentos(e.id, user.id).catch(() => [] as IntentoEvaluacion[]),
+              this.evaluationService.listarPreguntasConOpciones(e.id).catch(() => [] as any[]),
+            ]);
             const intentosHechos = intentos.length;
             const intentosPermitidos = Math.max(1, e.intentos_permitidos ?? 1);
             const entregados = intentos.filter((i) => i.estado === 'entregado' || i.estado === 'expirado');
             const ultimo = entregados[0] ?? intentos[0];
+            const puntosMax = preguntas.reduce((acc: number, p: any) => acc + Number(p?.puntos ?? 0), 0);
             const resultadoTexto = ultimo?.puntaje != null
-              ? `${ultimo.puntaje}/${ultimo.puntaje_maximo ?? e.nota_maxima} pts`
+              ? `${ultimo.puntaje}/${ultimo.puntaje_maximo ?? puntosMax ?? e.nota_maxima} pts`
               : 'Sin puntaje registrado aún.';
             const estadoCard: EstadoEvaluacion = intentosHechos >= intentosPermitidos ? 'rendida' : 'pendiente';
-            return { ...e, intentosHechos, intentosPermitidos, estadoCard, ultimo, resultadoTexto };
+            return { ...e, intentosHechos, intentosPermitidos, estadoCard, ultimo, resultadoTexto, puntosMax };
           }),
         );
         items.push({ curso, evaluaciones: rows });
