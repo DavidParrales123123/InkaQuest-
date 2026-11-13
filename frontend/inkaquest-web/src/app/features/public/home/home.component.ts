@@ -288,7 +288,7 @@ import { CourseCardComponent } from '../../../shared/components/course-card/cour
     .home-hero__eyebrow, .home-kicker { margin: 0; color: #a8ded8; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.12em; line-height: 1.5; text-transform: uppercase; }
     .home-hero__eyebrow { display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.9rem; border: 1px solid rgb(242 165 65 / 42%); border-radius: 999px; background: rgb(242 165 65 / 9%); color: #ffdcaa; letter-spacing: 0.04em; text-transform: none; }
     .eyebrow-icon { width: 16px; height: 16px; animation: pulse 2s ease-in-out infinite; }
-    .home-hero__copy h1 { max-width: 13ch; margin: 1.35rem 0 1rem; color: #fff; font-size: clamp(2.8rem, 6.8vw, 5.25rem); font-weight: 900; letter-spacing: -0.055em; line-height: 1.02; font-family: var(--), var(--font-sans); }
+    .home-hero__copy h1 { max-width: 13ch; margin: 1.35rem 0 1rem; color: #fff; font-size: clamp(2.8rem, 6.8vw, 5.25rem); font-weight: 900; letter-spacing: -0.055em; line-height: 1.02; font-family: var(--font-display);}
     .home-hero__copy h1 span, .home-adventure__copy h2 span { color: #ffd18a; }
     .home-hero__lead { max-width: 43rem; margin: 0; color: #e0eeec; font-size: clamp(1rem, 1.5vw, 1.2rem); line-height: 1.75; }
     .home-hero__actions { display: flex; flex-wrap: wrap; gap: 0.8rem; margin-top: 1.8rem; }
@@ -327,7 +327,7 @@ import { CourseCardComponent } from '../../../shared/components/course-card/cour
     .pillar-content small { margin-top: 0.12rem; color: #c4d7d4; font-size: 0.78rem; }
     .home-section { padding: clamp(3.75rem, 8vw, 6rem) max(1.25rem, calc((100vw - 74rem) / 2)); }
     .home-section__heading { max-width: 48rem; margin: 0 auto 2.5rem; text-align: center; }
-    .home-section__heading h2, .home-adventure__copy h2, .home-final-cta h2 { margin: 0.7rem 0 0.8rem; color: #1b2a4a; font-size: clamp(2rem, 4vw, 3.15rem); font-weight: 900; letter-spacing: -0.04em; line-height: 1.1; font-family: var(--), var(--font-sans); }
+    .home-section__heading h2, .home-adventure__copy h2, .home-final-cta h2 { margin: 0.7rem 0 0.8rem; color: #1b2a4a; font-size: clamp(2rem, 4vw, 3.15rem); font-weight: 900; letter-spacing: -0.04em; line-height: 1.1; font-family: var(--font-display);}
     .home-section__heading > p:last-child { max-width: 43rem; margin: 0 auto; color: #53667b; font-size: 1.02rem; line-height: 1.7; }
     .home-kicker { color: #12736b; }
     .home-reveal { animation: fadeInUp 0.6s ease-out; }
@@ -483,3 +483,4 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 }
+

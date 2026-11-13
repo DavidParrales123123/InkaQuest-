@@ -1,13 +1,13 @@
 // @ts-nocheck
-﻿/**
- * Fuente Ãºnica de configuraciÃ³n de la aplicaciÃ³n.
+/**
+ * Fuente única de configuración de la aplicación.
  *
  * <p>Lee los valores desde {@code environment.ts} (desarrollo) y
- * {@code environment.prod.ts} (producciÃ³n, inyectados en el build de Vercel).
- * Quedan asÃ­ en un solo lugar y no se duplican ni divergen.</p>
+ * {@code environment.prod.ts} (producción, inyectados en el build de Vercel).
+ * Quedan así en un solo lugar y no se duplican ni divergen.</p>
  *
- * <p>Las claves de Supabase son PÃšBLICAS (anon / publishable). La
- * {@code service_role} jamÃ¡s debe llegar al navegador.</p>
+ * <p>Las claves de Supabase son PÚBLICAS (anon / publishable). La
+ * {@code service_role} jamás debe llegar al navegador.</p>
  */
 import { InjectionToken } from '@angular/core';
 
@@ -18,9 +18,9 @@ export interface AppConfig {
   readonly apiUrl: string;
   /** URL del proyecto Supabase. */
   readonly supabaseUrl: string;
-  /** Clave pÃºblica (anon / publishable) de Supabase. */
+  /** Clave pública (anon / publishable) de Supabase. */
   readonly supabaseAnonKey: string;
-  /** Nombre visible de la aplicaciÃ³n. */
+  /** Nombre visible de la aplicación. */
   readonly appName: string;
   /** Lema institucional. */
   readonly tagline: string;
@@ -33,5 +33,5 @@ export const APP_CONFIG_VALUE: AppConfig = {
   supabaseUrl: environment.supabaseUrl,
   supabaseAnonKey: environment.supabaseAnonKey,
   appName: 'InkaQuest',
-  tagline: 'APRENDE Â· CODIFICA Â· AVANZA',
+  tagline: 'APRENDE · CODIFICA · AVANZA',
 };

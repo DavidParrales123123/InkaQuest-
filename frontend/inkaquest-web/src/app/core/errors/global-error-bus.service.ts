@@ -4,7 +4,7 @@
 /**
  * Bus global de errores para que cualquier capa pueda avisar.
  *
- * <p>Un Ãºnico punto visual (`GlobalErrorBannerComponent`) escucha este bus y
+ * <p>Un único punto visual (`GlobalErrorBannerComponent`) escucha este bus y
  * muestra el aviso; nadie necesita inyectar componentes para reportar un
  * error global.</p>
  */

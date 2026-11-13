@@ -29,19 +29,19 @@ export class StudentLayoutComponent {
       elementos: [
         { texto: 'Panel', ruta: '/estudiante/dashboard', icono: 'dashboard', exacto: true },
         { texto: 'Mis cursos', ruta: '/estudiante/cursos', icono: 'book' },
-        { texto: 'Explorar catÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡logo', ruta: '/cursos', icono: 'graduation' },
+        { texto: 'Explorar catálogo', ruta: '/cursos', icono: 'graduation' },
         { texto: 'Tareas', ruta: '/estudiante/tareas', icono: 'clipboard' },
         { texto: 'Evaluaciones', ruta: '/estudiante/evaluaciones', icono: 'file' },
       ],
     },
     {
-      titulo: 'PrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ctica',
+      titulo: 'Práctica',
       elementos: [
         { texto: 'Minijuegos', ruta: '/estudiante/minijuegos', icono: 'gamepad' },
       ],
     },
     {
-      titulo: 'ComunicaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n',
+      titulo: 'Comunicación',
       elementos: [
         { texto: 'Mensajes', ruta: '/estudiante/mensajes', icono: 'inbox' },
         { texto: 'Avisos', ruta: '/estudiante/avisos', icono: 'bell' },
@@ -54,7 +54,7 @@ export class StudentLayoutComponent {
         { texto: 'Rendimiento', ruta: '/estudiante/rendimiento', icono: 'chart' },
         { texto: 'Calendario', ruta: '/estudiante/calendario', icono: 'calendar' },
         { texto: 'Comunidad', ruta: '/estudiante/comunidad', icono: 'users' },
-        { texto: 'GamificaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n', ruta: '/estudiante/gamificacion', icono: 'trophy' },
+        { texto: 'Gamificación', ruta: '/estudiante/gamificacion', icono: 'trophy' },
         { texto: 'Insignias', ruta: '/estudiante/insignias', icono: 'medal' },
         { texto: 'Rankings', ruta: '/estudiante/rankings', icono: 'award' },
         { texto: 'Certificados', ruta: '/estudiante/certificados', icono: 'certificate' },

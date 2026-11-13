@@ -4,7 +4,7 @@
 import { GlobalErrorBusService } from '../../../core/errors/global-error-bus.service';
 
 /**
- * Banda global de error: se muestra en la raÃ­z de la app cuando cualquier
+ * Banda global de error: se muestra en la raíz de la app cuando cualquier
  * capa reporta un fallo no controlado. El usuario puede descartarla.
  */
 @Component({
@@ -19,7 +19,7 @@ import { GlobalErrorBusService } from '../../../core/errors/global-error-bus.ser
           <span class="global-error__icon" aria-hidden="true">!</span>
           <p class="global-error__text">{{ mensaje }}</p>
           <button type="button" class="global-error__close" (click)="bus.descartar()" aria-label="Descartar">
-            Ã—
+            ×
           </button>
         </div>
       </div>

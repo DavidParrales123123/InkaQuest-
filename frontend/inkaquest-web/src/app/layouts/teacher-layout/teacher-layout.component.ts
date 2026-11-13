@@ -25,7 +25,7 @@ export class TeacherLayoutComponent {
   /** Secciones del menu del docente. */
   protected readonly secciones: readonly SeccionPanel[] = [
     {
-      titulo: 'GestiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n',
+      titulo: 'Gestión',
       elementos: [
         { texto: 'Panel', ruta: '/docente/dashboard', icono: 'dashboard', exacto: true },
         { texto: 'Mis cursos', ruta: '/docente/cursos', icono: 'book' },
@@ -47,12 +47,12 @@ export class TeacherLayoutComponent {
         { texto: 'Seguimiento', ruta: '/docente/seguimiento', icono: 'chart' },
         { texto: 'Entregas', ruta: '/docente/entregas', icono: 'clipboard' },
         { texto: 'Calificaciones', ruta: '/docente/calificaciones', icono: 'trophy' },
-        { texto: 'AnalÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­tica', ruta: '/docente/analitica', icono: 'chart' },
+        { texto: 'Analítica', ruta: '/docente/analitica', icono: 'chart' },
         { texto: 'Vista previa', ruta: '/docente/vista-previa', icono: 'book' },
       ],
     },
     {
-      titulo: 'ComunicaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n',
+      titulo: 'Comunicación',
       elementos: [
         { texto: 'Mensajes', ruta: '/docente/mensajes', icono: 'inbox' },
         { texto: 'Anuncios', ruta: '/docente/anuncios', icono: 'bell' },

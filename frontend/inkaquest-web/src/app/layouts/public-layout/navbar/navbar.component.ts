@@ -25,7 +25,7 @@ import { LogoComponent } from '../../../shared/components/logo/logo.component';
     }
     .header__brand {
       display: inline-flex; align-items: center; gap: 0.65rem; text-decoration: none;
-      color: #1b2a4a; font-family: var(--), var(--font-sans);
+      color: #1b2a4a; font-family: var(--font-display);
       font-weight: 800; font-size: 1.3rem; letter-spacing: -0.02em; flex-shrink: 0;
     }
     .header__nav {
@@ -206,3 +206,4 @@ export class NavbarComponent {
   protected cerrarMenu(): void { this.menuAbierto.set(false); }
   protected cerrarSesion(): void { void this.auth.cerrarSesion(); this.cerrarMenu(); }
 }
+

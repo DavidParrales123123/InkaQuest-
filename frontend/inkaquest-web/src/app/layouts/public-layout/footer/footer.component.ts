@@ -18,10 +18,10 @@ import { LogoComponent } from '../../../shared/components/logo/logo.component';
       display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 2rem;
     }
     .site-footer__brand { display: flex; align-items: center; gap: 0.75rem; }
-    .site-footer__brand-text strong { display: block; font-family: var(--), var(--font-sans); font-size: 1.25rem; font-weight: 800; color: #fff; }
+    .site-footer__brand-text strong { display: block; font-family: var(--font-display);font-size: 1.25rem; font-weight: 800; color: #fff; }
     .site-footer__brand-text span { display: block; margin-top: 0.15rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; color: #ffd18a; text-transform: uppercase; }
     .site-footer__desc { margin-top: 1rem; max-width: 22rem; color: #cbd9d7; font-size: 0.9rem; line-height: 1.7; }
-    .site-footer__col h2 { margin: 0 0 0.85rem; font-size: 0.9rem; font-weight: 800; color: #fff; font-family: var(--), var(--font-sans); }
+    .site-footer__col h2 { margin: 0 0 0.85rem; font-size: 0.9rem; font-weight: 800; color: #fff; font-family: var(--font-display);}
     .site-footer__links { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.55rem; }
     .site-footer__link { color: #cbd9d7; text-decoration: none; font-size: 0.88rem; transition: color 160ms ease; }
     .site-footer__link:hover { color: #ffd18a; }
@@ -93,3 +93,4 @@ import { LogoComponent } from '../../../shared/components/logo/logo.component';
 export class FooterComponent {
   protected readonly anioActual = new Date().getFullYear();
 }
+
