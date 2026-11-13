@@ -115,7 +115,7 @@ export class ActivityService {
       .select('*, actividad:actividad_id!inner(*), entrega:entrega(id, estado, contenido, nota, enviada_en, revisada_en)')
       .eq('actividad.curso_id', cursoId)
       .eq('actividad.publicado', true)
-      .order('actividad.creado_en', { ascending: true });
+      .order('creado_en', { ascending: true });
 
     if (error) {
       console.error('[InkaQuest] Error cargando tareas del curso:', error.message);
