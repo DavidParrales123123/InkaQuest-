@@ -46,7 +46,7 @@ type InventarioConItem = Inventario & { item?: TiendaItem; tienda_item?: TiendaI
               <div class="mt-5 flex flex-wrap gap-2 text-sm">
                 <span class="badge badge-info">Cantidad: {{ inv.cantidad }}</span>
                 @if (inv.item?.tipo || inv.tienda_item?.tipo) {
-                  <span class="badge badge-default">{{ inv.item?.tipo || inv.tienda_item?.tipo }}</span>
+                  <span class="badge badge-neutral">{{ inv.item?.tipo || inv.tienda_item?.tipo }}</span>
                 }
               </div>
               <p class="mt-5 text-xs text-marine-500">Adquirido: {{ formatearFecha(inv.adquirido_en) }}</p>

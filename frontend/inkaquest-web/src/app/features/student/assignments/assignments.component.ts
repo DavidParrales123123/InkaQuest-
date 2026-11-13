@@ -53,7 +53,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                         <p class="mt-1 text-sm text-marine-500">{{ t.actividad.descripcion || t.actividad.instrucciones || 'Sin instrucciones adicionales.' }}</p>
                         <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-marine-500">
                           <span>Entrega:</span>
-                          @if (t.entrega) { <app-status-badge [estado]="t.entrega.estado" /> } @else { <span class="badge badge-default">Sin entregar</span> }
+                          @if (t.entrega) { <app-status-badge [estado]="t.entrega.estado" /> } @else { <span class="badge badge-neutral">Sin entregar</span> }
                           @if (t.fecha_entrega) { <span>· Fecha límite: {{ t.fecha_entrega | date:'medium' }}</span> }
                           <span>· Nota sobre {{ t.nota_maxima }}</span>
                         </div>

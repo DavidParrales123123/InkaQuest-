@@ -91,7 +91,7 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                         @if (u.descripcion) { <p class="mt-0.5 text-sm text-marine-500 line-clamp-2">{{ u.descripcion }}</p> }
                       </div>
                       <div class="flex shrink-0 items-center gap-2 text-xs text-marine-500">
-                        <span class="badge badge-default">{{ contarLecciones(u) }} lección(es)</span>
+                        <span class="badge badge-neutral">{{ contarLecciones(u) }} lección(es)</span>
                         <span class="badge badge-gold">{{ u.xp_otorgado }} XP</span>
                       </div>
                     </summary>

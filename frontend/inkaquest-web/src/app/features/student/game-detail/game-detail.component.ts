@@ -20,7 +20,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
         <div contenido class="space-y-6">
           @if (juego(); as j) {
             <div class="card card-body space-y-2">
-              <div class="flex flex-wrap gap-2 text-sm"><span class="badge badge-default">Dificultad: {{ j.dificultad }}</span><span class="badge badge-default">{{ j.xp_otorgado }} XP</span><span class="badge badge-default">{{ j.monedas_otorgadas }} monedas</span><span class="badge badge-default">Estado: {{ j.estado }}</span></div>
+              <div class="flex flex-wrap gap-2 text-sm"><span class="badge badge-neutral">Dificultad: {{ j.dificultad }}</span><span class="badge badge-neutral">{{ j.xp_otorgado }} XP</span><span class="badge badge-neutral">{{ j.monedas_otorgadas }} monedas</span><span class="badge badge-neutral">Estado: {{ j.estado }}</span></div>
               <p class="text-marine-700">{{ j.descripcion || 'Sin descripción.' }}</p>
               <p class="text-sm text-marine-600">Motor: {{ j.motor?.nombre || '—' }} @if (j.motor?.descripcion) { · {{ j.motor!.descripcion }} }</p>
             </div>
