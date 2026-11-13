@@ -1,6 +1,7 @@
 package com.inkaquest.modules.evaluaciones.service;
 
 import com.inkaquest.modules.academico.repository.CursoRepository;
+import com.inkaquest.modules.identidad.repository.PerfilRepository;
 import com.inkaquest.modules.evaluaciones.dto.*;
 import com.inkaquest.modules.evaluaciones.entity.*;
 import com.inkaquest.modules.evaluaciones.repository.*;
@@ -44,6 +45,7 @@ public class TareasService {
     private final CalificacionRepository calificacionRepository;
     private final MatriculaRepository matriculaRepository;
     private final CursoRepository cursoRepository;
+    private final PerfilRepository perfilRepository;
     private final RlsExecutor rlsExecutor;
 
     public TareasService(
@@ -53,6 +55,7 @@ public class TareasService {
             CalificacionRepository calificacionRepository,
             MatriculaRepository matriculaRepository,
             CursoRepository cursoRepository,
+            PerfilRepository perfilRepository,
             RlsExecutor rlsExecutor) {
         this.tareaRepository = tareaRepository;
         this.actividadRepository = actividadRepository;
@@ -60,6 +63,7 @@ public class TareasService {
         this.calificacionRepository = calificacionRepository;
         this.matriculaRepository = matriculaRepository;
         this.cursoRepository = cursoRepository;
+        this.perfilRepository = perfilRepository;
         this.rlsExecutor = rlsExecutor;
     }
 
@@ -265,7 +269,8 @@ public class TareasService {
             boolean esNueva = entrega.getId() == null;
             
             entrega.setTareaId(tarea);
-            entrega.setEstudianteId(null); // TODO: Cargar Perfil por usuarioId
+            entrega.setEstudianteId(perfilRepository.findById(usuarioId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Perfil del estudiante no encontrado")));
             entrega.setContenido(request.contenido());
             entrega.setEstado(EstadoEntrega.enviado);
             entrega.setEnviadaEn(now);
@@ -324,7 +329,8 @@ public class TareasService {
             
             calificacion.setEntregaId(entrega);
             calificacion.setEstudianteId(entrega.getEstudianteId());
-            calificacion.setDocenteId(null); // TODO: Cargar Perfil por usuarioId
+            calificacion.setDocenteId(perfilRepository.findById(usuarioId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Perfil del docente no encontrado")));
             calificacion.setNota(request.nota());
             calificacion.setNotaMaxima(entrega.getTareaId().getNotaMaxima());
             

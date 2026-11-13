@@ -1,5 +1,6 @@
 // @ts-nocheck
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
@@ -11,7 +12,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 @Component({
   selector: 'app-student-evaluaciones',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataPanelComponent, PageHeaderComponent],
+  imports: [RouterLink, DataPanelComponent, PageHeaderComponent],
   template: `
     <section class="space-y-6">
       <app-page-header titulo="Evaluaciones" descripcion="Quizzes y exámenes de tus cursos, con tus intentos registrados." />
@@ -30,14 +31,17 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                         <p class="font-medium text-marine-800">{{ e.actividad.titulo }}</p>
                         <span class="badge badge-neutral">Intentos: {{ e.intentosInfo }}</span>
                       </div>
-                      <p class="text-marine-500">Tipo: {{ e.actividad.tipo }} · Aprobación: {{ e.porcentaje_aprobacion }}% · Nota máx: {{ e.nota_maxima }}</p>
+                      <p class="text-marine-500">Tipo: {{ e.actividad.tipo }} · Nota máx: {{ e.nota_maxima }} · Tu % mínimo para aprobar: {{ e.porcentaje_aprobacion }}%</p>
+                      <div class="mt-2 flex items-center justify-end gap-2">
+                        <a [routerLink]="['/estudiante/evaluaciones', e.id]" class="btn btn-primary btn-sm">▶ Rendir evaluación</a>
+                      </div>
                     </li>
                   }
                 </ul>
               }
             </div>
           }
-          <p class="text-xs text-marine-400">La experiencia de rendir evaluaciones (temporizador, navegación por preguntas, corrección) se completa con la integración de los flujos/contratos del backend; aquí se listan las evaluaciones e intentos disponibles en base de datos.</p>
+          <p class="text-xs text-marine-400">Haz clic en «Rendir evaluación» para abrir la evaluación en pantalla completa. Tus intentos, respuestas y resultados quedan registrados en el servidor.</p>
         </div>
       </app-data-panel>
     </section>

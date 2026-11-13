@@ -268,6 +268,14 @@ export const routes: Routes = [
         title: 'Evaluaciones · InkaQuest',
       },
       {
+        path: 'evaluaciones/:id',
+        loadComponent: () =>
+          import('./features/student/evaluacion-tomar/evaluacion-tomar.component').then(
+            (m) => m.EvaluacionTomarComponent,
+          ),
+        title: 'Tomar evaluación · InkaQuest',
+      },
+      {
         path: 'minijuegos',
         loadComponent: () =>
           import('./features/student/games/games.component').then((m) => m.GamesComponent),

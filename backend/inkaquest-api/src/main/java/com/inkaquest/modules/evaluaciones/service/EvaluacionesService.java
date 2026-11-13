@@ -1,5 +1,6 @@
 package com.inkaquest.modules.evaluaciones.service;
 
+import com.inkaquest.modules.identidad.repository.PerfilRepository;
 import com.inkaquest.modules.evaluaciones.dto.*;
 import com.inkaquest.modules.evaluaciones.entity.*;
 import com.inkaquest.modules.evaluaciones.repository.*;
@@ -46,6 +47,7 @@ public class EvaluacionesService {
     private final IntentoEvaluacionRepository intentoRepository;
     private final RespuestaEvaluacionRepository respuestaRepository;
     private final MatriculaRepository matriculaRepository;
+    private final PerfilRepository perfilRepository;
     private final RlsExecutor rlsExecutor;
 
     public EvaluacionesService(
@@ -55,6 +57,7 @@ public class EvaluacionesService {
             IntentoEvaluacionRepository intentoRepository,
             RespuestaEvaluacionRepository respuestaRepository,
             MatriculaRepository matriculaRepository,
+            PerfilRepository perfilRepository,
             RlsExecutor rlsExecutor) {
         this.evaluacionRepository = evaluacionRepository;
         this.preguntaRepository = preguntaRepository;
@@ -62,6 +65,7 @@ public class EvaluacionesService {
         this.intentoRepository = intentoRepository;
         this.respuestaRepository = respuestaRepository;
         this.matriculaRepository = matriculaRepository;
+        this.perfilRepository = perfilRepository;
         this.rlsExecutor = rlsExecutor;
     }
 
@@ -122,7 +126,8 @@ public class EvaluacionesService {
             // Crear nuevo intento
             IntentoEvaluacion intento = new IntentoEvaluacion();
             intento.setEvaluacionId(evaluacion);
-            intento.setEstudianteId(null); // TODO: Cargar Perfil por usuarioId
+            intento.setEstudianteId(perfilRepository.findById(usuarioId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Perfil del estudiante no encontrado")));
             intento.setNumero(intentosRealizados + 1);
             intento.setEstado(EstadoIntento.en_curso);
             intento.setPuntaje(BigDecimal.ZERO);
@@ -289,7 +294,9 @@ public class EvaluacionesService {
         BigDecimal puntaje = BigDecimal.ZERO;
         boolean esCorrecta = false;
         
-        if (pregunta.getTipo() == TipoPregunta.opcion_multiple || pregunta.getTipo() == TipoPregunta.verdadero_falso) {
+        if (pregunta.getTipo() == TipoPregunta.opcion_unica
+                || pregunta.getTipo() == TipoPregunta.opcion_multiple
+                || pregunta.getTipo() == TipoPregunta.verdadero_falso) {
             // Verificar opción seleccionada
             if (respuestaDto.opcionesSeleccionadas() != null && !respuestaDto.opcionesSeleccionadas().isEmpty()) {
                 UUID opcionId = respuestaDto.opcionesSeleccionadas().get(0);
@@ -331,7 +338,9 @@ public class EvaluacionesService {
         String respuestaEstudiante = "";
         String respuestaCorrecta = "";
         
-        if (pregunta.getTipo() == TipoPregunta.opcion_multiple || pregunta.getTipo() == TipoPregunta.verdadero_falso) {
+        if (pregunta.getTipo() == TipoPregunta.opcion_unica
+                || pregunta.getTipo() == TipoPregunta.opcion_multiple
+                || pregunta.getTipo() == TipoPregunta.verdadero_falso) {
             // Obtener texto de la opción seleccionada
             if (respuestaDto.opcionesSeleccionadas() != null && !respuestaDto.opcionesSeleccionadas().isEmpty()) {
                 Opcion opcionSel = opcionRepository.findById(respuestaDto.opcionesSeleccionadas().get(0)).orElse(null);
@@ -371,7 +380,9 @@ public class EvaluacionesService {
         String respuestaEstudiante = resp.getOpcionId() != null ? resp.getOpcionId().getTexto() : resp.getTextoRespuesta();
         String respuestaCorrecta = "";
         
-        if (pregunta.getTipo() == TipoPregunta.opcion_multiple || pregunta.getTipo() == TipoPregunta.verdadero_falso) {
+        if (pregunta.getTipo() == TipoPregunta.opcion_unica
+                || pregunta.getTipo() == TipoPregunta.opcion_multiple
+                || pregunta.getTipo() == TipoPregunta.verdadero_falso) {
             List<Opcion> opciones = opcionRepository.findByPreguntaIdIdOrderByOrdenAsc(pregunta.getId());
             for (Opcion op : opciones) {
                 if (op.getEsCorrecta()) {
