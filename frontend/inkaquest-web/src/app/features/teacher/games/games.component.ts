@@ -67,7 +67,6 @@ type LeccionCtx = Leccion & { moduloTitulo: string; unidadTitulo: string; unidad
         <div class="grid gap-2 sm:grid-cols-[1fr_220px_auto]">
           <input class="input" [value]="buscadorMotor()" (input)="buscadorMotor.set($any($event.target).value)" placeholder="Buscar motor…" autocomplete="off" aria-label="Buscar motor" />
           <select class="select" [value]="cursoIdSel()" (change)="onCursoChange($any($event.target).value)" aria-label="Curso asignado">
-            <option value="">Elige un curso</option>
             @for (c of cursos(); track c.id) { <option [value]="c.id">{{ c.titulo }}</option> }
           </select>
           <span class="flex items-center gap-2 text-xs text-marine-500"><span class="badge badge-neutral">{{ motoresFiltrados().length }}</span> visibles</span>
@@ -250,7 +249,7 @@ export class GamesComponent implements OnInit {
 
   // ─── Panel admin (modo catálogo) ───
   protected readonly buscadorMotor = signal('');
-  protected readonly filtroFamiliaMotor = signal<'generico' | 'especifico' | 'adicional' | ''>('');
+  protected readonly filtroFamiliaMotor = signal<'generico' | 'especifico' | 'adicional' | ''>('generico');
   protected readonly modalCrear = signal(false);
   protected readonly motorPreseleccionado = signal<Motor | null>(null);
 
