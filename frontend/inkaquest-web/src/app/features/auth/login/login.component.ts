@@ -139,6 +139,9 @@ export class LoginComponent {
     if (params['mensaje'] === 'cuenta-confirmada') {
       this.mensaje.set('Tu correo fue confirmado. Inicia sesión para continuar. Si ya iniciaste sesión y no puedes entrar al panel, tu perfil de estudiante podría no estar disponible aún.');
       this.exito.set(true);
+    } else if (params['motivo'] === 'sesion-expirada') {
+      this.mensaje.set('Tu sesión no se pudo verificar en el servidor. Inicia sesión de nuevo.');
+      this.exito.set(false);
     }
 
     void this.redirigirSiAutenticado();

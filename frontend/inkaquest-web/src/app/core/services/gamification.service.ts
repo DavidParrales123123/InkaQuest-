@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
 import { PaginatedResponse } from './course.service';
+import { SupabaseService } from './supabase.service';
 
 /**
  * Servicio de gamificación: XP, nivel, insignias, rachas, misiones y ranking.
@@ -21,6 +22,7 @@ import { PaginatedResponse } from './course.service';
 @Injectable({ providedIn: 'root' })
 export class GamificationService {
   private readonly http = inject(HttpClient);
+  private readonly supabase = inject(SupabaseService);
   private readonly baseUrl = `${environment.apiUrl}/gamificacion`;
 
   // === RESUMEN GAMIFICADO ===
@@ -31,6 +33,29 @@ export class GamificationService {
       this.http.get<ApiResponse<GamificacionResumenResponse>>(`${this.baseUrl}/yo`)
     );
     return res.data!;
+  }
+
+  // === RACHA ===
+
+  /**
+   * Obtiene la racha del usuario (fila propia en `public.racha`, vía RLS).
+   * Si aún no existe, devuelve ceros.
+   */
+  async obtenerRacha(usuarioId: string): Promise<{ racha_actual: number; mejor_racha: number; ultima_actividad: string | null }> {
+    try {
+      const { data, error } = await this.supabase.client
+        .from(this.supabase.tabla.racha)
+        .select('racha_actual, mejor_racha, ultima_actividad')
+        .eq('usuario_id', usuarioId)
+        .maybeSingle();
+      if (error) {
+        console.error('[InkaQuest] Error cargando la racha:', error.message);
+        return { racha_actual: 0, mejor_racha: 0, ultima_actividad: null };
+      }
+      return data ?? { racha_actual: 0, mejor_racha: 0, ultima_actividad: null };
+    } catch {
+      return { racha_actual: 0, mejor_racha: 0, ultima_actividad: null };
+    }
   }
 
   // === INSIGNIAS ===
