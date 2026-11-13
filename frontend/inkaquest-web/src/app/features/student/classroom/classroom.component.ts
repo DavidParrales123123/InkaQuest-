@@ -41,7 +41,7 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                   <p class="mt-2 text-sm text-marine-600">{{ c.descripcion }}</p>
                   <div class="mt-3 flex flex-wrap gap-2 text-xs text-marine-500">
                     <span class="badge badge-default">{{ unidades().length }} unidad(es) / semanas</span>
-                    <span class="badge badge-default">{{ totalLecciones() }} lecciÃƒÂ³n(es)</span>
+                    <span class="badge badge-default">{{ totalLecciones() }} lecci?n(es)</span>
                     <span class="badge badge-gold">{{ c.xp_total }} XP</span>
                   </div>
                   @if (progreso()) {
@@ -49,10 +49,10 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                       <div class="h-2.5 overflow-hidden rounded-full bg-surface-100">
                         <div class="h-full rounded-full bg-brand-500 transition-all" [style.width.%]="progreso()!.porcentaje"></div>
                       </div>
-                      <p class="mt-1 text-sm text-marine-600">{{ progreso()!.porcentaje }}% completado Ã‚Â· {{ progreso()!.lecciones_completadas }} lecciones completadas</p>
+                      <p class="mt-1 text-sm text-marine-600">{{ progreso()!.porcentaje }}% completado ? {{ progreso()!.lecciones_completadas }} lecciones completadas</p>
                     </div>
                   } @else {
-                    <p class="mt-3 text-sm text-marine-500">No hay registro de progreso para este curso (requiere matrÃƒÂ­cula activa).</p>
+                    <p class="mt-3 text-sm text-marine-500">No hay registro de progreso para este curso (requiere matr?cula activa).</p>
                   }
                   @if (mensaje()) {
                     <p class="mt-3 text-sm" [class.text-success-600]="exito()" [class.text-danger-600]="!exito()">{{ mensaje() }}</p>
@@ -64,9 +64,9 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
             @if (!matriculaActiva()) {
               <div class="rounded-button border border-gold-200 bg-gold-50 p-4 text-sm text-marine-700">
                 <p class="font-medium">Acceso al contenido y registro de progreso</p>
-                <p class="mt-1">Para ver y completar lecciones con seguimiento necesitas una matrÃƒÂ­cula activa en este curso.</p>
+                <p class="mt-1">Para ver y completar lecciones con seguimiento necesitas una matr?cula activa en este curso.</p>
                 @if (matriculaEstado() === 'pendiente_pago') {
-                  <p class="mt-1">Tu matrÃƒÂ­cula estÃƒÂ¡ pendiente de pago/activaciÃƒÂ³n. La activaciÃƒÂ³n se realiza tras la confirmaciÃƒÂ³n en backend.</p>
+                  <p class="mt-1">Tu matr?cula est? pendiente de pago/activaci?n. La activaci?n se realiza tras la confirmaci?n en backend.</p>
                   <a routerLink="/estudiante/pagos" class="btn btn-primary btn-sm mt-3 inline-flex">Ir a mis pagos</a>
                 }
               </div>
@@ -75,36 +75,36 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
             <div class="space-y-4">
               <div class="flex flex-wrap items-end justify-between gap-2">
                 <h2 class="text-xl font-semibold text-marine-800">Plan de estudio (semanas / unidades)</h2>
-                <p class="text-sm text-marine-500">Abre cada parte para ver las lecciones y los materiales que subiÃƒÂ³ el docente.</p>
+                <p class="text-sm text-marine-500">Abre cada parte para ver las lecciones y los materiales que subi? el docente.</p>
               </div>
 
               @if (unidades().length === 0) {
-                <div class="card card-body text-sm text-marine-500">El contenido de este curso aÃƒÂºn no estÃƒÂ¡ disponible o no hay unidades publicadas.</div>
+                <div class="card card-body text-sm text-marine-500">El contenido de este curso a?n no est? disponible o no hay unidades publicadas.</div>
               } @else {
                 @for (u of unidades(); track u.id; let i = $index) {
                   <details class="card overflow-hidden" [open]="i === 0">
                     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 bg-surface-50 p-4 hover:bg-surface-100">
                       <div class="min-w-0">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-brand-700">Semana {{ u.numero || (i + 1) }} Ã‚Â· Unidad</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-brand-700">Semana {{ u.numero || (i + 1) }} ? Unidad</p>
                         <h3 class="truncate font-semibold text-marine-800">{{ u.titulo }}</h3>
                         @if (u.descripcion) { <p class="mt-0.5 text-sm text-marine-500 line-clamp-2">{{ u.descripcion }}</p> }
                       </div>
                       <div class="flex shrink-0 items-center gap-2 text-xs text-marine-500">
-                        <span class="badge badge-default">{{ contarLecciones(u) }} lecciÃƒÂ³n(es)</span>
+                        <span class="badge badge-default">{{ contarLecciones(u) }} lecci?n(es)</span>
                         <span class="badge badge-gold">{{ u.xp_otorgado }} XP</span>
                       </div>
                     </summary>
 
                     <div class="border-t border-surface-200 p-4 space-y-5">
                       @if (u.modulos.length === 0) {
-                        <p class="text-sm text-marine-500">Esta parte aÃƒÂºn no tiene mÃƒÂ³dulos/lecciones publicadas.</p>
+                        <p class="text-sm text-marine-500">Esta parte a?n no tiene m?dulos/lecciones publicadas.</p>
                       }
                       @for (m of u.modulos; track m.id) {
                         <div class="space-y-2">
                           <div class="flex items-center gap-2">
                             <span class="h-2 w-2 rounded-full bg-brand-500"></span>
                             <h4 class="text-sm font-semibold text-marine-700">{{ m.titulo }}</h4>
-                            <span class="text-xs text-marine-400">{{ m.lecciones.length }} lecciÃƒÂ³n(es)</span>
+                            <span class="text-xs text-marine-400">{{ m.lecciones.length }} lecci?n(es)</span>
                           </div>
 
                           @if (m.lecciones.length === 0) {
@@ -120,14 +120,14 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                           <p class="font-semibold text-marine-800">{{ l.numero }}. {{ l.titulo }}</p>
                                           @if (completada(l.id)) { <span class="badge badge-success">Completada</span> }
                                         </div>
-                                        <p class="mt-0.5 text-xs text-marine-500">{{ l.duracion_minutos }} min Ã‚Â· {{ l.xp_otorgado }} XP Ã‚Â· {{ l.tipo_contenido }}</p>
+                                        <p class="mt-0.5 text-xs text-marine-500">{{ l.duracion_minutos }} min ? {{ l.xp_otorgado }} XP ? {{ l.tipo_contenido }}</p>
                                         @if (l.descripcion) { <p class="mt-1 text-sm text-marine-600 line-clamp-2">{{ l.descripcion }}</p> }
                                       </div>
                                       <div class="flex shrink-0 items-center gap-2">
                                         <span class="text-xs text-brand-700 font-medium">{{ leccionAbierta() === l.id ? 'Ocultar materiales' : 'Ver materiales' }}</span>
                                         @if (!completada(l.id)) {
                                           @if (!tieneMateriales(l.id) && cargandoDetalle() !== l.id && detalleCargados(l.id)) {
-                                            <span class="text-xs text-marine-400">SubÃƒÂ­ primero los materiales del docente; luego podrÃƒÂ¡s marcarla completada.</span>
+                                            <span class="text-xs text-marine-400">Sub? primero los materiales del docente; luego podr?s marcarla completada.</span>
                                           }
                                           <span (click)="$event.stopPropagation()">
                                             <app-button variante="primario" tamano="sm" [deshabilitado]="!puedeMarcar() || marcando() === l.id || !tieneMateriales(l.id)" [cargando]="marcando() === l.id" (alPulsar)="marcar(l.id)">
@@ -141,16 +141,16 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                   @if (leccionAbierta() === l.id) {
                                     <div class="border-t border-surface-200 bg-surface-50 p-4 space-y-4">
                                       @if (cargandoDetalle() === l.id) {
-                                        <p class="text-sm text-marine-500">Cargando contenidos y materialesÃ¢â‚¬Â¦</p>
+                                        <p class="text-sm text-marine-500">Cargando contenidos y materiales?</p>
                                       } @else {
                                         @if (errorDetalle()[l.id]) {
                                           <p class="text-sm text-danger-600">{{ errorDetalle()[l.id] }}</p>
                                         }
                                         @let det = detalle(l.id);
                                         <div>
-                                          <h5 class="text-sm font-semibold text-marine-800">Contenidos de la lecciÃƒÂ³n</h5>
+                                          <h5 class="text-sm font-semibold text-marine-800">Contenidos de la lecci?n</h5>
                                           @if (det.contenidos.length === 0) {
-                                            <p class="mt-1 text-sm text-marine-500">El docente aÃƒÂºn no ha publicado contenidos en esta lecciÃƒÂ³n.</p>
+                                            <p class="mt-1 text-sm text-marine-500">El docente a?n no ha publicado contenidos en esta lecci?n.</p>
                                           } @else {
                                             <div class="mt-2 space-y-2">
                                               @for (ct of det.contenidos; track ct.id) {
@@ -175,7 +175,7 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                         <div>
                                           <h5 class="text-sm font-semibold text-marine-800">Materiales y recursos subidos por el docente</h5>
                                           @if (det.recursos.length === 0) {
-                                            <p class="mt-1 text-sm text-marine-500">No hay materiales/archivos adjuntos en esta lecciÃƒÂ³n.</p>
+                                            <p class="mt-1 text-sm text-marine-500">No hay materiales/archivos adjuntos en esta lecci?n.</p>
                                           } @else {
                                             <ul class="mt-2 grid gap-2 sm:grid-cols-2">
                                               @for (r of det.recursos; track r.id) {
@@ -185,8 +185,8 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                                       <p class="truncate font-medium text-marine-800">{{ r.nombre }}</p>
                                                       <p class="text-xs text-marine-500">
                                                         {{ r.tipo }}
-                                                        @if (r.tamano_bytes) { Â· {{ (r.tamano_bytes / 1024) | number:'1.0-0' }} KB }
-                                                        @if (r.ruta_storage) { Â· archivo }
+                                                        @if (r.tamano_bytes) { ? {{ (r.tamano_bytes / 1024) | number:'1.0-0' }} KB }
+                                                        @if (r.ruta_storage) { ? archivo }
                                                       </p>
                                                     </div>
                                                     @if (urlRecurso(r)) {
@@ -209,7 +209,7 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                                 </li>
                                               }
                                             </ul>
-                                            <p class="mt-2 text-xs text-marine-400">El acceso a archivos depende de tu matrÃƒÂ­cula/permisos y de las polÃƒÂ­ticas de Storage.</p>
+                                            <p class="mt-2 text-xs text-marine-400">El acceso a archivos depende de tu matr?cula/permisos y de las pol?ticas de Storage.</p>
                                           }
                                         </div>
                                       }
@@ -346,7 +346,7 @@ export class ClassroomComponent implements OnInit {
     }
   }
 
-  // marcado se dispara desde app-button; la propagaciÃƒÂ³n se detiene en el contenedor del botÃƒÂ³n en la plantilla.
+  // marcado se dispara desde app-button; la propagaci?n se detiene en el contenedor del bot?n en la plantilla.
 
   protected async marcar(leccionId: string): Promise<void> {
     const user = this.auth.usuario();
@@ -356,11 +356,11 @@ export class ClassroomComponent implements OnInit {
     try {
       const pct = await this.progressService.registrarLeccionCompletada(user.id, curso.id, leccionId, 0);
       this.exito.set(true);
-      this.mensaje.set(`LecciÃƒÂ³n registrada. Progreso del curso: ${pct}%.`);
+      this.mensaje.set(`Lecci?n registrada. Progreso del curso: ${pct}%.`);
       await this.cargar();
     } catch (e) {
       this.exito.set(false);
-      this.mensaje.set(e instanceof Error ? e.message : 'No se pudo registrar la lecciÃƒÂ³n.');
+      this.mensaje.set(e instanceof Error ? e.message : 'No se pudo registrar la lecci?n.');
     } finally {
       this.marcando.set(null);
     }
