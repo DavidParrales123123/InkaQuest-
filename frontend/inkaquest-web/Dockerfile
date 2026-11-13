@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalar dependencias
-RUN npm ci
+RUN npm install --legacy-peer-deps
 
 # Copiar todo el codigo
 COPY . .
@@ -31,4 +31,4 @@ COPY --from=builder /app/dist/inkaquest-web/browser ./dist
 EXPOSE 8080
 
 # Comando para iniciar
-CMD [\"serve\", \"dist\", \"-s\", \"-l\", \"8080\"]
+CMD ["serve", "dist", "-s", "-l", "8080"]
