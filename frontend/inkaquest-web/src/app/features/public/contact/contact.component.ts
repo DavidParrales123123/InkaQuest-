@@ -366,13 +366,12 @@ export class ContactComponent implements OnInit {
 
     try {
       const { asunto, mensaje } = this.form.getRawValue();
-      const resultado = await this.supportService.crearTicket(
-        usuario.id,
+      const resultado = await this.supportService.crearTicket({
         asunto,
-        mensaje,
-        'contacto',
-        'media',
-      );
+        descripcion: mensaje,
+        categoria: 'contacto',
+        prioridad: 'media',
+      });
 
       this.mensaje.set(
         resultado.ok

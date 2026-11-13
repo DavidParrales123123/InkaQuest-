@@ -74,7 +74,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
             <p class="text-sm md:col-span-2" [class.text-success-600]="exitoForm()" [class.text-danger-600]="!exitoForm()">{{ mensajeForm() }}</p>
           }
           <div class="md:col-span-2">
-            <app-button type="submit" variante="primario" [cargando]="enviando()" [deshabilitado]="form.invalid || enviando()">
+            <app-button tipo="submit" variante="primario" [cargando]="enviando()" [deshabilitado]="form.invalid || enviando()">
               Enviar ticket
             </app-button>
           </div>
@@ -150,7 +150,7 @@ export class SupportComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
     try {
-      this.tickets.set(await this.support.listarMisTickets(usuario.id));
+      this.tickets.set(await this.support.listarMisTickets());
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar los tickets.');
     } finally {
@@ -165,13 +165,16 @@ export class SupportComponent implements OnInit {
     this.mensajeForm.set('');
     try {
       const v = this.form.getRawValue();
-      const res = await this.support.crearTicket(usuario.id, v.asunto, v.descripcion, v.categoria, v.prioridad);
+      const res = await this.support.crearTicket({ asunto: v.asunto, descripcion: v.descripcion, categoria: v.categoria, prioridad: v.prioridad });
       this.mensajeForm.set(res.mensaje);
       this.exitoForm.set(res.ok);
       if (res.ok) {
         this.form.reset({ asunto: '', categoria: 'general', prioridad: 'media', descripcion: '' });
         await this.cargar();
       }
+    } catch (e) {
+      this.exitoForm.set(false);
+      this.mensajeForm.set(e instanceof Error ? e.message : 'No se pudo crear el ticket.');
     } finally {
       this.enviando.set(false);
     }

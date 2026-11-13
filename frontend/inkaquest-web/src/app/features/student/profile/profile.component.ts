@@ -133,7 +133,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
               @if (mensaje()) {
                 <p class="text-sm" [class.text-success-600]="exito()" [class.text-danger-600]="!exito()">{{ mensaje() }}</p>
               }
-              <app-button type="submit" variante="primario" [cargando]="guardando()" [deshabilitado]="guardando()">Guardar cambios</app-button>
+              <app-button tipo="submit" variante="primario" [cargando]="guardando()" [deshabilitado]="guardando()">Guardar cambios</app-button>
               <p class="text-xs text-marine-400">Algunos campos (correo, rol) son gestionados por el sistema y no pueden modificarse aquí.</p>
             </form>
 
@@ -361,6 +361,7 @@ export class ProfileComponent implements OnInit {
       await this.auth.cargarPerfil();
       this.exitoAvatar.set(true);
       this.mensajeAvatar.set('Foto de perfil actualizada correctamente.');
+      this.subiendoAvatar.set(false);
       this.cerrarEditor();
     } catch (e) {
       this.exitoAvatar.set(false);
@@ -426,13 +427,25 @@ export class ProfileComponent implements OnInit {
     }
   }
 
+  private async recargarFormulario(): Promise<void> {
+    const user = this.auth.usuario();
+    if (!user) return;
+    const { data } = await this.supabase.client
+      .from(this.supabase.tabla.perfil)
+      .select('nombre,apellido,documento,genero,fecha_nacimiento,telefono,bio')
+      .eq('id', user.id)
+      .maybeSingle();
+    const p: any = data ?? this.auth.perfil();
+    if (!p) return;
+    this.form.patchValue({ nombre: p?.nombre ?? '', apellido: p?.apellido ?? '', documento: p?.documento ?? '', genero: p?.genero ?? '', fecha_nacimiento: p?.fecha_nacimiento ? String(p.fecha_nacimiento).slice(0, 10) : '', telefono: p?.telefono ?? '', bio: p?.bio ?? '' });
+  }
+
   protected async cargar(): Promise<void> {
     this.cargando.set(true);
     this.error.set(null);
     try {
       await this.auth.cargarPerfil();
-      const p = this.auth.perfil();
-      this.form.patchValue({ nombre: p?.nombre ?? '', apellido: p?.apellido ?? '', documento: p?.documento ?? '', genero: p?.genero ?? '', fecha_nacimiento: p?.fecha_nacimiento ? p.fecha_nacimiento.slice(0, 10) : '', telefono: p?.telefono ?? '', bio: p?.bio ?? '' });
+      await this.recargarFormulario();
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'No se pudo cargar el perfil.');
     } finally {
@@ -486,6 +499,7 @@ export class ProfileComponent implements OnInit {
         this.exito.set(false);
       } else {
         await this.auth.cargarPerfil();
+        await this.recargarFormulario();
         this.mensaje.set('Perfil actualizado correctamente.');
         this.exito.set(true);
       }

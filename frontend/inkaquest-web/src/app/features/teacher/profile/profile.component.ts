@@ -84,7 +84,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
               <div><label class="label" for="email">Correo</label><input id="email" class="input" [value]="auth.perfil()?.email ?? auth.usuario()?.email ?? ''" disabled /></div>
               <div><label class="label" for="rol">Rol</label><input id="rol" class="input" [value]="auth.perfil()?.rol ?? ''" disabled /></div>
               @if (mensaje()) { <p class="text-sm" [class.text-success-600]="exito()" [class.text-danger-600]="!exito()">{{ mensaje() }}</p> }
-              <app-button type="submit" variante="primario" [cargando]="guardando()" [deshabilitado]="form.invalid || guardando()">Guardar cambios</app-button>
+              <app-button tipo="submit" variante="primario" [cargando]="guardando()" [deshabilitado]="form.invalid || guardando()">Guardar cambios</app-button>
             </form>
             <div class="mt-8 border-t border-surface-200 pt-5 text-sm text-marine-600">
               <p><strong>Estado de cuenta:</strong> {{ etiquetaEstadoCuenta(auth.perfil()?.estado_cuenta) }}</p>
@@ -213,6 +213,7 @@ export class ProfileComponent implements OnInit {
       if (updateError) throw new Error(updateError.message);
       await this.auth.cargarPerfil();
       this.exitoAvatar.set(true); this.mensajeAvatar.set('Foto de perfil actualizada correctamente.');
+      this.subiendoAvatar.set(false);
       this.cerrarEditor();
     } catch (e) { this.exitoAvatar.set(false); this.mensajeAvatar.set(e instanceof Error ? e.message : 'No se pudo guardar la foto de perfil.'); }
     finally { this.subiendoAvatar.set(false); }
@@ -246,9 +247,22 @@ export class ProfileComponent implements OnInit {
     finally { this.subiendoAvatar.set(false); }
   }
 
+  private async recargarFormulario(): Promise<void> {
+    const user = this.auth.usuario();
+    if (!user) return;
+    const { data } = await this.supabase.client
+      .from(this.supabase.tabla.perfil)
+      .select('nombre,apellido,documento,genero,fecha_nacimiento,telefono,bio')
+      .eq('id', user.id)
+      .maybeSingle();
+    const p: any = data ?? this.auth.perfil();
+    if (!p) return;
+    this.form.patchValue({ nombre: p?.nombre ?? '', apellido: p?.apellido ?? '', documento: p?.documento ?? '', genero: p?.genero ?? '', fecha_nacimiento: p?.fecha_nacimiento ? String(p.fecha_nacimiento).slice(0, 10) : '', telefono: p?.telefono ?? '', bio: p?.bio ?? '' });
+  }
+
   protected async cargar(): Promise<void> {
     this.cargando.set(true); this.error.set(null);
-    try { await this.auth.cargarPerfil(); const p = this.auth.perfil(); this.form.patchValue({ nombre: p?.nombre ?? '', apellido: p?.apellido ?? '', documento: p?.documento ?? '', genero: p?.genero ?? '', fecha_nacimiento: p?.fecha_nacimiento ? p.fecha_nacimiento.slice(0, 10) : '', telefono: p?.telefono ?? '', bio: p?.bio ?? '' }); }
+    try { await this.auth.cargarPerfil(); await this.recargarFormulario(); }
     catch (e) { this.error.set(e instanceof Error ? e.message : 'No se pudo cargar el perfil.'); }
     finally { this.cargando.set(false); }
   }
@@ -261,13 +275,19 @@ export class ProfileComponent implements OnInit {
     try { return new Date(fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' }); } catch { return fecha; }
   }
   protected async guardar(): Promise<void> {
-    const user = this.auth.usuario(); if (!user || this.form.invalid) return;
+    const user = this.auth.usuario(); if (!user) { this.mensaje.set('Debes iniciar sesión.'); this.exito.set(false); return; }
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      this.mensaje.set(this.form.controls.nombre?.invalid ? 'El nombre debe tener al menos 2 caracteres.' : 'Revisa los campos marcados en rojo.');
+      this.exito.set(false);
+      return;
+    }
     this.guardando.set(true); this.mensaje.set('');
     try {
       const v = this.form.getRawValue();
       const { error } = await this.supabase.client.from(this.supabase.tabla.perfil).update({ nombre: v.nombre, apellido: v.apellido || null, documento: v.documento?.trim() || null, genero: v.genero?.trim() || null, fecha_nacimiento: v.fecha_nacimiento || null, telefono: v.telefono?.trim() || null, bio: v.bio?.trim() || null }).eq('id', user.id);
       if (error) { this.mensaje.set(error.message); this.exito.set(false); }
-      else { await this.auth.cargarPerfil(); this.mensaje.set('Perfil actualizado correctamente.'); this.exito.set(true); }
+      else { await this.auth.cargarPerfil(); await this.recargarFormulario(); this.mensaje.set('Perfil actualizado correctamente.'); this.exito.set(true); }
     } catch (e) { this.mensaje.set(e instanceof Error ? e.message : 'No se pudo guardar.'); this.exito.set(false); }
     finally { this.guardando.set(false); }
   }

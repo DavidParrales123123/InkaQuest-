@@ -91,7 +91,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
             <textarea id="msg" class="textarea" rows="3" formControlName="contenido" placeholder="Escribe tu consulta…"></textarea>
             <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
               <p class="text-xs text-marine-500">Integración backend/IA requerida para respuestas reales. No se envían claves desde el navegador.</p>
-              <app-button type="submit" variante="primario" [cargando]="enviando()" [deshabilitado]="form.invalid || enviando()">Enviar</app-button>
+              <app-button tipo="submit" variante="primario" [cargando]="enviando()" [deshabilitado]="form.invalid || enviando()">Enviar</app-button>
             </div>
           </form>
         </div>
