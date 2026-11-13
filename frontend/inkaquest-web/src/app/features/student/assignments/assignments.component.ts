@@ -38,14 +38,35 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
         <div acciones><button class="btn btn-outline btn-sm" type="button" (click)="cargar()" [disabled]="cargando()">Actualizar</button></div>
       </app-page-header>
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="tareas().length === 0 && calificaciones().length === 0" tituloVacio="Aún no hay tareas" descripcionVacia="Todavía no hay tareas publicadas en tus cursos. Cuando tu docente publique una tarea, aparecerá aquí para que la entregues. Mientras tanto, revisa «Unidades» y «Actividades» para tu contenido y tus pendientes." (alReintentar)="cargar()">
-        <div contenido class="space-y-8">
+        <div contenido class="space-y-6">
+          <!-- ════ Filtros: curso y estado ════ -->
+          @let misCursos = cursosDeTareas();
+          @if (misCursos.length > 1) {
+            <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-surface-100 bg-surface-50 p-3">
+              <div class="flex flex-wrap gap-2" role="tablist" aria-label="Curso">
+                <button type="button" class="shrink-0 rounded-full border px-4 py-2 text-xs font-semibold transition-all" [class.border-brand-500]="filtroCurso() === null" [class.bg-brand-500]="filtroCurso() === null" [class.text-white]="filtroCurso() === null" [class.border-surface-200]="filtroCurso() !== null" [class.bg-white]="filtroCurso() !== null" [class.text-marine-700]="filtroCurso() !== null" (click)="filtroCurso.set(null)">Todos ({{ tareas().length }})</button>
+                @for (c of misCursos; track c.id) {
+                  <button type="button" class="shrink-0 rounded-full border px-4 py-2 text-xs font-semibold transition-all" [class.border-brand-500]="filtroCurso() === c.id" [class.bg-brand-500]="filtroCurso() === c.id" [class.text-white]="filtroCurso() === c.id" [class.border-surface-200]="filtroCurso() !== c.id" [class.bg-white]="filtroCurso() !== c.id" [class.text-marine-700]="filtroCurso() !== c.id" (click)="filtroCurso.set(c.id)">{{ c.titulo }} ({{ contarPorCurso(c.id) }})</button>
+                }
+              </div>
+              @if (filtroCurso()) { <button type="button" class="btn btn-outline btn-sm" (click)="filtroCurso.set(null)">Limpiar</button> }
+            </div>
+          }
+          <div class="flex flex-wrap gap-2 border-b border-surface-200 pb-3 text-sm font-bold" role="tablist" aria-label="Estado de entrega">
+            <button type="button" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'todas'" [class.text-white]="tab() === 'todas'" [class.text-marine-600]="tab() !== 'todas'" (click)="tab.set('todas')">Todas ({{ tareasVisibles().length }})</button>
+            <button type="button" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'pendientes'" [class.text-white]="tab() === 'pendientes'" [class.text-marine-600]="tab() !== 'pendientes'" (click)="tab.set('pendientes')">Pendientes ({{ contarTab('pendientes') }})</button>
+            <button type="button" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'entregadas'" [class.text-white]="tab() === 'entregadas'" [class.text-marine-600]="tab() !== 'entregadas'" (click)="tab.set('entregadas')">Entregadas ({{ contarTab('entregadas') }})</button>
+            <button type="button" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'calificadas'" [class.text-white]="tab() === 'calificadas'" [class.text-marine-600]="tab() !== 'calificadas'" (click)="tab.set('calificadas')">Calificadas ({{ contarTab('calificadas') }})</button>
+          </div>
+
           <div>
             <h2 class="text-lg font-semibold text-marine-800">Tareas por curso</h2>
             @if (tareas().length === 0) {
               <p class="mt-2 text-sm text-marine-500">No se encontraron tareas publicadas en tus cursos.</p>
+            } @else if (tareasVisibles().length === 0) {
+              <p class="mt-2 text-sm text-marine-500">No hay tareas en este filtro. Prueba «Todas» u otro curso.</p>
             } @else {
-              <div class="mt-3 space-y-4">
-                @for (t of tareas(); track t.id) {
+              <div class="mt-3 space-y-4">                @for (t of tareasVisibles(); track t.id) {
                   <article class="card card-body space-y-3">
                     <div class="flex flex-wrap items-start justify-between gap-2">
                       <div class="min-w-0">
@@ -154,6 +175,35 @@ export class AssignmentsComponent implements OnInit {
   protected readonly tareas = signal<(Tarea & { actividad: Actividad; entrega: Entrega | null })[]>([]);
   protected readonly calificaciones = signal<Calificacion[]>([]);
   protected readonly enviando = signal<string | null>(null);
+
+  protected readonly cursosDeTareas = computed<{ id: string; titulo: string }[]>(() => {
+    return this.misCursos().map((c) => ({ id: c.id, titulo: c.titulo }));
+  });
+  protected readonly tareasFiltradas = computed(() => {
+    const f = this.filtroCurso();
+    return f ? this.tareas().filter((t) => t.actividad.curso_id === f) : this.tareas();
+  });
+  protected readonly tareasVisibles = computed(() => {
+    const base = this.tareasFiltradas();
+    const t = this.tab();
+    if (t === 'pendientes') return base.filter((x) => !x.entrega);
+    if (t === 'entregadas') return base.filter((x) => !!x.entrega);
+    if (t === 'calificadas') return base.filter((x) => x.entrega?.nota !== null && x.entrega?.nota !== undefined);
+    return base;
+  });
+  protected readonly contarTab = (t: 'todas' | 'pendientes' | 'entregadas' | 'calificadas'): number => {
+    const base = this.tareasFiltradas();
+    if (t === 'pendientes') return base.filter((x) => !x.entrega).length;
+    if (t === 'entregadas') return base.filter((x) => !!x.entrega).length;
+    if (t === 'calificadas') return base.filter((x) => x.entrega?.nota !== null && x.entrega?.nota !== undefined).length;
+    return base.length;
+  };
+  protected readonly contarPorCurso = (id: string): number => {
+    return this.tareas().filter((t) => t.actividad.curso_id === id).length;
+  };
+  protected readonly filtroCurso = signal<string | null>(null);
+  protected readonly tab = signal<'todas' | 'pendientes' | 'entregadas' | 'calificadas'>('todas');
+  protected readonly misCursos = signal<import('../../../core/models/domain.models').Curso[]>([]);
   private readonly borradores = signal<Record<string, string>>({});
   private readonly msgs = signal<Record<string, string>>({});
   private readonly oks = signal<Record<string, boolean>>({});
@@ -207,6 +257,7 @@ export class AssignmentsComponent implements OnInit {
     this.cargando.set(true); this.error.set(null);
     try {
       const cursos = await this.courseService.listarCursosDeEstudiante(user.id);
+      this.misCursos.set(cursos);
       const tareas = (await Promise.all(cursos.map((c) => this.activityService.listarTareasCurso(c.id, user.id).catch(() => [])))).flat();
       const calificaciones = await this.activityService.listarCalificaciones(user.id).catch(() => []);
 

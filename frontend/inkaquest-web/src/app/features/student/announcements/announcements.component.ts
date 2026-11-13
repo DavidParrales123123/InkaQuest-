@@ -40,11 +40,14 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
       } @else {
         <!-- Filtro por curso -->
         @if (misCursos().length > 1) {
-          <div class="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Curso">
-            <button type="button" class="shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-all" [class.border-brand-500]="cursoId() === null" [class.bg-brand-500]="cursoId() === null" [class.text-white]="cursoId() === null" [class.border-surface-200]="cursoId() !== null" [class.bg-white]="cursoId() !== null" [class.text-marine-700]="cursoId() !== null" (click)="cursoId.set(null)">Todos</button>
-            @for (c of misCursos(); track c.id) {
-              <button type="button" class="shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-all" [class.border-brand-500]="cursoId() === c.id" [class.bg-brand-500]="cursoId() === c.id" [class.text-white]="cursoId() === c.id" [class.border-surface-200]="cursoId() !== null" [class.bg-white]="cursoId() !== null" [class.text-marine-700]="cursoId() !== null" (click)="cursoId.set(c.id)">{{ c.titulo }}</button>
-            }
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Curso">
+              <button type="button" class="shrink-0 rounded-full border px-4 py-2 text-xs font-semibold transition-all" [class.border-brand-500]="cursoId() === null" [class.bg-brand-500]="cursoId() === null" [class.text-white]="cursoId() === null" [class.border-surface-200]="cursoId() !== null" [class.bg-white]="cursoId() !== null" [class.text-marine-700]="cursoId() !== null" (click)="cursoId.set(null)">Todos ({{ visibles().length }})</button>
+              @for (c of misCursos(); track c.id) {
+                <button type="button" class="shrink-0 rounded-full border px-4 py-2 text-xs font-semibold transition-all" [class.border-brand-500]="cursoId() === c.id" [class.bg-brand-500]="cursoId() === c.id" [class.text-white]="cursoId() === c.id" [class.border-surface-200]="cursoId() !== c.id" [class.bg-white]="cursoId() !== c.id" [class.text-marine-700]="cursoId() !== c.id" (click)="cursoId.set(c.id)">{{ c.titulo }} ({{ contarCurso(c.id) }})</button>
+              }
+            </div>
+            @if (cursoId()) { <button type="button" class="btn btn-outline btn-sm shrink-0" (click)="cursoId.set(null)">Limpiar</button> }
           </div>
         }
 
@@ -101,6 +104,10 @@ export class StudentAnnouncementsComponent implements OnInit {
 
   ngOnInit(): void {
     void this.cargar();
+  }
+
+  protected contarCurso(cursoId: string): number {
+    return this.anuncios().filter((a) => a.estado === 'publicado' && a.curso_id === cursoId).length;
   }
 
   protected cursoTitulo(id: string): string {
