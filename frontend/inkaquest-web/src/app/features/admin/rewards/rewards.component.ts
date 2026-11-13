@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { AdminService } from '../../../core/services/admin.service';
@@ -11,7 +10,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 @Component({
   selector: 'app-admin-rewards',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, ReactiveFormsModule, ButtonComponent, DataPanelComponent, PageHeaderComponent],
+  imports: [ReactiveFormsModule, ButtonComponent, DataPanelComponent, PageHeaderComponent],
   template: `
     <section class="space-y-8">
       <app-page-header titulo="Recompensas y misiones" descripcion="Gestiona misiones de gamificación e insignias del catálogo: crea, edita y activa/desactiva recompensas." [acciones]="true">
