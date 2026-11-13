@@ -129,18 +129,62 @@ export class AuthService {
           .select('*')
           .eq('id', usuario.id)
           .maybeSingle();
-        if (error || !data) {
-          this._perfil.set(null);
-          return null;
+        if (!error && data) {
+          const perfil = data as unknown as Perfil;
+          this._perfil.set(perfil);
+          void this.procesarSolicitudDocentePendiente();
+          return perfil;
         }
-        const perfil = data as unknown as Perfil;
-        this._perfil.set(perfil);
-        void this.procesarSolicitudDocentePendiente();
-        return perfil;
+        // El perfil no existe todavia (p. ej. el backend no pudo crearlo):
+        // la politica pol_perfil_insert permite crear la propia fila.
+        const perfil = await this.asegurarPerfilPropioSupabase();
+        if (perfil) {
+          this._perfil.set(perfil);
+          void this.procesarSolicitudDocentePendiente();
+          return perfil;
+        }
+        this._perfil.set(null);
+        return null;
       } catch {
         this._perfil.set(null);
         return null;
       }
+    }
+  }
+
+  /**
+   * Crea el perfil propio en public.perfil via Supabase (política INSERT del
+   * propio usuario). Devuelve el perfil creado o null si no se pudo crear.
+   */
+  private async asegurarPerfilPropioSupabase(): Promise<Perfil | null> {
+    const usuario = this._usuario();
+    if (!usuario) {
+      return null;
+    }
+    try {
+      const nombre =
+        (usuario.user_metadata as any)?.nombre?.trim() ||
+        (usuario.user_metadata as any)?.full_name?.trim() ||
+        (usuario.email ?? '').split('@')[0] ||
+        'Usuario';
+      const { error } = await this.supabase.client
+        .from(this.supabase.tabla.perfil)
+        .insert({ id: usuario.id, email: usuario.email ?? '', nombre });
+      if (error) {
+        console.warn('[InkaQuest] No se pudo crear el perfil propio:', error.message);
+        return null;
+      }
+      const { data, error: err2 } = await this.supabase.client
+        .from(this.supabase.tabla.perfil)
+        .select('*')
+        .eq('id', usuario.id)
+        .maybeSingle();
+      if (err2 || !data) {
+        return null;
+      }
+      return data as unknown as Perfil;
+    } catch {
+      return null;
     }
   }
 
@@ -325,6 +369,12 @@ export class AuthService {
       this._usuario.set(data.user);
       await this.asegurarPerfilBasico();
       await this.cargarPerfil();
+      if (!this._perfil()) {
+        return {
+          ok: false,
+          mensaje: 'No pudimos conectar tu cuenta con el servidor en este momento (tu perfil no carga). Vuelve a intentarlo; si el problema persiste, escribe a soporte.',
+        };
+      }
       await this.procesarSolicitudDocentePendiente();
 
       return { ok: true, mensaje: 'Sesión iniciada.' };
