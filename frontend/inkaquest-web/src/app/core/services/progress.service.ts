@@ -1,6 +1,10 @@
 // @ts-nocheck
 import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 
+import { environment } from '../../../environments/environment';
+import { ApiResponse } from '../models/api-response.model';
 import { SupabaseService } from './supabase.service';
 
 /**
@@ -11,6 +15,7 @@ import { SupabaseService } from './supabase.service';
  */
 @Injectable({ providedIn: 'root' })
 export class ProgressService {
+  private readonly http = inject(HttpClient);
   private readonly supabase = inject(SupabaseService);
   private readonly client = this.supabase.client;
 
@@ -51,6 +56,23 @@ export class ProgressService {
   async obtenerProgresoCurso(cursoId: string): Promise<ProgresoCursoResponse | null> {
     const progresos = await this.listarMiProgreso();
     return progresos.find((p) => (p.curso_id ?? p.cursoId) === cursoId) || null;
+  }
+
+  /** Marca una lección como completada. Devuelve el % del curso tras el registro. */
+  async registrarLeccionCompletada(
+    _estudianteId: string,
+    _cursoId: string,
+    leccionId: string,
+    _xpOtorgado: number = 0,
+  ): Promise<number> {
+    const res = await firstValueFrom(
+      this.http.post<ApiResponse<LeccionCompletadaResponse>>(
+        `${environment.apiUrl}/progreso/lecciones/${leccionId}/completar`,
+        {},
+      ),
+    );
+    const datos: any = res.data || {};
+    return Number(datos.porcentajeCurso ?? datos.porcentaje ?? 0);
   }
 
   /** Normaliza la fila de progreso_curso (snake) a la forma usada por la UI. */
@@ -116,4 +138,13 @@ export interface ProgresoLeccionResponse {
   xp_obtenido: number;
   minutos_estudio: number;
   completado_en: string | null;
+}
+
+export interface LeccionCompletadaResponse {
+  leccionId: string;
+  xpOtorgado: number;
+  leccionesCompletadas: number;
+  totalLeccionesPublicadas: number;
+  porcentajeCurso: number;
+  cursoCompletado: boolean;
 }
