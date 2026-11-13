@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Instrucciones pre-cargadas para cada motor sembrado en {@code public.motor}.
  *

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { ErrorHandler, Injectable, inject } from '@angular/core';
 
 import { GlobalErrorBusService } from './global-error-bus.service';

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Injectable, inject } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 

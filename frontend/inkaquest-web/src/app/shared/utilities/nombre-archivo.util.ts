@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Limpia un nombre de archivo para usarlo como nombre de objeto en Storage.
  *

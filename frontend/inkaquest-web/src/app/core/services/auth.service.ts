@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';

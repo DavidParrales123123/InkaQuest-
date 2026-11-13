@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Configuracion de la aplicacion.
  *

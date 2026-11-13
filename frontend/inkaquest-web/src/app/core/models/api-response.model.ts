@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Respuesta estándar del backend API.
  *

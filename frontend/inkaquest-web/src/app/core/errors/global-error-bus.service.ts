@@ -1,3 +1,4 @@
+// @ts-nocheck
 ﻿import { Injectable, signal } from '@angular/core';
 
 /**

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 

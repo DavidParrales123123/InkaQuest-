@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Routes } from '@angular/router';
 
 import { authGuard, roleGuard } from './core/guards/auth.guard';

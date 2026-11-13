@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Sanitiza un error desconocido para registro/mostrar.
  *

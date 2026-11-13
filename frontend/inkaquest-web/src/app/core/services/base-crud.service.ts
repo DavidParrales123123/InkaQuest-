@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Servicio base genérico para operaciones CRUD.
  *

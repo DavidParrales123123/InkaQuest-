@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';

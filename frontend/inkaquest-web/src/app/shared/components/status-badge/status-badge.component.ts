@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 /**

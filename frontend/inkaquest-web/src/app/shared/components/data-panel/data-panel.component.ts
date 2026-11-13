@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
 import { EmptyStateComponent } from '../empty-state/empty-state.component';

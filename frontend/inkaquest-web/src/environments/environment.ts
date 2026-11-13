@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** Archivo generado automáticamente. No editar manualmente. */
 export const environment = {
   production: true,

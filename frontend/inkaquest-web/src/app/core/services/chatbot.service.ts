@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 

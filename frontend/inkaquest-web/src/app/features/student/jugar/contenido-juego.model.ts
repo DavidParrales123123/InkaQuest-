@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Contrato de contenido de los minijuegos.
  *

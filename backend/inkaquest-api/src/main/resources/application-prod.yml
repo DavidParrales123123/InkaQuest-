@@ -45,9 +45,10 @@ springdoc:
 
 app:
   cors:
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}
+    # Por defecto se admite el frontend de producción en Vercel y el dev local.
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:https://inkaquest-web.vercel.app,http://localhost:4200,http://127.0.0.1:4200}
   security:
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:https://inkaquest-web.vercel.app,http://localhost:4200,http://127.0.0.1:4200}
 
 logging:
   level:

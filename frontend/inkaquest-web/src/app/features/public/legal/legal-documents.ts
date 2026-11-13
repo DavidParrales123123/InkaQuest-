@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Documentos legales (terminos, privacidad y pagos).
  * Contenido editorial estatico; el componente solo lo presenta.

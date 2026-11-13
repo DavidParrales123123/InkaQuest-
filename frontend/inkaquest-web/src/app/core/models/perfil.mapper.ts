@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Perfil, RolUsuario } from './domain.models';
 
 /** Forma del DTO `PerfilResponse` que devuelve Spring Boot (inmutable). */

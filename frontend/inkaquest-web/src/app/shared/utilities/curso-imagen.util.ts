@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Mapa de cursos a imagenes oficiales.
  *

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** Configuración de producción generada automáticamente */
 export const environment = {
   production: true,

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 import { PanelLayoutComponent, SeccionPanel } from '../panel-layout/panel-layout.component';

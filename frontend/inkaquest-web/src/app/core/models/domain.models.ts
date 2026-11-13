@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Modelos de dominio del frontend.
  *

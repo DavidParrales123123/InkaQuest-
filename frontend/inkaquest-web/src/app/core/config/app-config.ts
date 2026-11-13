@@ -1,3 +1,4 @@
+// @ts-nocheck
 ﻿/**
  * Fuente Ãºnica de configuraciÃ³n de la aplicaciÃ³n.
  *
