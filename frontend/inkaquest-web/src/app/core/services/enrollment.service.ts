@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
 import { SupabaseService } from './supabase.service';
+import { AuthService } from './auth.service';
 
 /**
  * Servicio de matrículas y progreso del estudiante.
@@ -21,16 +22,29 @@ export class EnrollmentService {
   private readonly http = inject(HttpClient);
   private readonly supabase = inject(SupabaseService);
   private readonly client = this.supabase.client;
+  private readonly auth = inject(AuthService);
   private readonly baseUrl = `${environment.apiUrl}/matriculas`;
 
   // === MIS MATRÍCULAS ===
 
-  /** Obtiene las matrículas del usuario autenticado (normalizadas, vía Supabase+RLS). */
+  /**
+   * Matrículas del estudiante autenticado (normalizadas, vía Supabase+RLS).
+   *
+   * <p>Se acota EXPLÍCITAMENTE a las filas del usuario actual: aunque la RLS
+   * permite a un docente/admin ver matrículas de otros, las vistas de
+   * estudiante muestran siempre las propias.</p>
+   */
   async listarMisMatriculas(): Promise<MatriculaResponse[]> {
-    const { data, error } = await this.client
+    const uid = this.auth.usuario()?.id;
+    let consulta = this.client
       .from(this.supabase.tabla.matricula)
       .select('*, curso:curso_id(*)')
       .order('matriculado_en', { ascending: false, nullsFirst: true });
+
+    // Si por cualquier motivo el usuario no tiene sesión, la consulta devuelve 0 filas.
+    consulta = consulta.eq('estudiante_id', uid ?? '00000000-0000-0000-0000-000000000000');
+
+    const { data, error } = await consulta;
 
     if (error) {
       console.error('[InkaQuest] Error cargando matrículas:', error.message);

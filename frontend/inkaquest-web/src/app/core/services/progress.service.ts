@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
 import { SupabaseService } from './supabase.service';
+import { AuthService } from './auth.service';
 
 /**
  * Servicio de progreso académico.
@@ -18,15 +19,23 @@ export class ProgressService {
   private readonly http = inject(HttpClient);
   private readonly supabase = inject(SupabaseService);
   private readonly client = this.supabase.client;
+  private readonly auth = inject(AuthService);
 
   // === MI PROGRESO ===
 
-  /** Obtiene el progreso del usuario en todos sus cursos. */
+  /** Obtiene el progreso del usuario autenticado en todos sus cursos. */
   async listarMiProgreso(): Promise<ProgresoCursoResponse[]> {
-    const { data, error } = await this.client
+    let consulta = this.client
       .from(this.supabase.tabla.progresoCurso)
       .select('*, curso:curso_id(titulo, slug, precio, moneda)')
       .order('actualizado_en', { ascending: false });
+
+    // La RLS permite a administradores/docentes ver progreso ajeno, pero en las
+    // vistas de estudiante nos limitamos al propio usuario.
+    const uid = this.auth.usuario()?.id ?? '00000000-0000-0000-0000-000000000000';
+    consulta = consulta.eq('estudiante_id', uid);
+
+    const { data, error } = await consulta;
 
     if (error) {
       console.error('[InkaQuest] Error cargando el progreso:', error.message);

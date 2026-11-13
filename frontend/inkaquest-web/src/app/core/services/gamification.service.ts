@@ -7,6 +7,7 @@ import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
 import { PaginatedResponse } from './course.service';
 import { SupabaseService } from './supabase.service';
+import { AuthService } from './auth.service';
 import {
   Monedero,
   TransaccionMoneda,
@@ -31,6 +32,7 @@ import {
 export class GamificationService {
   private readonly http = inject(HttpClient);
   private readonly supabase = inject(SupabaseService);
+  private readonly auth = inject(AuthService);
   private readonly baseUrl = `${environment.apiUrl}/gamificacion`;
 
   // === RESUMEN GAMIFICADO ===
@@ -107,8 +109,9 @@ export class GamificationService {
 
   /** Monedero del usuario (fila propia vía RLS). */
   async obtenerMonedero(usuarioId?: string): Promise<Monedero | null> {
+    let uid = usuarioId ?? this.auth.usuario()?.id;
     let consulta = this.client.from(this.supabase.tabla.monedero).select('*');
-    if (usuarioId) consulta = consulta.eq('usuario_id', usuarioId);
+    if (uid) consulta = consulta.eq('usuario_id', uid);
     const { data, error } = await consulta.maybeSingle();
     if (error) {
       console.error('[InkaQuest] Error cargando monedero:', error.message);

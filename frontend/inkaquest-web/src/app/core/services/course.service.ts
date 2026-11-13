@@ -214,12 +214,14 @@ export class CourseService {
     return (data ?? []) as Actividad[];
   }
 
-  /** Lista los cursos en los que el estudiante está matriculado. */
+  /** Lista los cursos en los que el estudiante está matriculado (solo los propios). */
   async listarCursosDeEstudiante(_estudianteId: string): Promise<Curso[]> {
     // Lectura directa por Supabase+RLS: matricula embebida con su curso.
+    // Se acota explícitamente al propio estudiante aunque la RLS permita ver más en admin/docente.
     const { data, error } = await this.client
       .from(this.supabase.tabla.matricula)
       .select('curso:curso_id(*)')
+      .eq('estudiante_id', _estudianteId || '00000000-0000-0000-0000-000000000000')
       .order('matriculado_en', { ascending: false, nullsFirst: true });
 
     if (error) {
