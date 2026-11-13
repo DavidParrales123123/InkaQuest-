@@ -315,23 +315,6 @@ type LeccionCtx = Leccion & { moduloTitulo: string; unidadTitulo: string; unidad
                   </div>
                 </form>
               </div>
-
-              <div class="card card-body space-y-3">
-                <h2 class="text-lg font-semibold text-marine-800">Catálogo de juegos disponibles</h2>
-                @if (juegos().length === 0) {
-                  <p class="text-sm text-marine-500">Aún no tienes juegos en el catálogo publicado o no creaste el primero. Usa el catálogo de motores arriba y haz clic en "Crear aquí".</p>
-                } @else {
-                  <ul class="space-y-2 max-h-72 overflow-auto pr-1">
-                    @for (j of juegos(); track j.id) {
-                      <li class="rounded border border-surface-200 p-2 text-sm">
-                        <p class="font-medium text-marine-800">{{ j.nombre }}</p>
-                        <p class="text-xs text-marine-500">{{ j.motor?.nombre || 'Motor' }} · {{ j.dificultad }} · {{ j.estado }} · {{ j.xp_otorgado }} XP</p>
-                        @if (j.descripcion) { <p class="mt-1 text-marine-600 line-clamp-2">{{ j.descripcion }}</p> }
-                      </li>
-                    }
-                  </ul>
-                }
-              </div>
             </div>
           </div>
         </div>
