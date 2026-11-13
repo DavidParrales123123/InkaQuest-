@@ -24,6 +24,24 @@ import {
 export class TeacherService {
   private readonly supabase = inject(SupabaseService);
 
+  /**
+   * Excluye filas cuyo estudiante sea un administrador (ellos no deben
+   * aparecer en ningún apartado del docente ni del estudiante). Fail-safe:
+   * ante error de red devuelve las filas tal cual (no bloquea la vista).
+   */
+  private async descartarPerfilesAdmin(filas: Entrega[]): Promise<Entrega[]> {
+    if (!filas.length) return filas;
+    const estudianteIds = [...new Set(filas.map((f) => f.estudiante_id).filter(Boolean))] as string[];
+    const { data, error } = await this.supabase.client
+      .from(this.supabase.tabla.perfil)
+      .select('id')
+      .in('id', estudianteIds)
+      .eq('rol', 'administrador');
+    if (error) return filas;
+    const admins = new Set((data ?? []).map((p: any) => p.id));
+    return filas.filter((f) => !admins.has(f.estudiante_id));
+  }
+
   /* ----------------------------------------------------- Solicitudes --- */
 
   /**
@@ -179,7 +197,8 @@ export class TeacherService {
     const { data, error } = await this.supabase.client
       .from(this.supabase.tabla.perfil)
       .select('*')
-      .in('id', ids);
+      .in('id', ids)
+      .eq('rol', 'estudiante');
 
     if (error) {
       throw new Error(error.message);
@@ -245,8 +264,9 @@ export class TeacherService {
     }
 
     const entregas = (entregasRaw ?? []) as Entrega[];
+    const visibles = await this.descartarPerfilesAdmin(entregas);
 
-    return entregas.map((entrega) => {
+    return visibles.map((entrega) => {
       const tarea = tareas.find((t) => t.id === entrega.tarea_id)!;
       const actividad = listaActividades.find((a) => a.id === tarea.actividad_id)!;
       return { ...entrega, tarea, actividad };
@@ -310,8 +330,9 @@ export class TeacherService {
     }
 
     const entregas = (entregasRaw ?? []) as Entrega[];
+    const visibles = await this.descartarPerfilesAdmin(entregas);
 
-    return entregas.map((entrega) => {
+    return visibles.map((entrega) => {
       const tarea = tareas.find((t) => t.id === entrega.tarea_id)!;
       const actividad = listaActividades.find((a) => a.id === tarea.actividad_id)!;
       return { ...entrega, tarea, actividad };
@@ -371,7 +392,7 @@ export class TeacherService {
       .filter((t): t is Tarea & { actividad: Actividad; curso: Curso } => t !== null);
   }
 
-  /** Calificaciones emitidas por el docente. */
+  /** Calificaciones emitidas por el docente (sin perfiles de administrador). */
   async listarCalificaciones(docenteId: string): Promise<Calificacion[]> {
     const { data, error } = await this.supabase.client
       .from(this.supabase.tabla.calificacion)
@@ -382,6 +403,7 @@ export class TeacherService {
     if (error) {
       throw new Error(error.message);
     }
-    return (data ?? []) as Calificacion[];
+    const visibles = await this.descartarPerfilesAdmin((data ?? []) as Calificacion[]);
+    return visibles as Calificacion[];
   }
 }

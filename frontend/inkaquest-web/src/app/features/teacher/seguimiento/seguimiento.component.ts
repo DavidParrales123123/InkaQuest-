@@ -84,13 +84,15 @@ export class SeguimientoComponent implements OnInit {
         const estIds = [...new Set(matriculas.map((m) => m.estudiante_id))];
         let perfiles: Perfil[] = [];
         if (estIds.length) {
-          const { data: ps } = await this.supabase.client.from(this.supabase.tabla.perfil).select('id,nombre,apellido,email').in('id', estIds);
-          perfiles = (ps ?? []) as Perfil[];
+          // Excluir administradores: no deben aparecer en apartados del docente ni del estudiante.
+          const { data: ps } = await this.supabase.client.from(this.supabase.tabla.perfil).select('id,nombre,apellido,email,rol').in('id', estIds);
+          perfiles = ((ps ?? []) as Perfil[]).filter((p) => p.rol !== 'administrador');
         }
         const pMap = new Map(perfiles.map((p) => [p.id, [p.nombre, p.apellido].filter(Boolean).join(' ') || p.email || p.id.slice(0, 8)]));
+        const visibles = perfiles.length ? matriculas.filter((m) => pMap.has(m.estudiante_id)) : [];
         const { data: progs } = await this.supabase.client.from(this.supabase.tabla.progresoCurso).select('*').eq('curso_id', curso.id);
         const progMap = new Map(((progs ?? []) as ProgresoCurso[]).map((p) => [p.estudiante_id, p]));
-        for (const m of matriculas) {
+        for (const m of visibles) {
           filas.push({ cursoId: curso.id, matricula: m, progreso: progMap.get(m.estudiante_id) ?? null, nombre: pMap.get(m.estudiante_id) ?? m.estudiante_id.slice(0, 8) + '…' });
         }
       }
