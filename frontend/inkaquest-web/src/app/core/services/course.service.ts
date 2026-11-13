@@ -1,10 +1,6 @@
 // @ts-nocheck
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
 
-import { environment } from '../../../environments/environment';
-import { ApiResponse } from '../models/api-response.model';
 import {
   Actividad,
   Categoria,
@@ -37,7 +33,6 @@ export interface UnidadConModulos extends Unidad {
  */
 @Injectable({ providedIn: 'root' })
 export class CourseService {
-  private readonly http = inject(HttpClient);
   private readonly supabase = inject(SupabaseService);
   private readonly client = this.supabase.client;
 
@@ -173,11 +168,18 @@ export class CourseService {
 
   /** Lista los cursos en los que el estudiante está matriculado. */
   async listarCursosDeEstudiante(_estudianteId: string): Promise<Curso[]> {
-    const res = await firstValueFrom(
-      this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/matriculas/yo`),
-    );
-    const matriculas = res.data || [];
-    return matriculas.map((m: any) => m?.curso).filter(Boolean);
+    // Lectura directa por Supabase+RLS: matricula embebida con su curso.
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.matricula)
+      .select('curso:curso_id(*)')
+      .order('matriculado_en', { ascending: false, nullsFirst: true });
+
+    if (error) {
+      console.error('[InkaQuest] Error cargando cursos del estudiante:', error.message);
+      return [];
+    }
+
+    return (data ?? []).map((r: any) => r?.curso).filter(Boolean) as Curso[];
   }
 }
 

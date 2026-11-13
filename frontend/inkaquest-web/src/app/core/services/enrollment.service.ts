@@ -5,29 +5,39 @@ import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
+import { SupabaseService } from './supabase.service';
 
 /**
  * Servicio de matrículas y progreso del estudiante.
  *
- * <p>Consume el backend REST API de Spring Boot. La respuesta de
- * {@code GET /matriculas/yo} anida el curso mínimo embebido
- * ({@code { id, slug, titulo, precio, moneda, xpTotal, duracionMinutos, ... }});
- * aquí se normaliza a una forma plana y cómoda para la UI:
+ * <p>Las lecturas van por Supabase/RLS (fila propia visible para el
+ * estudiante); la inscripción/cancelación escriben por la API REST de
+ * Spring Boot. La respuesta de {@code GET /matriculas/yo} anida el curso
+ * mínimo; aquí lo normalizamos a una forma plana para la UI:
  * {@code { ...m, curso, cursoId, cursoTitulo, curso_id }}.</p>
  */
 @Injectable({ providedIn: 'root' })
 export class EnrollmentService {
   private readonly http = inject(HttpClient);
+  private readonly supabase = inject(SupabaseService);
+  private readonly client = this.supabase.client;
   private readonly baseUrl = `${environment.apiUrl}/matriculas`;
 
   // === MIS MATRÍCULAS ===
 
-  /** Obtiene las matrículas del usuario autenticado (normalizadas). */
+  /** Obtiene las matrículas del usuario autenticado (normalizadas, vía Supabase+RLS). */
   async listarMisMatriculas(): Promise<MatriculaResponse[]> {
-    const res = await firstValueFrom(
-      this.http.get<ApiResponse<any[]>>(`${this.baseUrl}/yo`),
-    );
-    return (res.data || []).map((m: any) => this.normalizarMatricula(m));
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.matricula)
+      .select('*, curso:curso_id(*)')
+      .order('matriculado_en', { ascending: false, nullsFirst: true });
+
+    if (error) {
+      console.error('[InkaQuest] Error cargando matrículas:', error.message);
+      throw new Error('No se pudieron cargar tus matrículas.');
+    }
+
+    return (data ?? []).map((m: any) => this.normalizarMatricula(m));
   }
 
   /** Normaliza la fila del backend a la forma usada por la UI. */
