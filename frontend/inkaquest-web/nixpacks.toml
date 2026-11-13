@@ -1,4 +1,4 @@
-﻿[phases.setup]
+[phases.setup]
 nixPkgs = ['nodejs-22_x']
 
 [phases.install]
