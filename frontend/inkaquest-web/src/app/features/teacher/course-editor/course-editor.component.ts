@@ -134,7 +134,7 @@ interface Estructura { unidades: (Unidad & { modulos: (Modulo & { lecciones: Lec
                                 <div class="space-y-3">
                                   <h4 class="font-semibold text-marine-800">Contenido de la lección</h4>
                                   <p class="text-xs text-marine-500">Esto es exactamente lo que el estudiante verá en su aula, en este orden. Cada bloque es numerado y titulado.</p>
-                                  @if (contenidos()[l.id]?.length || recursosHuerfanos()[l.id]?.length) {
+                                  @if (contenidos()[l.id]?.length || recursosHuerfanos(l.id).length) {
                                     <ol class="space-y-2 text-sm">
                                       @for (ct of contenidos()[l.id] ?? []; track ct.id) {
                                         <li class="rounded border border-surface-200 p-2.5">
@@ -209,7 +209,7 @@ interface Estructura { unidades: (Unidad & { modulos: (Modulo & { lecciones: Lec
                                           }
                                         </li>
                                       }
-                                      @for (r of recursosHuerfanos()[l.id] ?? []; track r.id) {
+                                      @for (r of recursosHuerfanos(l.id); track r.id) {
                                         <li class="rounded border border-dashed border-surface-200 p-2.5 text-xs text-marine-500">
                                           <div class="flex items-center justify-between gap-2">
                                             <div class="min-w-0">
