@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Injectable, inject } from '@angular/core';
 
 import { SupabaseService } from './supabase.service';
@@ -762,7 +761,7 @@ export class AdminService {
   }
 
   /** Lecciones del curso con contexto U/M (para selector admin de recursos). */
-  async listarLeccionesDeCursoAdmin(cursoId: string): Promise<Array<{ id: string; titulo: string; numero: number; moduloTitulo: string; unidadTitulo: string; unidadNumero: number; }>> {
+  async listarLeccionesDeCursoAdmin(cursoId: string): Promise<{ id: string; titulo: string; numero: number; moduloTitulo: string; unidadTitulo: string; unidadNumero: number; }[]> {
     const { data: unidades, error: e1 } = await this.supabase.client
       .from(this.supabase.tabla.unidad).select('id, titulo, numero').eq('curso_id', cursoId).order('numero');
     if (e1) throw new Error(e1.message);
