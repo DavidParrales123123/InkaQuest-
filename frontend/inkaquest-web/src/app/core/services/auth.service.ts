@@ -110,6 +110,29 @@ export class AuthService {
       return null;
     }
 
+    // 1) Fuente REST (principal).
+    const perfilApi = await this.cargarPerfilDesdeApi();
+    if (perfilApi) {
+      this._perfil.set(perfilApi);
+      void this.procesarSolicitudDocentePendiente();
+      return perfilApi;
+    }
+
+    // 2) Fallback: Supabase directo (RLS permite leer la propia fila) o
+    //    autocreacion del perfil propio si no existe.
+    const perfilLocal = await this.cargarPerfilDesdeSupabase(usuario.id);
+    if (perfilLocal) {
+      this._perfil.set(perfilLocal);
+      void this.procesarSolicitudDocentePendiente();
+      return perfilLocal;
+    }
+
+    this._perfil.set(null);
+    return null;
+  }
+
+  /** Lectura del perfil vía API REST. Devuelve null si falla o viene vacío. */
+  private async cargarPerfilDesdeApi(): Promise<Perfil | null> {
     try {
       // El backend es la unica fuente de verdad del perfil de aplicacion.
       const respuesta = await firstValueFrom(
@@ -117,48 +140,38 @@ export class AuthService {
       );
       const datos = respuesta?.data;
       if (datos) {
-        const perfil = adaptarPerfil(datos);
-        this._perfil.set(perfil);
-        void this.procesarSolicitudDocentePendiente();
-        return perfil;
+        return adaptarPerfil(datos);
       }
-      this._perfil.set(null);
       this._debugPerfilError.set('api-empty');
       return null;
     } catch (e: any) {
       const status = e?.status ?? e?.name ?? 'err';
       this._debugPerfilError.set(`api-fail-${status}`);
-      // Fallback: la API de Spring no responde. Leemos el perfil directamente
-      // de Supabase: la RLS permite que el dueno lea su propia fila.
-      try {
-        const { data, error } = await this.supabase.client
-          .from(this.supabase.tabla.perfil)
-          .select('*')
-          .eq('id', usuario.id)
-          .maybeSingle();
-        if (error) {
-          this._debugPerfilError.set(`select-${(error as any).code ?? 'err'}-${((error as any).message ?? '').slice(0, 80)}`);
-        }
-        if (!error && data) {
-          const perfil = data as unknown as Perfil;
-          this._perfil.set(perfil);
-          void this.procesarSolicitudDocentePendiente();
-          return perfil;
-        }
-        // El perfil no existe todavia (p. ej. el backend no pudo crearlo):
-        // la politica pol_perfil_insert permite crear la propia fila.
-        const perfil = await this.asegurarPerfilPropioSupabase();
-        if (perfil) {
-          this._perfil.set(perfil);
-          void this.procesarSolicitudDocentePendiente();
-          return perfil;
-        }
-        this._perfil.set(null);
-        return null;
-      } catch {
-        this._perfil.set(null);
-        return null;
+      return null;
+    }
+  }
+
+  /** Lectura del perfil vía Supabase directo (+ autocreación si falta). */
+  private async cargarPerfilDesdeSupabase(usuarioId: string): Promise<Perfil | null> {
+    try {
+      const { data, error } = await this.supabase.client
+        .from(this.supabase.tabla.perfil)
+        .select('*')
+        .eq('id', usuarioId)
+        .maybeSingle();
+      if (!error && data) {
+        return data as unknown as Perfil;
       }
+      if (error) {
+        this._debugPerfilError.set(`select-${(error as any).code ?? 'err'}-${((error as any).message ?? '').slice(0, 80)}`);
+      }
+      const perfil = await this.asegurarPerfilPropioSupabase();
+      if (perfil) {
+        return perfil;
+      }
+      return null;
+    } catch {
+      return null;
     }
   }
 
