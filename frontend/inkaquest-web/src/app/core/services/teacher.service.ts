@@ -206,6 +206,52 @@ export class TeacherService {
     return (data ?? []) as Perfil[];
   }
 
+  /** Estudiantes agrupados por cada curso asignado (con rol='estudiante'). */
+  async listarEstudiantesPorCurso(docenteId: string): Promise<{ curso: Curso; estudiantes: Perfil[] }[]> {
+    const cursos = await this.listarMisCursos(docenteId);
+    if (cursos.length === 0) {
+      return [];
+    }
+    const ids = cursos.map((c) => c.curso.id);
+
+    const { data: matriculas, error: errorMatriculas } = await this.supabase.client
+      .from(this.supabase.tabla.matricula)
+      .select('estudiante_id, curso_id')
+      .in('curso_id', ids)
+      .in('estado', ['activa', 'completada']);
+
+    if (errorMatriculas) {
+      throw new Error(errorMatriculas.message);
+    }
+
+    const estudianteIds = [...new Set(((matriculas ?? []) as { estudiante_id: string }[]).map((m) => m.estudiante_id))];
+    if (estudianteIds.length === 0) {
+      return cursos.map(({ curso }) => ({ curso, estudiantes: [] as Perfil[] }));
+    }
+
+    const { data: perfilesRows, error: errorPerfiles } = await this.supabase.client
+      .from(this.supabase.tabla.perfil)
+      .select('*')
+      .in('id', estudianteIds)
+      .eq('rol', 'estudiante');
+
+    if (errorPerfiles) {
+      throw new Error(errorPerfiles.message);
+    }
+
+    const estudiantePorId = new Map(((perfilesRows ?? []) as Perfil[]).map((p) => [p.id, p]));
+
+    return cursos.map(({ curso }) => {
+      const estIds = (matriculas ?? [])
+        .filter((m: any) => m.curso_id === curso.id)
+        .map((m: any) => m.estudiante_id as string);
+      const estudiantes = [...new Set(estIds)]
+        .map((id) => estudiantePorId.get(id))
+        .filter((p): p is Perfil => !!p);
+      return { curso, estudiantes };
+    });
+  }
+
   /** Entregas de las tareas de los cursos del docente. */
   async listarEntregasPendientes(docenteId: string): Promise<
     (Entrega & { tarea: Tarea; actividad: Actividad })[]
