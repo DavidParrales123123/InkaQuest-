@@ -1,8 +1,6 @@
-// @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 
-import { GamificationService } from '../../../core/services/gamification.service';
-import { Insignia } from '../../../core/models/domain.models';
+import { GamificationService, InsigniaCatalogoResponse } from '../../../core/services/gamification.service';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
@@ -22,7 +20,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                 <span class="badge" [class.badge-success]="b.activa" [class.badge-neutral]="!b.activa">{{ b.activa ? 'Activa' : 'Inactiva' }}</span>
               </div>
               <p class="mt-1 text-sm text-marine-500">{{ b.descripcion || 'Sin descripción.' }}</p>
-              <p class="mt-2 text-xs text-marine-400">Código: {{ b.codigo || '-' }}</p>
+              <p class="mt-2 text-xs text-marine-400">XP otorgado: {{ b.xpRequerido }} · Rareza: {{ b.rareza }}</p>
             </article>
           }
         </div>
@@ -35,7 +33,7 @@ export class BadgesComponent implements OnInit {
   private readonly gamification = inject(GamificationService);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly insignias = signal<Insignia[]>([]);
+  protected readonly insignias = signal<InsigniaCatalogoResponse[]>([]);
 
   ngOnInit(): void { void this.cargar(); }
   protected async cargar(): Promise<void> {

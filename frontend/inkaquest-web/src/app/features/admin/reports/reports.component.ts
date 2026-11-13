@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 
 import { AdminService } from '../../../core/services/admin.service';

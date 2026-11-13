@@ -62,7 +62,7 @@ interface BarraCurso {
             <h2 class="text-base font-bold text-marine-800">Resumen</h2>
             <div class="mt-3 space-y-2 text-sm">
               <p class="flex items-center justify-between border-b border-surface-100 py-2"><span class="text-marine-600">Total entregas</span><strong class="text-marine-800">{{ totalEntregas() }}</strong></p>
-              <p class="flex items-center justify-between border-b border-surface-100 py-2"><span class="text-marine-600">Por calificar</span><strong class="text-warning-600">{{ pendientes() }}</strong></p>
+              <p class="flex items-center justify-between border-b border-surface-100 py-2"><span class="text-marine-600">Por calificar</span><strong class="text-warning-500">{{ pendientes() }}</strong></p>
               <p class="flex items-center justify-between border-b border-surface-100 py-2"><span class="text-marine-600">Resueltas</span><strong class="text-success-600">{{ resueltas() }}</strong></p>
               <p class="flex items-center justify-between py-2"><span class="text-marine-600">Promedio general</span><strong class="text-marine-800">{{ promedio() }}%</strong></p>
             </div>

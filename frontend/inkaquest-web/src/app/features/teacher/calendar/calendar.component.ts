@@ -63,9 +63,9 @@ interface CeldaDia {
 
         <!-- Leyenda -->
         <div class="flex flex-wrap gap-2 text-xs text-marine-500">
-          <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded-full bg-danger-500"></span> Tarea abre</span>
-          <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded-full bg-gold-500"></span> Vence hoy</span>
-          <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded-full bg-marine-300"></span> Fechas pasadas</span>
+          <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded-full bg-danger-500"></span> Entrega vencida</span>
+          <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded-full bg-gold-500"></span> Vence hoy / hoy</span>
+          <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded-full bg-surface-100"></span> Próxima entrega</span>
         </div>
 
         <div class="grid gap-6 lg:grid-cols-12">
@@ -86,7 +86,7 @@ interface CeldaDia {
                   [class.bg-white]="!c.esHoy"
                   [class.opacity-40]="!c.dia"
                 >
-                  <span class="block text-right text-xs font-extrabold" [class.text-marine-800]="true">{{ c.dia }}</span>
+                  <span class="block text-right text-xs font-extrabold text-marine-800">{{ c.dia }}</span>
                   @for (e of c.eventos.slice(0, 2); track e.actividadTitulo + e.cursoTitulo) {
                     <span class="mt-1 block truncate rounded-md px-1 py-0.5 text-[0.62rem] font-semibold leading-tight"
                       [class.bg-danger-50]="esVencida(c.fechaISO)" [class.text-danger-600]="esVencida(c.fechaISO)"

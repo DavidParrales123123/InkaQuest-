@@ -1,11 +1,9 @@
-// @ts-nocheck
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
-import { PaginatedResponse } from './course.service';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 import {
@@ -16,6 +14,7 @@ import {
   ReglaProgresion,
   Temporada,
   Ranking,
+  Mision,
 } from '../models/domain.models';
 
 /**
@@ -89,6 +88,19 @@ export class GamificationService {
     return res.data || [];
   }
 
+  /** Catálogo administrativo de misiones (lectura directa desde Supabase/RLS). */
+  async listarMisionesCatalogo(): Promise<Mision[]> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.mision)
+      .select('*')
+      .order('fecha_inicio', { ascending: false });
+    if (error) {
+      console.error('[InkaQuest] Error cargando catálogo de misiones:', error.message);
+      return [];
+    }
+    return (data ?? []) as Mision[];
+  }
+
   // === TEMPORADAS Y RANKING ===
 
   /** Obtiene la temporada activa. */
@@ -111,7 +123,7 @@ export class GamificationService {
 
   /** Monedero del usuario (fila propia vía RLS). */
   async obtenerMonedero(usuarioId?: string): Promise<Monedero | null> {
-    let uid = usuarioId ?? this.auth.usuario()?.id;
+    const uid = usuarioId ?? this.auth.usuario()?.id;
     let consulta = this.client.from(this.supabase.tabla.monedero).select('*');
     if (uid) consulta = consulta.eq('usuario_id', uid);
     const { data, error } = await consulta.maybeSingle();
@@ -207,7 +219,18 @@ export class GamificationService {
       console.error('[InkaQuest] Error cargando catálogo de insignias:', error.message);
       return [];
     }
-    return (data ?? []).map((i: any) => ({
+    interface InsigniaConObtenidasRow {
+      id: string;
+      nombre: string;
+      descripcion: string | null;
+      icono: string | null;
+      tipo: string | null;
+      rareza: string | null;
+      xp_otorgado: number | null;
+      activa: boolean;
+      insignia_usuario?: { usuario_id: string }[] | null;
+    }
+    return ((data ?? []) as InsigniaConObtenidasRow[]).map((i) => ({
       id: i.id,
       nombre: i.nombre,
       descripcion: i.descripcion,

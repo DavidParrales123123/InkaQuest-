@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -9,7 +8,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
-type LeccionCtx = { id: string; titulo: string; numero: number; moduloTitulo: string; unidadTitulo: string; unidadNumero: number };
+interface LeccionCtx { id: string; titulo: string; numero: number; moduloTitulo: string; unidadTitulo: string; unidadNumero: number; }
 
 @Component({
   selector: 'app-admin-resources',
@@ -182,7 +181,10 @@ export class ResourcesComponent implements OnInit {
   }
 
   protected async onCursoChange(cursoId: string, esArchivo: boolean): Promise<void> {
-    if (!cursoId) { esArchivo ? this.leccionesArchivo.set([]) : this.leccionesEnlace.set([]); return; }
+    if (!cursoId) {
+      if (esArchivo) { this.leccionesArchivo.set([]); } else { this.leccionesEnlace.set([]); }
+      return;
+    }
     const lecciones = await this.adminService.listarLeccionesDeCursoAdmin(cursoId).catch(() => [] as LeccionCtx[]);
     if (esArchivo) {
       this.leccionesArchivo.set(lecciones);

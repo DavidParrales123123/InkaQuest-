@@ -103,7 +103,7 @@ type LeccionCtx = Leccion & { moduloTitulo: string; unidadTitulo: string; unidad
               }
             </select>
           </div>
-          <div class="flex items-center gap-2 text-xs text-marine-500"><span class="badge badge-default">{{ motoresFiltrados().length }}</span> motores visibles</div>
+          <div class="flex items-center gap-2 text-xs text-marine-500"><span class="badge badge-neutral">{{ motoresFiltrados().length }}</span> motores visibles</div>
         </div>
       </div>
 
@@ -160,7 +160,7 @@ type LeccionCtx = Leccion & { moduloTitulo: string; unidadTitulo: string; unidad
               <div class="card card-body space-y-4">
                 <div class="flex items-center justify-between gap-2">
                   <h2 class="text-lg font-semibold text-marine-800">Actividades de juego del curso</h2>
-                  <span class="badge badge-default">{{ actividades().length }} en total</span>
+                  <span class="badge badge-neutral">{{ actividades().length }} en total</span>
                 </div>
                 @if (cargandoCurso()) {
                   <p class="text-sm text-marine-500">Cargando actividades, lecciones y catálogo…</p>
@@ -180,10 +180,10 @@ type LeccionCtx = Leccion & { moduloTitulo: string; unidadTitulo: string; unidad
                             <p class="text-xs text-marine-500">Lección: {{ nombreLeccion(a.leccion_id) }}</p>
                             @if (a.descripcion) { <p class="mt-1 text-sm text-marine-600">{{ a.descripcion }}</p> }
                             <div class="mt-2 flex flex-wrap gap-2 text-xs text-marine-500">
-                              <span class="badge badge-default">Orden {{ a.orden }}</span>
-                              <span class="badge badge-default">{{ a.puntos }} pts</span>
-                              <span class="badge badge-default">{{ a.xp_otorgado }} XP</span>
-                              <span class="badge badge-default">Intentos: {{ a.intentos_permitidos || 'ilimitados' }}</span>
+                              <span class="badge badge-neutral">Orden {{ a.orden }}</span>
+                              <span class="badge badge-neutral">{{ a.puntos }} pts</span>
+                              <span class="badge badge-neutral">{{ a.xp_otorgado }} XP</span>
+                              <span class="badge badge-neutral">Intentos: {{ a.intentos_permitidos || 'ilimitados' }}</span>
                             </div>
                           </div>
                           <div class="flex flex-wrap gap-2">
@@ -389,7 +389,10 @@ export class GamesComponent implements OnInit {
   protected readonly editandoId = signal<string | null>(null);
 
   protected readonly cursoSel = computed(() => this.cursos().find((c) => c.id === this.cursoIdSel()) ?? null);
-  protected readonly juegoSeleccionado = computed(() => this.juegos().find((j) => j.id === this.form.controls.juego_id.value) ?? null);
+  protected juegoSeleccionado(): (Juego & { motor: Motor | null }) | null {
+    const id = this.form?.controls.juego_id?.value ?? '';
+    return this.juegos().find((j) => j.id === id) ?? null;
+  }
   protected readonly motoresDisponiblesParaAsociar = computed(() => {
     const asociados = new Set(this.motoresCurso().map((m) => m.motor_id));
     return this.motores().filter((m) => !asociados.has(m.id));

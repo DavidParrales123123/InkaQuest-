@@ -37,8 +37,8 @@ type Modo = 'archivo' | 'enlace';
       </app-page-header>
 
       @if (mensaje(); as msg) {
-        <p class="rounded-lg border p-3 text-sm font-medium"
-          [class]="msg.ok ? 'border-success-200 bg-success-50 text-success-700' : 'border-danger-200 bg-danger-50 text-danger-700'"
+        <p class="rounded-lg bg-opacity-50 p-3 text-sm font-medium"
+          [class]="msg.ok ? 'bg-success-50 text-success-600' : 'bg-danger-50 text-danger-600'"
           role="status">{{ msg.texto }}</p>
       }
 
@@ -78,7 +78,7 @@ type Modo = 'archivo' | 'enlace';
               @if (leccionSel()) {
                 <span class="rounded-full bg-brand-50 px-2 py-0.5 text-[0.7rem] font-bold text-brand-700">1 lección</span>
               } @else {
-                <span class="text-[0.7rem] font-semibold text-warning-700">Elige una lección para subir</span>
+                <span class="text-[0.7rem] font-semibold text-warning-500">Elige una lección para subir</span>
               }
             </div>
 
@@ -92,7 +92,7 @@ type Modo = 'archivo' | 'enlace';
                 <p class="text-3xl">📎</p>
                 <p class="mt-1 text-sm text-marine-700">Word, PDF, Excel, PowerPoint, imágenes o ZIP.</p>
                 <p class="text-xs text-marine-500">Máx. 50 MB por archivo.</p>
-                <input #fileUpload type="file" multiple class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.zip,.png,.jpg,.jpeg,.txt,.json" [disabled]="!leccionSel() || subiendo()" (change)="subirArchivos(fileUpload)" />
+                <input #fileUpload type="file" multiple class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.zip,.png,.jpg,.jpeg,.webp,.gif,.svg,.txt,.json,.mp4,.webm,.mov" [disabled]="!leccionSel() || subiendo()" (change)="subirArchivos(fileUpload)" />
                 <button type="button" class="btn btn-primary mt-3" [disabled]="!leccionSel() || subiendo()" (click)="fileUpload.click()">
                   {{ subiendo() ? 'Subiendo…' : 'Seleccionar archivos' }}
                 </button>
@@ -102,7 +102,7 @@ type Modo = 'archivo' | 'enlace';
                 <div class="space-y-2">
                   <p class="text-xs font-bold uppercase tracking-wider text-marine-500">Subidos en esta sesión</p>
                   <ul class="space-y-1">
-                    @for (f of archivosRecientes(); track f.nombre) {
+                    @for (f of archivosRecientes(); track $index) {
                       <li class="flex items-center gap-2 rounded-lg bg-surface-50 px-2 py-1.5 text-xs">
                         <span aria-hidden="true">{{ iconoTipo(f.tipo) }}</span>
                         <span class="min-w-0 truncate font-medium text-marine-800" [title]="f.nombre">{{ f.nombre }}</span>
@@ -134,13 +134,12 @@ type Modo = 'archivo' | 'enlace';
               <div class="flex flex-wrap items-center gap-2">
                 <select class="select w-auto" [value]="filtroTipo()" (change)="filtroTipo.set($any($event.target).value)" aria-label="Filtrar por tipo">
                   <option value="">Todos los tipos</option>
-                  <option value="word">Word</option>
-                  <option value="pdf">PDF</option>
-                  <option value="ppt">PowerPoint</option>
-                  <option value="excel">Excel</option>
+                  <option value="documento">Documento</option>
                   <option value="imagen">Imagen</option>
-                  <option value="zip">ZIP</option>
+                  <option value="video">Video</option>
+                  <option value="archivo">Archivo</option>
                   <option value="enlace">Enlace</option>
+                  <option value="otro">Otro</option>
                 </select>
                 <input type="search" class="input w-44 sm:w-56" [value]="busqueda()" (input)="busqueda.set($any($event.target).value)" placeholder="Buscar…" aria-label="Buscar recurso" />
               </div>
@@ -214,7 +213,7 @@ export class ResourcesComponent implements OnInit {
 
   protected readonly formEnlace = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(200)]],
-    url: ['', [Validators.required, Validators.pattern(/^(https?|mailto):\/\//i)]],
+    url: ['', [Validators.required, Validators.pattern(/^(https?:\/\/|mailto:)/i)]],
   });
 
   protected readonly cursoActual = computed(() => this.cursos().find((c) => c.curso.id === this.cursoSel())?.curso ?? null);
@@ -246,13 +245,12 @@ export class ResourcesComponent implements OnInit {
 
   protected iconoTipo(tipo: string): string {
     switch ((tipo ?? '').toLowerCase()) {
-      case 'word': return '📝';
-      case 'pdf': return '📄';
-      case 'ppt': return '📊';
-      case 'excel': return '📈';
+      case 'documento': return '📄';
       case 'imagen': return '🖼️';
-      case 'zip': return '🗜️';
+      case 'video': return '🎬';
+      case 'archivo': return '🗜️';
       case 'enlace': return '🔗';
+      case 'otro': return '📎';
       default: return '📎';
     }
   }
@@ -347,9 +345,10 @@ export class ResourcesComponent implements OnInit {
     if (!leccionId) { this.mensaje.set({ ok: false, texto: 'Elige una lección antes de subir archivos.' }); return; }
 
     this.subiendo.set(true);
+    const fallidos: string[] = [];
     let ok = 0;
     for (const f of files) {
-      if (f.size > 50 * 1024 * 1024) { this.mensaje.set({ ok: false, texto: `"${f.name}" supera 50 MB.` }); continue; }
+      if (f.size > 50 * 1024 * 1024) { this.mensaje.set({ ok: false, texto: `"${f.name}" supera 50 MB.` }); fallidos.push(f.name); continue; }
       try {
         const { ruta } = await this.storageService.subirRecursoCurso(cursoId, f);
         await this.courseService.crearRecurso(leccionId, {
@@ -361,14 +360,22 @@ export class ResourcesComponent implements OnInit {
           descargable: true,
         });
         ok += 1;
-        this.archivosRecientes.update((arr) => [{ nombre: f.name, tipo: this.tipoPorExtension(f.name), tamano_bytes: f.size }, ...arr].slice(0, 12));
+        this.archivosRecientes.update((arr) => {
+          const clave = `${f.name}:${f.size}`;
+          return [{ nombre: f.name, tipo: this.tipoPorExtension(f.name), tamano_bytes: f.size }, ...arr.filter((x) => `${x.nombre}:${x.tamano_bytes}` !== clave)].slice(0, 12);
+        });
       } catch (e) {
-        this.mensaje.set({ ok: false, texto: e instanceof Error ? e.message : `No se pudo subir "${f.name}".` });
+        const msg = e instanceof Error ? e.message : `No se pudo subir "${f.name}".`;
+        this.mensaje.set({ ok: false, texto: msg });
+        fallidos.push(f.name);
       }
     }
-    if (ok > 0) {
+    if (ok > 0 && fallidos.length === 0) {
       await this.refrescarRecursos();
       this.mensaje.set({ ok: true, texto: ok === 1 ? 'Archivo subido.' : `${ok} archivos subidos.` });
+    } else if (ok > 0) {
+      await this.refrescarRecursos();
+      this.mensaje.set({ ok: false, texto: `${ok} archivo(s) subido(s). Fallaron: ${fallidos.join(', ')}.` });
     }
     this.subiendo.set(false);
   }

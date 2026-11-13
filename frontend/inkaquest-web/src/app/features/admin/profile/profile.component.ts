@@ -1,10 +1,10 @@
-// @ts-nocheck
-import { ChangeDetectionStrategy, Component, ElementRef, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
+import { Perfil } from '../../../core/models/domain.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -51,8 +51,9 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
             </div>
 
             @if (editorAbierto()) {
-              <div class="fixed inset-0 z-50 flex items-center justify-center bg-marine-900/60 p-4" (click)="cerrarEditor()">
-                <div class="w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl sm:p-6" (click)="$event.stopPropagation()">
+              <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <button type="button" class="absolute inset-0 cursor-default bg-marine-900/60" (click)="cerrarEditor()" aria-label="Cerrar editor de foto"></button>
+                <div class="relative max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:p-6">
                   <h3 class="text-lg font-semibold text-marine-800">Ajustar foto de perfil</h3>
                   <p class="mt-1 text-sm text-marine-500">Arrastra la imagen para centrarla y usa el zoom para encajarla bien dentro del círculo.</p>
 
@@ -145,8 +146,8 @@ export class ProfileComponent implements OnInit {
   private readonly supabase = inject(SupabaseService);
   private readonly fb = inject(FormBuilder);
 
-  @ViewChild('canvasAvatar') private canvasRef?: ElementRef<HTMLCanvasElement>;
-  @ViewChild('viewportAvatar') private viewportRef?: ElementRef<HTMLDivElement>;
+  private readonly canvasRef = viewChild<ElementRef<HTMLCanvasElement>>('canvasAvatar');
+  private readonly viewportRef = viewChild<ElementRef<HTMLDivElement>>('viewportAvatar');
 
   protected readonly cargando = signal(false);
   protected readonly guardando = signal(false);
@@ -214,7 +215,7 @@ export class ProfileComponent implements OnInit {
   }
 
   private viewportActual(): number {
-    const el = this.viewportRef?.nativeElement;
+    const el = this.viewportRef()?.nativeElement;
     if (el?.clientWidth) return el.clientWidth;
     if (typeof window !== 'undefined' && window.innerWidth >= 640) return 384;
     return 320;
@@ -301,7 +302,7 @@ export class ProfileComponent implements OnInit {
   protected async guardarAvatar(): Promise<void> {
     const user = this.auth.usuario();
     const imgUrl = this.imagenEditorUrl();
-    if (!user || !imgUrl || !this.canvasRef) return;
+    if (!user || !imgUrl || !this.canvasRef()) return;
 
     this.subiendoAvatar.set(true);
     this.mensajeAvatar.set('');
@@ -344,7 +345,7 @@ export class ProfileComponent implements OnInit {
   }
 
   private async exportarRecorte(src: string): Promise<Blob | null> {
-    const canvas = this.canvasRef?.nativeElement;
+    const canvas = this.canvasRef()?.nativeElement;
     if (!canvas) return null;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
@@ -407,7 +408,7 @@ export class ProfileComponent implements OnInit {
       .select('nombre,apellido,documento,genero,fecha_nacimiento,telefono,bio')
       .eq('id', user.id)
       .maybeSingle();
-    const p: any = data ?? this.auth.perfil();
+    const p = (data ?? this.auth.perfil()) as Partial<Perfil> | null;
     if (!p) return;
     this.form.patchValue({ nombre: p?.nombre ?? '', apellido: p?.apellido ?? '', documento: p?.documento ?? '', genero: p?.genero ?? '', fecha_nacimiento: p?.fecha_nacimiento ? String(p.fecha_nacimiento).slice(0, 10) : '', telefono: p?.telefono ?? '', bio: p?.bio ?? '' });
   }

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 
 import { GamificationService } from '../../../core/services/gamification.service';
@@ -49,7 +48,7 @@ export class GamificationComponent implements OnInit {
       const [r, t, m, e] = await Promise.all([
         this.gamification.listarReglasProgresion().catch(() => []),
         this.gamification.listarTemporadas().catch(() => []),
-        this.gamification.listarMisiones().catch(() => []),
+        this.gamification.listarMisionesCatalogo().catch(() => []),
         this.gamification.listarEventos().catch(() => []),
       ]);
       this.reglas.set(r); this.temporadas.set(t); this.misiones.set(m); this.eventos.set(e);

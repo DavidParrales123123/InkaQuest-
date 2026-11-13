@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -19,7 +18,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 @Component({
   selector: 'app-teacher-announcements',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, ReactiveFormsModule, DatePipe, PageHeaderComponent],
+  imports: [RouterLink, ReactiveFormsModule, PageHeaderComponent],
   template: `
     <section class="space-y-6">
       <app-page-header
@@ -102,14 +101,15 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                         <span class="badge" [class.badge-success]="a.estado === 'publicado'" [class.badge-neutral]="a.estado === 'borrador'" [class.badge-info]="a.estado === 'archivado'">{{ a.estado === 'publicado' ? 'Publicado' : a.estado === 'borrador' ? 'Borrador' : 'Archivado' }}</span>
                       </div>
                       <p class="mt-2 line-clamp-3 whitespace-pre-line text-sm text-marine-600">{{ a.contenido }}</p>
-                      <p class="mt-2 text-[0.7rem] font-medium uppercase tracking-wider text-marine-400">{{ cursoTitulo(a.curso_id) }} · {{ a.creado_en | date:'medium' }}</p>
+                      <p class="mt-2 text-[0.7rem] font-medium uppercase tracking-wider text-marine-400">{{ cursoTitulo(a.curso_id) }} · {{ formatearFecha(a.creado_en) }}</p>
                     </div>
                     <div class="flex shrink-0 flex-wrap items-center gap-1.5">
                       <button type="button" class="btn btn-outline btn-sm !px-2 text-xs" (click)="toggleFijado(a)" [title]="a.fijado ? 'Quitar fijo' : 'Fijar'">{{ a.fijado ? 'Quitar' : 'Fijar' }}</button>
+                      @if (a.estado !== 'publicado') {
+                        <button type="button" class="btn btn-outline btn-sm !px-2 text-xs" (click)="publicar(a)">Publicar</button>
+                      }
                       @if (a.estado !== 'archivado') {
                         <button type="button" class="btn btn-outline btn-sm !px-2 text-xs" (click)="archivar(a)">Archivar</button>
-                      } @else {
-                        <button type="button" class="btn btn-outline btn-sm !px-2 text-xs" (click)="publicar(a)">Publicar</button>
                       }
                       <button type="button" class="btn btn-outline btn-sm !px-2 text-xs text-danger-600" (click)="eliminar(a)">Eliminar</button>
                     </div>
@@ -160,6 +160,15 @@ export class AnnouncementsComponent implements OnInit {
     return this.cursos().find((c) => c.curso.id === cursoId)?.curso.titulo ?? '—';
   }
 
+  protected formatearFecha(fecha: string | null | undefined): string {
+    if (!fecha) return '—';
+    try {
+      return new Date(fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' });
+    } catch {
+      return String(fecha);
+    }
+  }
+
   private async cargar(): Promise<void> {
     const user = this.auth.usuario();
     if (!user) {
@@ -191,7 +200,7 @@ export class AnnouncementsComponent implements OnInit {
       const v = this.form.getRawValue();
       await this.anuncioService.crear({ curso_id: v.curso_id, titulo: v.titulo, contenido: v.contenido, estado: v.estado, fijado: v.fijado });
       this.form.patchValue({ titulo: '', contenido: '', fijado: false, estado: 'publicado' });
-      this.msg.set('Anuncio publicado.');
+      this.msg.set(v.estado === 'borrador' ? 'Borrador guardado.' : 'Anuncio publicado.');
       this.ok.set(true);
       await this.cargar();
     } catch (e) {

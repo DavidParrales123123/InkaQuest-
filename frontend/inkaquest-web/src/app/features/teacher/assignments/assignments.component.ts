@@ -144,7 +144,7 @@ type TareaConActividad = Tarea & { actividad: Actividad };
         <div class="space-y-4 xl:col-span-3">
           <div class="flex items-center justify-between gap-2">
             <h2 class="text-base font-extrabold text-marine-800">Tareas de este curso</h2>
-            <span class="badge badge-default">{{ tareas().length }}</span>
+            <span class="badge badge-neutral">{{ tareas().length }}</span>
           </div>
 
           @if (tareas().length === 0) {
@@ -249,7 +249,7 @@ type TareaConActividad = Tarea & { actividad: Actividad };
                 </div>
                 <div>
                   <label class="label" [attr.for]="'max-'+e.id">Nota máx.</label>
-                  <input [id]="'max-'+e.id" type="number" min="0" max="20" step="0.5" disabled class="input bg-surface-50 text-marine-500" />
+                  <input [id]="'max-'+e.id" type="number" min="0" max="20" step="0.5" disabled class="input bg-surface-50 text-marine-500" [value]="20" />
                 </div>
                 <div>
                   <label class="label" [attr.for]="'com-'+e.id">Comentario / retroalimentación</label>

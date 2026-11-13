@@ -193,7 +193,7 @@ interface ParItem {
                 <label class="text-xs font-bold text-marine-600" for="tpp">Segundos por pregunta</label>
                 <input id="tpp" type="number" min="5" class="input w-24" [value]="tiempoPreguntaSec()" (input)="tiempoPreguntaSec.set($any($event.target).valueAsNumber || 30)" placeholder="20" />
                 <label class="text-xs font-bold text-marine-600" for="npopt">Opciones</label>
-                <select id="npopt" class="select w-auto" [value]="opcionesCount()" (change)="setOpcionesCount($any($event.target).valueAsNumber)">
+                <select id="npopt" class="select w-auto" [value]="opcionesCount()" (change)="setOpcionesCount(Number($any($event.target).value))">
                   <option [value]="2">2 opciones</option>
                   <option [value]="3">3 opciones</option>
                   <option [value]="4">4 opciones</option>

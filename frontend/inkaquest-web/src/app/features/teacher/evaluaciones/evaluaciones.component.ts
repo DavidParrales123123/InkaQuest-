@@ -141,7 +141,7 @@ type TipoEvaluacion = 'quiz' | 'examen';
             <div class="space-y-4 xl:col-span-3">
               <div class="flex items-center justify-between gap-2">
                 <h2 class="text-base font-extrabold text-marine-800">Evaluaciones de este curso</h2>
-                <span class="badge badge-default">{{ evaluaciones().length }}</span>
+                <span class="badge badge-neutral">{{ evaluaciones().length }}</span>
               </div>
 
               @if (evaluaciones().length === 0) {
@@ -479,7 +479,7 @@ export class EvaluationsComponent implements OnInit {
         actualizado_en: new Date().toISOString(),
         opciones: opcionesTodas.map((texto, i) => ({
           id: `local-opc-${Date.now()}-${i}`,
-          pregunta_id: sel.id,
+          pregunta_id: 'local',
           orden: i + 1,
           texto,
           es_correcta: i === this.respuestaCorrecta(),
@@ -506,10 +506,10 @@ export class EvaluationsComponent implements OnInit {
       const reales = await this.evaluationService.listarPreguntasConOpciones(sel.id).catch(() => null);
       if (reales) {
         this.preguntas.set(reales);
+        this.mensaje.set({ ok: true, texto: 'Pregunta agregada correctamente.' });
       } else {
-        this.mensaje.set({ ok: true, texto: 'Pregunta agregada. (No se pudo refrescar la lista desde el servidor; aparecerá completa al recargar.)' });
+        this.mensaje.set({ ok: true, texto: 'Pregunta agregada. No se pudo refrescar la lista completa; recárgala para ver los identificadores reales.' });
       }
-      this.mensaje.set({ ok: true, texto: 'Pregunta agregada correctamente.' });
     } catch (e) {
       this.mensaje.set({ ok: false, texto: e instanceof Error ? e.message : 'No se pudo agregar la pregunta.' });
     }

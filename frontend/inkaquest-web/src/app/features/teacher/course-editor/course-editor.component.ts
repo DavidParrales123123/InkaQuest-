@@ -43,7 +43,7 @@ interface Estructura { unidades: (Unidad & { modulos: (Modulo & { lecciones: Lec
                   <p class="text-sm text-marine-500">Estado: <strong>{{ c.estado }}</strong> · {{ c.duracion_minutos }} min · {{ c.xp_total }} XP</p>
                   <p class="mt-1 text-sm text-marine-600">{{ c.descripcion || 'Sin descripción.' }}</p>
                 </div>
-                <span class="badge" [class.badge-success]="c.estado === 'publicado'" [class.badge-default]="c.estado !== 'publicado'">{{ c.estado }}</span>
+                <span class="badge" [class.badge-success]="c.estado === 'publicado'" [class.badge-neutral]="c.estado !== 'publicado'">{{ c.estado }}</span>
               </div>
               @if (mensajeGlobal()) {
                 <p class="mt-3 text-sm" [class.text-success-600]="exitoGlobal()" [class.text-danger-600]="!exitoGlobal()">{{ mensajeGlobal() }}</p>
@@ -163,7 +163,7 @@ interface Estructura { unidades: (Unidad & { modulos: (Modulo & { lecciones: Lec
                                         <div><label class="label">Titulo</label><input class="input" formControlName="titulo" /></div>
                                       </div>
                                       <div><label class="label">Cuerpo / descripción</label><textarea class="textarea" rows="3" formControlName="cuerpo" placeholder="Texto, URL o instrucciones"></textarea></div>
-                                      <button class="btn btn-primary btn-sm" type="submit" [disabled]="guardando()">Guardar contenido</button>
+                                      <button class="btn btn-primary btn-sm" type="submit" [disabled]="guardando() || formContenido.invalid">Guardar contenido</button>
                                     </form>
                                   </div>
 
@@ -190,7 +190,7 @@ interface Estructura { unidades: (Unidad & { modulos: (Modulo & { lecciones: Lec
 
                                     <div class="space-y-2 rounded bg-surface-50 p-3">
                                       <p class="text-sm font-medium text-marine-700">Subir archivo (Storage)</p>
-                                      <input type="file" class="block w-full text-sm" (change)="onArchivoRecurso($event, l)" [disabled]="subiendo() === l.id" />
+                                      <input type="file" class="block w-full text-sm" (change)="onArchivoRecurso($event, l)" [disabled]="subiendo() === l.id" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.zip,.png,.jpg,.jpeg,.webp,.gif,.svg,.txt,.json,.mp4,.webm,.mov" />
                                       @if (subiendo() === l.id) { <p class="text-xs text-marine-500">Subiendo archivo...</p> }
                                       <p class="text-xs text-marine-500">El archivo se guarda en el bucket <code>recursos</code> bajo la carpeta del curso (según políticas de Storage/RLS).</p>
                                     </div>
@@ -344,7 +344,7 @@ export class CourseEditorComponent implements OnInit {
     try {
       const v = this.formUnidad.getRawValue();
       await this.courseService.crearUnidad(id, { numero: Number(v.numero), titulo: v.titulo, descripcion: v.descripcion || null, publicado: v.publicado });
-      this.formUnidad.patchValue({ numero: (this.estructura().unidades.length + 2), titulo: '', descripcion: '', publicado: false });
+      this.formUnidad.patchValue({ numero: (this.estructura().unidades.length + 1), titulo: '', descripcion: '', publicado: false });
       await this.refrescar();
       this.setMsg(true, 'Unidad creada.');
     } catch (e) { this.setMsg(false, e instanceof Error ? e.message : 'No se pudo crear la unidad.'); }
@@ -366,7 +366,7 @@ export class CourseEditorComponent implements OnInit {
     try {
       const v = f.getRawValue();
       await this.courseService.crearModulo(u.id, { numero: Number(v.numero), titulo: v.titulo, publicado: v.publicado });
-      f.patchValue({ numero: ((u.modulos?.length ?? 0) + 2), titulo: '', publicado: false });
+      f.patchValue({ numero: ((u.modulos?.length ?? 0) + 1), titulo: '', publicado: false });
       await this.refrescar();
       this.setMsg(true, 'Módulo creado.');
     } catch (e) { this.setMsg(false, e instanceof Error ? e.message : 'No se pudo crear el módulo.'); }
@@ -388,7 +388,7 @@ export class CourseEditorComponent implements OnInit {
     try {
       const v = f.getRawValue();
       await this.courseService.crearLeccion(m.id, { numero: Number(v.numero), titulo: v.titulo, duracion_minutos: Number(v.duracion_minutos ?? 0), publicado: v.publicado, tipo_contenido: 'texto' });
-      f.patchValue({ numero: ((m.lecciones?.length ?? 0) + 2), titulo: '', duracion_minutos: 10, publicado: false });
+      f.patchValue({ numero: ((m.lecciones?.length ?? 0) + 1), titulo: '', duracion_minutos: 10, publicado: false });
       await this.refrescar();
       this.setMsg(true, 'Lección creada.');
     } catch (e) { this.setMsg(false, e instanceof Error ? e.message : 'No se pudo crear la lección.'); }
@@ -425,7 +425,11 @@ export class CourseEditorComponent implements OnInit {
   }
 
   protected async crearContenido(l: Leccion): Promise<void> {
-    if (this.formContenido.invalid) return;
+    if (this.formContenido.invalid) {
+      this.setMsgL(l.id, false, 'Revisa los campos del contenido (el orden debe ser 1 o más).');
+      this.formContenido.markAllAsTouched();
+      return;
+    }
     this.guardando.set(true);
     try {
       const v = this.formContenido.getRawValue();
@@ -449,11 +453,16 @@ export class CourseEditorComponent implements OnInit {
     this.subiendo.set(l.id);
     try {
       const up = await this.storageService.subirRecursoCurso(curso.id, file);
-      const tipo = file.type.includes('pdf') ? 'pdf' : file.type.startsWith('image/') ? 'imagen' : file.type.startsWith('video/') ? 'video' : 'archivo';
+      const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+      const tipo = ['doc', 'docx', 'pdf', 'ppt', 'pptx', 'xls', 'xlsx', 'csv', 'rtf', 'odt', 'ods', 'odp', 'txt', 'md'].includes(ext)
+        ? 'documento'
+        : file.type.startsWith('image/') ? 'imagen'
+        : file.type.startsWith('video/') ? 'video'
+        : ['zip', 'rar', '7z', 'gz', 'tar'].includes(ext) ? 'archivo'
+        : 'otro';
       await this.courseService.crearRecurso(l.id, {
         nombre: file.name,
         tipo,
-        url: up.url,
         ruta_storage: up.ruta,
         tamano_bytes: file.size,
         mime_type: file.type || null,
