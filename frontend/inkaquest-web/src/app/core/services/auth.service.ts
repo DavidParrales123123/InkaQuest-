@@ -44,6 +44,10 @@ export class AuthService {
   /** Indica si un login esta en curso (usado por interceptores/guards). */
   readonly iniciandoSesion = this._iniciandoSesion.asReadonly();
 
+  /** Diagnóstico del último fallo de carga de perfil (visible en la pantalla de login). */
+  private readonly _debugPerfilError = signal<string | null>(null);
+  readonly debugPerfilError = this._debugPerfilError.asReadonly();
+
   /** Rol efectivo del usuario. */
   readonly rol = computed<RolUsuario | null>(() => this._perfil()?.rol ?? null);
 
@@ -119,8 +123,11 @@ export class AuthService {
         return perfil;
       }
       this._perfil.set(null);
+      this._debugPerfilError.set('api-empty');
       return null;
-    } catch {
+    } catch (e: any) {
+      const status = e?.status ?? e?.name ?? 'err';
+      this._debugPerfilError.set(`api-fail-${status}`);
       // Fallback: la API de Spring no responde. Leemos el perfil directamente
       // de Supabase: la RLS permite que el dueno lea su propia fila.
       try {
@@ -129,6 +136,9 @@ export class AuthService {
           .select('*')
           .eq('id', usuario.id)
           .maybeSingle();
+        if (error) {
+          this._debugPerfilError.set(`select-${(error as any).code ?? 'err'}-${((error as any).message ?? '').slice(0, 80)}`);
+        }
         if (!error && data) {
           const perfil = data as unknown as Perfil;
           this._perfil.set(perfil);
@@ -172,6 +182,7 @@ export class AuthService {
         .insert({ id: usuario.id, email: usuario.email ?? '', nombre });
       if (error) {
         console.warn('[InkaQuest] No se pudo crear el perfil propio:', error.message);
+        this._debugPerfilError.set(`insert-${(error as any).code ?? 'err'}-${((error as any).message ?? '').slice(0, 100)}`);
         return null;
       }
       const { data, error: err2 } = await this.supabase.client
@@ -180,6 +191,7 @@ export class AuthService {
         .eq('id', usuario.id)
         .maybeSingle();
       if (err2 || !data) {
+        this._debugPerfilError.set(`select-after-insert-${(err2 as any)?.code ?? 'none'}`);
         return null;
       }
       return data as unknown as Perfil;
