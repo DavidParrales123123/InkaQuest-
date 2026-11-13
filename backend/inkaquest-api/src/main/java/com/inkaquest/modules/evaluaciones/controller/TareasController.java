@@ -37,7 +37,7 @@ import java.util.UUID;
  * </ul>
  */
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/v1")
 public class TareasController {
 
     private final TareasService tareasService;

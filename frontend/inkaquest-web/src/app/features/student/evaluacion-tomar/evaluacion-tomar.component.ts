@@ -4,6 +4,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
+import { environment } from '../../../../environments/environment';
+
 import { AuthService } from '../../../core/services/auth.service';
 import { EvaluationService } from '../../../core/services/evaluation.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
@@ -352,7 +354,7 @@ export class EvaluacionTomarComponent implements OnInit, OnDestroy {
   }
 
   private evaluationServiceBase(): string {
-    return (this.evaluationService as any).baseUrl as string;
+    return environment.apiUrl;
   }
 
   private mensajeDeError(e: any, porDefecto: string): string {
