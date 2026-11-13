@@ -43,6 +43,9 @@ import { imagenDeCurso } from '../../utilities/curso-imagen.util';
             curso().estado === 'borrador' ? 'Borrador' : 'En revisión'
           }}</span>
         }
+        @if (categoriaNombre()) {
+          <span class="absolute bottom-3 left-3 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-semibold text-white/95 ring-1 ring-white/20 backdrop-blur-sm">{{ categoriaNombre() }}</span>
+        }
       </div>
 
       <div class="card-body flex flex-1 flex-col gap-3">
@@ -139,6 +142,9 @@ export class CourseCardComponent {
     const c: any = this.curso();
     return imagenDeCurso(c?.slug, c?.portada_url ?? c?.imagenPortada ?? null);
   });
+
+  /** Nombre de la categoría si el curso la trae embebida. */
+  protected readonly categoriaNombre = computed(() => (this.curso() as any)?.categoria?.nombre ?? null);
 
   /** Duracion formateada (acepta `duracion_minutos` del dominio y `duracionMinutos` del API). */
   protected readonly duracion = computed(() => {

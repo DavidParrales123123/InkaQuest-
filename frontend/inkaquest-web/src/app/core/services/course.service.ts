@@ -5,81 +5,179 @@ import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
-import { Curso } from '../models/domain.models';
+import {
+  Actividad,
+  Categoria,
+  Curso,
+  Leccion,
+  Modulo,
+  Unidad,
+} from '../models/domain.models';
+import { SupabaseService } from './supabase.service';
+
+/** Curso público enriquecido con su categoría embebida. */
+export type CursoConCategoria = Curso & {
+  categoria?: Pick<Categoria, 'id' | 'nombre' | 'slug' | 'icono' | 'orden'> | null;
+};
+
+export interface UnidadConModulos extends Unidad {
+  modulos: (Modulo & { lecciones: Leccion[] })[];
+}
 
 /**
  * Servicio del catálogo académico: cursos y su contenido.
  *
- * Consume el backend REST API para:
- * - Listar cursos publicados
- * - Obtener detalles de cursos
- * - Consultar estructura (unidades, módulos, lecciones)
+ * <p>Las lecturas públicas del catálogo (cursos, categorías, estructura,
+ * actividades) se hacen directamente contra Supabase/PostgreSQL protegido con
+ * RLS: la política {@code pol_curso_select} solo deja ver cursos publicados a
+ * anónimos y usuarios autenticados.</p>
+ *
+ * <p>La matrícula (escritura) sigue pasando por la API REST de Spring Boot,
+ * que valida precios y reglas de negocio en el servidor.</p>
  */
 @Injectable({ providedIn: 'root' })
 export class CourseService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.apiUrl}/cursos`;
+  private readonly supabase = inject(SupabaseService);
+  private readonly client = this.supabase.client;
 
-  // === CURSOS PÚBLICOS ===
+  // === CATÁLOGO PÚBLICO ===
 
-  /** Lista cursos publicados con paginación y búsqueda. */
+  /**
+   * Lista cursos publicados (RLS) con búsqueda y filtro por categoría.
+   *
+   * @param q          texto a buscar en título/descripción
+   * @param categoriaId filtro por categoría (puede ser '' o undefined para todo)
+   * @param limite      tope de resultados (por defecto 60)
+   */
   async listarPublicos(opciones: {
     q?: string;
     categoriaId?: string;
-    page?: number;
-    size?: number;
-  } = {}): Promise<PaginatedResponse<CursoResponse>> {
-    const params: any = {};
-    if (opciones.q) params.q = opciones.q;
-    if (opciones.categoriaId) params.categoriaId = opciones.categoriaId;
-    if (opciones.page !== undefined) params.page = opciones.page;
-    if (opciones.size) params.size = opciones.size;
+    limite?: number;
+  } = {}): Promise<CursoConCategoria[]> {
+    let consulta = this.client
+      .from(this.supabase.tabla.curso)
+      .select('*, categoria:categoria_id(id, nombre, slug, icono, orden)')
+      .eq('estado', 'publicado')
+      .order('publicado_en', { ascending: false, nullsFirst: false })
+      .limit(opciones.limite ?? 60);
 
-    const res = await firstValueFrom(
-      this.http.get<ApiResponse<PaginatedResponse<CursoResponse>>>(this.baseUrl, { params })
-    );
-    return res.data!;
+    const busqueda = opciones.q?.trim();
+    if (busqueda) {
+      // Se eliminan caracteres de la sintaxis .or() de PostgREST.
+      const limpio = busqueda.replace(/[,()]/g, ' ').trim();
+      if (limpio) {
+        const patron = `%${limpio}%`;
+        consulta = consulta.or(`titulo.ilike.${patron},descripcion.ilike.${patron}`);
+      }
+    }
+    if (opciones.categoriaId) {
+      consulta = consulta.eq('categoria_id', opciones.categoriaId);
+    }
+
+    const { data, error } = await consulta;
+    if (error) {
+      console.error('[InkaQuest] Error cargando el catálogo:', error.message);
+      throw new Error('No se pudieron cargar los cursos.');
+    }
+    return (data ?? []) as CursoConCategoria[];
   }
 
-  /** Obtiene el detalle de un curso por su slug. */
-  async obtenerPorSlug(slug: string): Promise<CursoResponse> {
-    const res = await firstValueFrom(
-      this.http.get<ApiResponse<CursoResponse>>(`${this.baseUrl}/${slug}`)
-    );
-    return res.data!;
+  /** Obtiene el detalle de un curso por su slug (la RLS decide quién lo ve). */
+  async obtenerPorSlug(slug: string): Promise<CursoConCategoria | null> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.curso)
+      .select('*, categoria:categoria_id(id, nombre, slug, icono, orden)')
+      .eq('slug', slug)
+      .maybeSingle();
+    if (error) {
+      console.error('[InkaQuest] Error cargando el curso:', error.message);
+      throw new Error('No se pudo cargar el curso.');
+    }
+    return (data ?? null) as CursoConCategoria | null;
   }
 
-  /** Lista categorías activas. */
-  async listarCategorias(): Promise<CategoriaResponse[]> {
-    const res = await firstValueFrom(
-      this.http.get<ApiResponse<CategoriaResponse[]>>(`${environment.apiUrl}/categorias`)
-    );
-    return res.data || [];
+  /** Obtiene un curso por su id (publicado). */
+  async obtenerPorId(id: string): Promise<CursoConCategoria | null> {
+    if (!id) return null;
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.curso)
+      .select('*, categoria:categoria_id(id, nombre, slug, icono, orden)')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) {
+      console.error('[InkaQuest] Error cargando el curso:', error.message);
+      throw new Error('No se pudo cargar el curso.');
+    }
+    return (data ?? null) as CursoConCategoria | null;
+  }
+
+  /** Lista las categorías activas del catálogo. */
+  async listarCategorias(): Promise<Categoria[]> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.categoria)
+      .select('*')
+      .eq('activo', true)
+      .order('orden', { ascending: true });
+    if (error) {
+      console.error('[InkaQuest] Error cargando categorías:', error.message);
+      throw new Error('No se pudieron cargar las categorías.');
+    }
+    return (data ?? []) as Categoria[];
+  }
+
+  /** Estructura pública del curso: unidades → módulos → lecciones publicadas. */
+  async obtenerEstructura(cursoId: string): Promise<{ unidades: UnidadConModulos[] }> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.unidad)
+      .select('*, modulos:modulo(*, lecciones:leccion(*))')
+      .eq('curso_id', cursoId);
+    if (error) {
+      console.error('[InkaQuest] Error cargando la estructura:', error.message);
+      throw new Error('No se pudo cargar el contenido del curso.');
+    }
+    const porNumero = (a: { numero?: number }, b: { numero?: number }) =>
+      (a?.numero ?? 0) - (b?.numero ?? 0);
+    const unidades = ((data ?? []) as any[])
+      .filter((u) => u?.publicado !== false)
+      .sort(porNumero)
+      .map((u) => ({
+        ...u,
+        modulos: ((u.modulos ?? []) as any[])
+          .filter((m) => m?.publicado !== false)
+          .sort(porNumero)
+          .map((m) => ({
+            ...m,
+            lecciones: ((m.lecciones ?? []) as any[])
+              .filter((l) => l?.publicado !== false)
+              .sort(porNumero),
+          })),
+      })) as UnidadConModulos[];
+    return { unidades };
+  }
+
+  /** Actividades publicadas del curso (vacío si el usuario no es autenticado). */
+  async listarActividades(cursoId: string): Promise<Actividad[]> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.actividad)
+      .select('*')
+      .eq('curso_id', cursoId)
+      .eq('publicado', true)
+      .order('creado_en', { ascending: true });
+    if (error) {
+      console.error('[InkaQuest] Error cargando actividades:', error.message);
+      return [];
+    }
+    return (data ?? []) as Actividad[];
   }
 
   /** Lista los cursos en los que el estudiante está matriculado. */
-  async listarCursosDeEstudiante(estudianteId: string): Promise<Curso[]> {
-    // El backend devuelve matrículas, no cursos directamente
-    // Necesitamos obtener las matrículas y extraer los cursos
+  async listarCursosDeEstudiante(_estudianteId: string): Promise<Curso[]> {
     const res = await firstValueFrom(
-      this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/matriculas/yo`)
+      this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/matriculas/yo`),
     );
-    
-    // Las matrículas tienen la estructura de curso embebida
     const matriculas = res.data || [];
-    return matriculas.map((m: any) => m.curso).filter(Boolean);
-  }
-
-  // === ESTRUCTURA DEL CURSO ===
-
-  /** Obtiene la estructura completa del curso (unidades → módulos → lecciones). */
-  async obtenerEstructura(cursoSlug: string): Promise<EstructuraCursoResponse> {
-    const res = await firstValueFrom(
-      this.http.get<ApiResponse<EstructuraCursoResponse>>(
-        `${environment.apiUrl}/gestion/cursos/${cursoSlug}/estructura`
-      )
-    );
-    return res.data!;
+    return matriculas.map((m: any) => m?.curso).filter(Boolean);
   }
 }
 
@@ -93,83 +191,4 @@ export interface PaginatedResponse<T> {
   number: number;
   first: boolean;
   last: boolean;
-}
-
-export interface CursoResponse {
-  id: string;
-  slug: string;
-  titulo: string;
-  descripcion: string;
-  imagenPortada: string | null;
-  nivel: string;
-  duracionHoras: number;
-  precio: number;
-  precioPrevio: number | null;
-  estado: string;
-  publicadoEn: string | null;
-  categoria: CategoriaBasicaResponse | null;
-  docenteId: string | null;
-  docenteNombre: string | null;
-  totalEstudiantes: number;
-  promedioCalificacion: number;
-  requisitos: string[];
-  objetivos: string[];
-  etiquetas: string[];
-}
-
-export interface CategoriaResponse {
-  id: string;
-  nombre: string;
-  slug: string;
-  descripcion: string | null;
-  icono: string | null;
-  color: string | null;
-  orden: number;
-  activo: boolean;
-}
-
-export interface CategoriaBasicaResponse {
-  id: string;
-  nombre: string;
-  slug: string;
-}
-
-export interface EstructuraCursoResponse {
-  cursoId: string;
-  slug: string;
-  titulo: string;
-  unidades: UnidadResponse[];
-}
-
-export interface UnidadResponse {
-  id: string;
-  numero: number;
-  titulo: string;
-  descripcion: string | null;
-  xpOtorgado: number;
-  publicado: boolean;
-  modulos: ModuloResponse[];
-}
-
-export interface ModuloResponse {
-  id: string;
-  numero: number;
-  titulo: string;
-  descripcion: string | null;
-  xpOtorgado: number;
-  publicado: boolean;
-  lecciones: LeccionResponse[];
-}
-
-export interface LeccionResponse {
-  id: string;
-  numero: number;
-  titulo: string;
-  descripcion: string | null;
-  tipoContenido: string | null;
-  duracionMinutos: number | null;
-  xpOtorgado: number;
-  publicado: boolean;
-  requeridoAprobacion: boolean;
-  completada: boolean;
 }

@@ -9,7 +9,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { CourseService, CursoResponse, CategoriaResponse } from '../../../core/services/course.service';
+import { CourseService, CursoConCategoria } from '../../../core/services/course.service';
+import { Categoria } from '../../../core/models/domain.models';
 import { AuthService } from '../../../core/services/auth.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
 import { CourseCardComponent } from '../../../shared/components/course-card/course-card.component';
@@ -156,9 +157,9 @@ export class CourseCatalogComponent implements OnInit {
   private readonly enrollmentService = inject(EnrollmentService);
 
   /** Cursos cargados/ordenados (todos los que cumplen filtros). */
-  protected readonly cursos = signal<CursoResponse[]>([]);
+  protected readonly cursos = signal<CursoConCategoria[]>([]);
   /** Categorías disponibles. */
-  protected readonly categorias = signal<CategoriaResponse[]>([]);
+  protected readonly categorias = signal<Categoria[]>([]);
   /** Estado de carga. */
   protected readonly cargando = signal(true);
   /** Total de cursos que cumplen los filtros (según consulta). */
@@ -247,12 +248,11 @@ export class CourseCatalogComponent implements OnInit {
       const resultado = await this.courseService.listarPublicos({
         q: this.busqueda().trim() || undefined,
         categoriaId: this.categoriaId() || undefined,
-        page: 0,
-        size: 60,
+        limite: 60,
       });
-      
-      this.cursos.set(this.ordenar(resultado.content));
-      this.total.set(resultado.totalElements);
+
+      this.cursos.set(this.ordenar(resultado));
+      this.total.set(resultado.length);
       this.pagina.set(1);
     } catch (error) {
       console.error('Error cargando cursos:', error);
@@ -263,7 +263,7 @@ export class CourseCatalogComponent implements OnInit {
     }
   }
 
-  private ordenar(cursos: CursoResponse[]): CursoResponse[] {
+  private ordenar(cursos: CursoConCategoria[]): CursoConCategoria[] {
     const copia = [...cursos];
     switch (this.orden()) {
       case 'precio_asc':
@@ -273,8 +273,8 @@ export class CourseCatalogComponent implements OnInit {
       case 'recientes':
         return copia.sort(
           (a, b) =>
-            new Date(b.publicadoEn ?? '').getTime() -
-            new Date(a.publicadoEn ?? '').getTime(),
+            new Date(b.publicado_en ?? b.creado_en ?? '').getTime() -
+            new Date(a.publicado_en ?? a.creado_en ?? '').getTime(),
         );
       default:
         return copia;

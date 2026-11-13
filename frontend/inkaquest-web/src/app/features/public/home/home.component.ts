@@ -462,8 +462,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   protected async cargarCursosDestacados(): Promise<void> {
     this.cargandoCursos.set(true);
     try {
-      const resultado = await this.courseService.listarPublicos({ size: 6 });
-      this.cursosDestacados.set(resultado.content);
+      const cursos = await this.courseService.listarPublicos({ limite: 6 });
+      this.cursosDestacados.set(cursos);
     } catch {
       this.cursosDestacados.set([]);
     } finally {

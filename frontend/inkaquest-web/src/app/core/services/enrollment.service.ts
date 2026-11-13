@@ -9,10 +9,11 @@ import { ApiResponse } from '../models/api-response.model';
 /**
  * Servicio de matrículas y progreso del estudiante.
  *
- * Consume el backend REST API para:
- * - Listar matrículas del usuario
- * - Matricularse en cursos
- * - Cancelar matrículas
+ * <p>Consume el backend REST API de Spring Boot. La respuesta de
+ * {@code GET /matriculas/yo} anida el curso mínimo embebido
+ * ({@code { id, slug, titulo, precio, moneda, xpTotal, duracionMinutos, ... }});
+ * aquí se normaliza a una forma plana y cómoda para la UI:
+ * {@code { ...m, curso, cursoId, cursoTitulo, curso_id }}.</p>
  */
 @Injectable({ providedIn: 'root' })
 export class EnrollmentService {
@@ -21,19 +22,43 @@ export class EnrollmentService {
 
   // === MIS MATRÍCULAS ===
 
-  /** Obtiene las matrículas del usuario autenticado. */
+  /** Obtiene las matrículas del usuario autenticado (normalizadas). */
   async listarMisMatriculas(): Promise<MatriculaResponse[]> {
     const res = await firstValueFrom(
-      this.http.get<ApiResponse<MatriculaResponse[]>>(`${this.baseUrl}/yo`)
+      this.http.get<ApiResponse<any[]>>(`${this.baseUrl}/yo`),
     );
-    return res.data || [];
+    return (res.data || []).map((m: any) => this.normalizarMatricula(m));
+  }
+
+  /** Normaliza la fila del backend a la forma usada por la UI. */
+  private normalizarMatricula(m: any): MatriculaResponse {
+    const curso = m?.curso ?? null;
+    const id = curso?.id ?? m?.cursoId ?? m?.curso_id ?? null;
+    return {
+      id: m?.id,
+      curso,
+      cursoId: id,
+      curso_id: id,
+      cursoTitulo: curso?.titulo ?? 'Curso',
+      estado: m?.estado,
+      precioPagado: m?.precioPagado ?? m?.precio_pagado ?? 0,
+      moneda: m?.moneda ?? curso?.moneda ?? 'PEN',
+      porcentajeProgreso: m?.porcentajeProgreso ?? 0,
+      xpGanado: m?.xpGanado ?? 0,
+      matriculadoEn: m?.matriculadoEn ?? null,
+      completadoEn: m?.completadoEn ?? null,
+      creadoEn: m?.creadoEn ?? null,
+      // Compatibilidad con plantillas que usan snake_case:
+      precio_pagado: m?.precioPagado ?? m?.precio_pagado ?? 0,
+      matriculado_en: m?.matriculadoEn ?? null,
+    };
   }
 
   /** Verifica si el usuario está matriculado en un curso. */
   async estaMatriculado(cursoId: string): Promise<boolean> {
     const matriculas = await this.listarMisMatriculas();
     return matriculas.some(
-      m => m.cursoId === cursoId && 
+      m => m.cursoId === cursoId &&
       (m.estado === 'activa' || m.estado === 'completada' || m.estado === 'pendiente_pago')
     );
   }
@@ -49,22 +74,77 @@ export class EnrollmentService {
 
   // === MATRICULACIÓN ===
 
-  /** Matricula al usuario en un curso. */
-  async matricularme(cursoId: string): Promise<MatriculaResponse> {
+  /** Inscribe al usuario autenticado en un curso publicado (por su slug). */
+  async matricularme(cursoSlug: string): Promise<MatriculaResponse> {
     const res = await firstValueFrom(
-      this.http.post<ApiResponse<MatriculaResponse>>(
+      this.http.post<ApiResponse<any>>(
         `${this.baseUrl}/matricularme`,
-        { cursoId }
-      )
+        { cursoSlug },
+      ),
     );
-    return res.data!;
+    return this.normalizarMatricula(res.data);
   }
 
-  /** Cancela una matrícula. */
+  /** Cancelación de la matrícula del usuario. */
   async cancelarMatricula(matriculaId: string): Promise<void> {
     await firstValueFrom(
-      this.http.delete<ApiResponse<void>>(`${this.baseUrl}/${matriculaId}`)
+      this.http.delete<ApiResponse<void>>(`${this.baseUrl}/${matriculaId}`),
     );
+  }
+
+  // === INSCRIPCIÓN DESDE EL CATÁLOGO ===
+
+  /** Inscripción gratuita: matricula directa vía API. */
+  async inscribirCursoGratis(curso: { slug?: string } | null): Promise<{ ok: boolean; mensaje: string }> {
+    if (!curso?.slug) {
+      return { ok: false, mensaje: 'No pudimos identificar el curso.' };
+    }
+    try {
+      await this.matricularme(curso.slug);
+      return { ok: true, mensaje: '¡Listo! Ya estás matriculado. Nos vemos en el aula.' };
+    } catch (error: any) {
+      return { ok: false, mensaje: this.mensajeDeError(error, 'No pudimos completar la inscripción.') };
+    }
+  }
+
+  /**
+   * Inscripción de curso de pago: crea un pedido (la activación de la
+   * matrícula corresponde al flujo de pagos/Culqi en el backend).
+   */
+  async solicitarMatricula(curso: { slug?: string } | null): Promise<{ ok: boolean; mensaje: string }> {
+    if (!curso?.slug) {
+      return { ok: false, mensaje: 'No pudimos identificar el curso.' };
+    }
+    try {
+      await firstValueFrom(
+        this.http.post<ApiResponse<any>>(
+          `${environment.apiUrl}/pedidos/iniciar`,
+          {
+            cursoSlug: curso.slug,
+            claveIdempotencia: this.claveIdempotencia(),
+          },
+        ),
+      );
+      return { ok: true, mensaje: 'Solicitud de compra registrada. Te llevamos a la sección de pagos para completarla.' };
+    } catch (error: any) {
+      return { ok: false, mensaje: this.mensajeDeError(error, 'No pudimos registrar tu solicitud.') };
+    }
+  }
+
+  private claveIdempotencia(): string {
+    try {
+      return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    } catch {
+      return `${Date.now()}-${Math.random()}`;
+    }
+  }
+
+  private mensajeDeError(error: any, respaldo: string): string {
+    const msg = error?.error?.message || error?.message;
+    if (typeof msg === 'string' && msg.trim().length > 0 && msg.trim().length < 200) {
+      return msg;
+    }
+    return respaldo;
   }
 }
 
@@ -72,14 +152,18 @@ export class EnrollmentService {
 
 export interface MatriculaResponse {
   id: string;
-  cursoId: string;
+  curso: any | null;
+  cursoId: string | null;
+  curso_id: string | null;
   cursoTitulo: string;
-  estudianteId: string;
   estado: string;
   precioPagado: number;
+  precio_pagado: number;
   moneda: string;
-  creadoEn: string;
-  activadaEn: string | null;
-  canceladoEn: string | null;
-  completadaEn: string | null;
+  porcentajeProgreso: number;
+  xpGanado: number;
+  matriculadoEn: string | null;
+  matriculado_en: string | null;
+  completadoEn: string | null;
+  creadoEn: string | null;
 }
