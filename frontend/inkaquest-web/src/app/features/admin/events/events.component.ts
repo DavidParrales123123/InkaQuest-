@@ -47,7 +47,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                   <td class="font-medium text-marine-800">{{ e.nombre }}</td>
                   <td>{{ e.fecha_inicio ? (e.fecha_inicio | date: 'medium') : '—' }}</td>
                   <td>{{ e.fecha_fin ? (e.fecha_fin | date: 'medium') : '—' }}</td>
-                  <td><span class="badge" [class.badge-success]="e.activo" [class.badge-default]="!e.activo">{{ e.activo ? 'Sí' : 'No' }}</span></td>
+                  <td><span class="badge" [class.badge-success]="e.activo" [class.badge-neutral]="!e.activo">{{ e.activo ? 'Sí' : 'No' }}</span></td>
                   <td><button class="link text-sm" type="button" (click)="toggleActivo(e)" [disabled]="guardandoId() === e.id">{{ guardandoId() === e.id ? 'Guardando…' : (e.activo ? 'Desactivar' : 'Activar') }}</button></td>
                 </tr>
               }

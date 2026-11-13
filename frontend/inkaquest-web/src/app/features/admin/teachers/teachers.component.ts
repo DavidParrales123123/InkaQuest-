@@ -129,8 +129,8 @@ interface AsignacionView extends DocenteCurso {
                       <p class="font-medium text-marine-800">{{ a.curso?.titulo || a.curso_id }}</p>
                       <p class="text-xs text-marine-500">{{ a.curso?.estado || '' }}</p>
                     </td>
-                    <td><span class="badge" [class.badge-success]="a.es_responsable" [class.badge-default]="!a.es_responsable">{{ a.es_responsable ? 'Sí' : 'No' }}</span></td>
-                    <td><span class="badge" [class.badge-success]="a.activo" [class.badge-default]="!a.activo">{{ a.activo ? 'Activa' : 'Inactiva' }}</span></td>
+                    <td><span class="badge" [class.badge-success]="a.es_responsable" [class.badge-neutral]="!a.es_responsable">{{ a.es_responsable ? 'Sí' : 'No' }}</span></td>
+                    <td><span class="badge" [class.badge-success]="a.activo" [class.badge-neutral]="!a.activo">{{ a.activo ? 'Activa' : 'Inactiva' }}</span></td>
                     <td class="text-sm text-marine-600">{{ a.asignado_en | date: 'medium' }}</td>
                     <td class="space-x-2 whitespace-nowrap">
                       <button type="button" class="link text-sm" (click)="toggleActiva(a)">{{ a.activo ? 'Desactivar' : 'Activar' }}</button>

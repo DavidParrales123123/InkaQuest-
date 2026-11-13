@@ -101,7 +101,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                   <td>{{ m.tipo }}</td>
                   <td>{{ m.objetivo_tipo }} · {{ m.objetivo_cantidad }}</td>
                   <td>{{ m.xp_recompensa }} XP / {{ m.monedas_recompensa }} monedas @if (m.insignia_id && insigniaNombre(m.insignia_id)) { <span class="text-xs text-marine-500 block">+ {{ insigniaNombre(m.insignia_id) }}</span> }</td>
-                  <td><span class="badge" [class.badge-success]="m.activa" [class.badge-default]="!m.activa">{{ m.activa ? 'Sí' : 'No' }}</span></td>
+                  <td><span class="badge" [class.badge-success]="m.activa" [class.badge-neutral]="!m.activa">{{ m.activa ? 'Sí' : 'No' }}</span></td>
                   <td class="space-x-2 whitespace-nowrap">
                     <button class="link text-sm" type="button" (click)="editarMision(m)">Editar</button>
                     <button class="link text-sm" type="button" (click)="toggleMisionActiva(m)">{{ m.activa ? 'Desactivar' : 'Activar' }}</button>
@@ -123,7 +123,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                   <td><div class="flex items-center gap-2">@if (i.icono) { <span class="text-lg">{{ i.icono }}</span> }<div><p class="font-medium text-marine-800">{{ i.nombre }}</p><p class="text-xs text-marine-500 font-mono">{{ i.codigo }}</p></div></div></td>
                   <td>{{ i.rareza }}</td>
                   <td>{{ i.xp_otorgado }}</td>
-                  <td><span class="badge" [class.badge-success]="i.activa" [class.badge-default]="!i.activa">{{ i.activa ? 'Sí' : 'No' }}</span></td>
+                  <td><span class="badge" [class.badge-success]="i.activa" [class.badge-neutral]="!i.activa">{{ i.activa ? 'Sí' : 'No' }}</span></td>
                   <td class="space-x-2 whitespace-nowrap"><button class="link text-sm" type="button" (click)="editarInsignia(i)">Editar</button><button class="link text-sm" type="button" (click)="toggleInsigniaActiva(i)">{{ i.activa ? 'Desactivar' : 'Activar' }}</button></td>
                 </tr>
               }

@@ -64,7 +64,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                   <td>{{ i.tipo }}</td>
                   <td>{{ i.precio_monedas }} / {{ i.precio_xp }}</td>
                   <td>{{ i.stock ?? 'sin límite' }}</td>
-                  <td><span class="badge" [class.badge-success]="i.activo" [class.badge-default]="!i.activo">{{ i.activo ? 'Activo' : 'Inactivo' }}</span></td>
+                  <td><span class="badge" [class.badge-success]="i.activo" [class.badge-neutral]="!i.activo">{{ i.activo ? 'Activo' : 'Inactivo' }}</span></td>
                   <td><button class="link text-sm" type="button" (click)="toggleActivo(i)" [disabled]="guardandoId() === i.id">{{ guardandoId() === i.id ? 'Guardando…' : (i.activo ? 'Desactivar' : 'Activar') }}</button></td>
                 </tr>
               }
