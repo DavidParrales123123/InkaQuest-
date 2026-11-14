@@ -4,6 +4,7 @@ import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { AuthService } from '../../../core/services/auth.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { MessageService, HiloResumen, MiembroCurso } from '../../../core/services/message.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { TeacherService } from '../../../core/services/teacher.service';
@@ -40,9 +41,32 @@ const COLORES_AVATAR = ['#12736b', '#f2a541', '#d6143f', '#2b6cb0', '#1b2a4a', '
               {{ totalNoLeidos() === 1 ? 'sin leer' : 'sin leer' }}
             </span>
           }
+          @if (soyDocente() && cursoSel()) {
+            <button type="button" class="btn btn-gold btn-sm" (click)="toggleGrupo()" [attr.aria-expanded]="enviarGrupoAbierto()" aria-controls="panel-grupo">Enviar al grupo</button>
+          }
           <button type="button" class="btn btn-outline btn-sm" (click)="refrescar()" [disabled]="cargando()" aria-label="Actualizar conversaciones">Actualizar</button>
         </div>
       </app-page-header>
+
+      @if (enviarGrupoAbierto() && soyDocente() && cursoSel(); as _sc) {
+        <div id="panel-grupo" class="card card-body space-y-3 border-gold-400/60">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-sm font-bold uppercase tracking-wide text-marine-700">Mensaje a todo el curso</h2>
+            <span class="rounded-full bg-gold-100 px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-gold-700">Este mensaje lo recibirán TODOS los estudiantes activos del curso</span>
+          </div>
+          <textarea class="input min-h-[100px]" maxlength="2000" placeholder="Escribe el anuncio para el grupo..." [value]="cuerpoGrupo()" (input)="cuerpoGrupo.set($any($event.target).value)" aria-label="Palabra al grupo"></textarea>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <p class="text-xs text-marine-500">{{ cuerpoGrupo().trim().length }}/2000 · Envío auditable.</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" class="btn btn-outline btn-sm" (click)="toggleGrupo()" [disabled]="enviandoGrupo()">Cancelar</button>
+              <button type="button" class="btn btn-gold btn-sm" (click)="enviarGrupo()" [disabled]="enviandoGrupo() || cuerpoGrupo().trim().length < 1">{{ enviandoGrupo() ? 'Enviando…' : 'Enviar al grupo' }}</button>
+            </div>
+          </div>
+          @if (resultadoGrupo(); as r) {
+            <p class="rounded-lg p-2.5 text-sm" [class.bg-success-50]="r.ok" [class.text-success-600]="r.ok" [class.bg-danger-50]="!r.ok" [class.text-danger-700]="!r.ok" role="status">{{ r.mensaje }}</p>
+          }
+        </div>
+      }
 
       <div class="grid min-h-0 flex-1 gap-3 lg:grid-cols-12">
         <!-- ================= LISTA (oculta en móvil cuando hay hilo abierto) ================= -->
@@ -235,6 +259,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly teacherService = inject(TeacherService);
   private readonly courseService = inject(CourseService);
+  private readonly confirm = inject(ConfirmService);
 
   /** Etiqueta de rol con texto visible. */
   protected etiquetaRolTag(rol: string): string {
@@ -334,11 +359,54 @@ export class ChatComponent implements OnInit, OnDestroy {
     cuerpo: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(2000)]],
   });
 
+  protected readonly enviarGrupoAbierto = signal(false);
+  protected readonly cuerpoGrupo = signal('');
+  protected readonly enviandoGrupo = signal(false);
+  protected readonly resultadoGrupo = signal<{ ok: boolean; mensaje: string } | null>(null);
+
   private canal: ReturnType<typeof this.supabase.client.channel> | null = null;
 
   ngOnInit(): void {
     void this.cargarTodo();
     this.suscribirRealtime();
+  }
+
+  /** Alterna el panel de envío grupal para el curso activo. */
+  protected toggleGrupo(): void {
+    this.enviarGrupoAbierto.update((abierto) => !abierto);
+    this.resultadoGrupo.set(null);
+  }
+
+  /** Docente: envía el mensaje al chat de cada estudiante activo del curso vía RPC segura + auditoría. */
+  protected async enviarGrupo(): Promise<void> {
+    const texto = this.cuerpoGrupo().trim();
+    const curso = this.cursoSel();
+    if (!curso) return;
+    const cursos = this.misCursos();
+    const titulo = cursos.find((c) => c.id === curso)?.titulo ?? 'este curso';
+    const confirmar = await this.confirm.ask({
+      title: 'Enviar al grupo',
+      mensaje: `¿Enviar este mensaje a todos los estudiantes activos de «${titulo}»? Se registrará quién lo envió y reciberás una copia por cada estudiante.`,
+      textoConfirmar: 'Enviar al grupo',
+      variante: 'primario',
+    });
+    if (!confirmar) return;
+
+    this.enviandoGrupo.set(true);
+    this.resultadoGrupo.set(null);
+    const { data, error } = await this.supabase.client.rpc('chat_enviar_grupo', {
+      p_curso_id: curso,
+      p_cuerpo: texto,
+    });
+    if (error) {
+      this.resultadoGrupo.set({ ok: false, mensaje: error.message ?? 'No se pudo enviar al grupo.' });
+    } else {
+      const n = Number(data ?? 0);
+      this.resultadoGrupo.set({ ok: true, mensaje: `Mensaje entregado a ${n} estudiante(s) y registrado en auditoría.` });
+      this.cuerpoGrupo.set('');
+      await this.cargarHilos();
+    }
+    this.enviandoGrupo.set(false);
   }
 
   ngOnDestroy(): void {
