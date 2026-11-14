@@ -99,7 +99,12 @@ interface AsignacionView extends DocenteCurso {
               <tbody>
                 @for (d of docentesFiltrados(); track d.id) {
                   <tr [class.opacity-70]="d.estado_cuenta !== 'activo'">
-                    <td class="font-medium text-marine-800">{{ nombre(d) }}</td>
+                    <td class="font-medium text-marine-800">
+                      <div class="flex items-center gap-3">
+                        <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-gold-50 text-xs font-bold text-gold-700" aria-hidden="true">{{ iniciales(d) }}</span>
+                        <span class="min-w-0 truncate">{{ nombre(d) }}</span>
+                      </div>
+                    </td>
                     <td>{{ d.email }}</td>
                     <td><app-status-badge [estado]="d.estado_cuenta" /></td>
                     <td>{{ d.creado_en | date: 'mediumDate' }}</td>
@@ -201,6 +206,11 @@ export class TeachersComponent implements OnInit {
   ngOnInit(): void { void this.cargar(); }
 
   protected nombre(u: Perfil): string { return [u.nombre, u.apellido].filter(Boolean).join(' ') || u.email; }
+  protected iniciales(u: Perfil): string {
+    const partes = [u.nombre, u.apellido].filter(Boolean);
+    const base = partes.length ? partes.map((p) => p[0]?.toUpperCase() ?? '').join('') : (u.email?.[0]?.toUpperCase() ?? '?');
+    return base.slice(0, 2);
+  }
   protected limpiarFiltros(): void { this.filtros.reset({ busqueda: '', estado: '' }); }
   protected seleccionarDocente(id: string): void { this.formAsignacion.patchValue({ docenteId: id }); }
 

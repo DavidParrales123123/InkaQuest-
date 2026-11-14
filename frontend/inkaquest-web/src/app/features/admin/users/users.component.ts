@@ -41,7 +41,12 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
             <tbody>
               @for (u of filtrados(); track u.id) {
                 <tr>
-                  <td class="font-medium text-marine-800">{{ nombre(u) }}</td>
+                  <td class="font-medium text-marine-800">
+                    <div class="flex items-center gap-3">
+                      <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-700" aria-hidden="true">{{ iniciales(u) }}</span>
+                      <span class="min-w-0 truncate">{{ nombre(u) }}</span>
+                    </div>
+                  </td>
                   <td>{{ u.email }}</td>
                   <td>{{ u.rol }}</td>
                   <td><app-status-badge [estado]="u.estado_cuenta" /></td>
@@ -103,6 +108,11 @@ export class UsersComponent implements OnInit {
 
   ngOnInit(): void { void this.cargar(); }
   protected nombre(u: Perfil): string { return [u.nombre, u.apellido].filter(Boolean).join(' ') || u.email; }
+  protected iniciales(u: Perfil): string {
+    const partes = [u.nombre, u.apellido].filter(Boolean);
+    const base = partes.length ? partes.map((p) => p[0]?.toUpperCase() ?? '').join('') : (u.email?.[0]?.toUpperCase() ?? '?');
+    return base.slice(0, 2);
+  }
   protected limpiarFiltros(): void { this.filtros.reset({ busqueda: '', rol: '' }); this.confirmando.set(null); }
   protected async alternarEstado(u: Perfil): Promise<void> {
     const propio = this.auth.usuario()?.id ?? '';
