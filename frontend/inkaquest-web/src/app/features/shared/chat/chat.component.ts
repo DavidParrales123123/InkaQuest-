@@ -5,6 +5,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
+import { StorageService } from '../../../core/services/storage.service';
 import { MessageService, HiloResumen, MiembroCurso } from '../../../core/services/message.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { TeacherService } from '../../../core/services/teacher.service';
@@ -204,6 +205,27 @@ const COLORES_AVATAR = ['#12736b', '#f2a541', '#d6143f', '#2b6cb0', '#1b2a4a', '
                         [class.text-marine-800]="m.emisor_id !== miId()"
                         [class.rounded-bl-md]="m.emisor_id !== miId()">
                         <p class="whitespace-pre-wrap break-words">{{ m.cuerpo }}</p>
+                        @if (adjuntosDe(m).length > 0) {
+                          <div class="mt-2 space-y-1.5">
+                            @for (a of adjuntosDe(m); track a.ruta) {
+                              @if (esImagen(a.mime) && urlDe(a.ruta); as u) {
+                                <a [href]="u" target="_blank" rel="noopener" class="block overflow-hidden rounded-xl border border-white/20">
+                                  <img [src]="u" [alt]="a.nombre" class="max-h-64 w-full rounded-xl object-cover" loading="lazy" />
+                                </a>
+                              } @else if (a.mime?.startsWith('video/') && urlDe(a.ruta); as u) {
+                                <video [src]="u" controls preload="metadata" class="max-h-64 w-full rounded-xl"></video>
+                              } @else if (a.mime?.startsWith('audio/') && urlDe(a.ruta); as u) {
+                                <audio [src]="u" controls preload="metadata" class="w-full"></audio>
+                              } @else {
+                                <a [href]="urlDe(a.ruta) ?? '#'" target="_blank" rel="noopener" class="flex items-center gap-2 rounded-xl border border-surface-200 bg-surface-50/60 px-2.5 py-2 text-xs no-underline hover:border-brand-500">
+                                  <svg class="size-5 shrink-0 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
+                                  <span class="min-w-0 flex-1 truncate">{{ a.nombre }}</span>
+                                  <span class="shrink-0 text-[0.62rem] uppercase">{{ tamanoLegible(a.tamano) }}</span>
+                                </a>
+                              }
+                            }
+                          </div>
+                        }
                       </div>
                       <span class="mt-0.5 flex items-center gap-1.5 px-1 text-[0.62rem] font-medium text-marine-400">
                         {{ m.creado_en | date:'HH:mm' }}
@@ -221,15 +243,34 @@ const COLORES_AVATAR = ['#12736b', '#f2a541', '#d6143f', '#2b6cb0', '#1b2a4a', '
               }
             </div>
 
-            <form class="flex items-end gap-2 border-t border-surface-100 p-3" [formGroup]="form" (ngSubmit)="enviar()" aria-label="Escribir mensaje">
-              <textarea class="input max-h-36 min-h-11 flex-1 resize-y !py-2.5" rows="1" formControlName="cuerpo" placeholder="Escribe un mensaje..." (keydown)="onKeydown($event)" aria-label="Mensaje"></textarea>
-              <button type="submit" class="btn btn-primary btn-md shrink-0" [disabled]="form.invalid || enviando()" aria-label="Enviar mensaje">
-                @if (enviando()) {
-                  <svg class="size-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path></svg>
-                } @else {
-                  <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 21 3l-8.5 18-2-8.5-7.5-1z" /></svg>
-                }
-              </button>
+            <form class="flex flex-col gap-2 border-t border-surface-100 p-3" [formGroup]="form" (ngSubmit)="enviar()" aria-label="Escribir mensaje">
+              @if (adjuntos().length > 0) {
+                <div class="flex flex-wrap gap-2">
+                  @for (a of adjuntos(); track a.name; let i = $index) {
+                    <span class="inline-flex max-w-[220px] items-center gap-2 rounded-xl border border-surface-200 bg-surface-50 px-2.5 py-1.5 text-[0.7rem] font-medium text-marine-700">
+                      <svg class="size-4 shrink-0 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
+                      <span class="truncate">{{ a.name }}</span>
+                      <button type="button" class="ml-auto rounded-md p-0.5 text-marine-500 hover:bg-surface-200" (click)="quitarAdjunto(i)" aria-label="Quitar archivo">
+                        <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" /></svg>
+                      </button>
+                    </span>
+                  }
+                </div>
+              }
+              <div class="flex items-end gap-2">
+                <input #archivoRef type="file" hidden multiple accept="image/*,application/pdf,text/plain,application/zip,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,video/mp4,audio/mpeg,audio/mp4" (change)="adjuntar($event)" />
+                <button type="button" class="btn btn-contorno btn-md shrink-0" (click)="archivoRef.click()" aria-label="Adjuntar archivo">
+                  <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.05l-8.9 8.9a5.5 5.5 0 0 1-7.78-7.78l8.5-8.5a3.67 3.67 0 0 1 5.18 5.18l-8.5 8.5a1.83 1.83 0 0 1-2.6-2.6l7.3-7.3" /></svg>
+                </button>
+                <textarea class="input max-h-36 min-h-11 flex-1 resize-y !py-2.5" rows="1" formControlName="cuerpo" placeholder="Escribe un mensaje..." (keydown)="onKeydown($event)" aria-label="Mensaje"></textarea>
+                <button type="submit" class="btn btn-primary btn-md shrink-0" [disabled]="(form.invalid && adjuntos().length === 0) || enviando()" aria-label="Enviar mensaje">
+                  @if (enviando()) {
+                    <svg class="size-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path></svg>
+                  } @else {
+                    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 21 3l-8.5 18-2-8.5-7.5-1z" /></svg>
+                  }
+                </button>
+              </div>
             </form>
           } @else {
             <div class="hidden h-full flex-col items-center justify-center gap-4 p-10 text-center lg:flex">
@@ -260,6 +301,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   private readonly teacherService = inject(TeacherService);
   private readonly courseService = inject(CourseService);
   private readonly confirm = inject(ConfirmService);
+  private readonly storage = inject(StorageService);
 
   /** Etiqueta de rol con texto visible. */
   protected etiquetaRolTag(rol: string): string {
@@ -363,6 +405,8 @@ export class ChatComponent implements OnInit, OnDestroy {
   protected readonly cuerpoGrupo = signal('');
   protected readonly enviandoGrupo = signal(false);
   protected readonly resultadoGrupo = signal<{ ok: boolean; mensaje: string } | null>(null);
+  protected readonly adjuntos = signal<File[]>([]);
+  protected readonly urlsAdjuntas = signal<Record<string, string | null>>({});
 
   private canal: ReturnType<typeof this.supabase.client.channel> | null = null;
 
@@ -539,6 +583,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     try {
       const msgs = await this.messageService.listarMensajes(otroId);
       this.mensajes.set(msgs);
+      void this.poblarUrlsAdjuntas(msgs);
       void this.messageService.marcarLeidos(otroId).then(() => this.cargarHilos());
       this.scrollAlFinal();
     } catch (e) {
@@ -548,16 +593,77 @@ export class ChatComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Adjuntos de un mensaje (compatible con el payload inicial [] y con el nuevo formato v1). */
+  protected adjuntosDe(m: Mensaje): Array<{ ruta: string; nombre: string; mime: string; tamano: number }> {
+    const a: any = (m as any).adjuntos;
+    if (!a) return [];
+    if (Array.isArray(a)) return a as any[];
+    if (typeof a === 'string') {
+      try { return JSON.parse(a); } catch { return []; }
+    }
+    return [];
+  }
+
+  protected esImagen(mime: string): boolean {
+    return !!mime && mime.startsWith('image/');
+  }
+
+  protected tamanoLegible(bytes: number): string {
+    if (!bytes || bytes < 1024) return `${bytes ?? 0} B`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  }
+
+  protected urlDe(ruta: string): string | null {
+    return this.urlsAdjuntas()[ruta] ?? null;
+  }
+
+  /** El usuario seleccionó archivos; se añaden (máx. 5 en total). */
+  protected adjuntar(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const archivos = input.files;
+    if (!archivos?.length) return;
+    const actual = this.adjuntos();
+    const nuevos: File[] = [...actual];
+    for (const f of Array.from(archivos)) {
+      if (nuevos.length >= 5) break;
+      nuevos.push(f);
+    }
+    this.adjuntos.set(nuevos);
+    input.value = '';
+  }
+
+  protected quitarAdjunto(indice: number): void {
+    this.adjuntos.set(this.adjuntos().filter((_, i) => i !== indice));
+  }
+
+  /** Firma las rutas de los adjuntos de los mensajes cargados (resuelve URLs temporales). */
+  protected async poblarUrlsAdjuntas(msgs: Mensaje[]): Promise<void> {
+    const mapa = { ...this.urlsAdjuntas() };
+    const rutas = msgs.flatMap((m) => this.adjuntosDe(m).map((a) => a.ruta)).filter((r) => !(r in mapa));
+    if (rutas.length === 0) return;
+    await Promise.all(rutas.map(async (ruta) => {
+      mapa[ruta] = await this.storage.obtenerUrlChat(ruta);
+    }));
+    this.urlsAdjuntas.set(mapa);
+  }
+
   protected async enviar(): Promise<void> {
-    if (this.form.invalid || !this.sel()) return;
+    if (!this.sel()) return;
+    const texto = this.form.getRawValue().cuerpo.trim();
+    const archivos = this.adjuntos();
+    if (!texto && archivos.length === 0) return;
+
     this.enviando.set(true);
     const otro = this.sel()!;
-    const texto = this.form.getRawValue().cuerpo.trim();
     try {
-      const enviado = await this.messageService.enviar(otro, texto);
+      const enviado = await this.messageService.enviar(otro, texto, archivos);
       this.mensajes.update((m) => [...m, enviado]);
       this.form.reset();
+      this.adjuntos.set([]);
       await this.cargarHilos();
+      await this.poblarUrlsAdjuntas([enviado]);
       this.scrollAlFinal();
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'No se pudo enviar el mensaje.');
@@ -592,6 +698,7 @@ export class ChatComponent implements OnInit, OnDestroy {
         if (esDelHilo && activo) {
           this.mensajes.update((arr) => arr.some((x) => x.id === m.id) ? arr : [...arr, m]);
           if (m.emisor_id === activo) void this.messageService.marcarLeidos(activo);
+          void this.poblarUrlsAdjuntas([m]);
           this.scrollAlFinal();
         }
         void this.cargarHilos();

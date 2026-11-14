@@ -1,10 +1,12 @@
 // @ts-nocheck
 import { Injectable, inject } from '@angular/core';
+import { AuthService } from './auth.service';
 import { SupabaseService } from './supabase.service';
 
 @Injectable({ providedIn: 'root' })
 export class StorageService {
   private readonly supabase = inject(SupabaseService);
+  private readonly auth = inject(AuthService);
 
   /** Sube la portada de un curso al bucket público portadas-curso y devuelve su ruta/URL pública. */
   async subirPortadaCurso(archivo: File): Promise<{ ruta: string; url: string }> {
@@ -41,5 +43,24 @@ export class StorageService {
   async eliminarRecurso(ruta: string): Promise<void> {
     const { error } = await this.supabase.client.storage.from('recursos').remove([ruta]);
     if (error) throw new Error(error.message);
+  }
+
+  /** Adjuntos de chat (privado, bucket 'chat', límite 25 MB por archivo). */
+  async subirChatAdjunto(archivo: File): Promise<{ ruta: string; mime: string; nombre: string; tamano: number }> {
+    const uid = this.auth.usuario()?.id;
+    if (!uid) throw new Error('Debes iniciar sesión.');
+    const limpio = archivo.name.replace(/[^\w.\-() ]+/g, '_');
+    const ruta = `${uid}/${crypto.randomUUID()}-${limpio}`;
+    const { error } = await this.supabase.client.storage
+      .from('chat')
+      .upload(ruta, archivo, { cacheControl: '3600', upsert: false, contentType: archivo.type || undefined });
+    if (error) throw new Error(error.message);
+    return { ruta, mime: archivo.type || 'application/octet-stream', nombre: limpio, tamano: archivo.size };
+  }
+
+  async obtenerUrlChat(ruta: string, expiraSeg = 3600): Promise<string | null> {
+    const { data, error } = await this.supabase.client.storage.from('chat').createSignedUrl(ruta, expiraSeg);
+    if (error) return null;
+    return data?.signedUrl ?? null;
   }
 }

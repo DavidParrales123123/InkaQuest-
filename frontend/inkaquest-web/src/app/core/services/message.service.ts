@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
+import { StorageService } from './storage.service';
 import { Mensaje, Perfil } from '../models/domain.models';
 
 /** Resumen de un hilo (conversación) para el panel lateral. */
@@ -37,6 +38,7 @@ export type MiembroCurso = Perfil & { rol: 'docente' | 'estudiante' };
 export class MessageService {
   private readonly supabase = inject(SupabaseService);
   private readonly auth = inject(AuthService);
+  private readonly storage = inject(StorageService);
 
   /** Lista los hilos del usuario actual, con nombre/avatar y no leídos. */
   async listarHilos(): Promise<HiloResumen[]> {
@@ -114,15 +116,25 @@ export class MessageService {
     return (data ?? []) as Mensaje[];
   }
 
-  /** Envía un mensaje reutilizando el hilo existente entre ambos usuarios. */
-  async enviar(otroId: string, cuerpo: string): Promise<Mensaje> {
+  /** Adjunto serializado en {@code mensaje.adjuntos}. */
+  static readonly ADJUNTO_VERSION = 1 as const;
+
+  /** Envía un mensaje (texto y/o adjuntos) reutilizando el hilo existente entre ambos usuarios. */
+  async enviar(
+    otroId: string,
+    cuerpo: string,
+    archivos: File[] = [],
+  ): Promise<Mensaje> {
     const usuario = this.auth.usuario();
     if (!usuario) {
       throw new Error('Debes iniciar sesión.');
     }
-    const texto = cuerpo.trim();
-    if (!texto) {
-      throw new Error('Escribe un mensaje.');
+    const texto = (cuerpo ?? '').trim();
+    if (!texto && archivos.length === 0) {
+      throw new Error('Escribe un mensaje o adjunta un archivo.');
+    }
+    if (archivos.length > 5) {
+      throw new Error('Máximo 5 adjuntos por mensaje.');
     }
 
     // Reutiliza el hilo_id del intercambio anterior, o crea uno nuevo.
@@ -136,6 +148,13 @@ export class MessageService {
 
     const hilo = (existente?.['hilo_id'] as string | undefined) ?? crypto.randomUUID();
 
+    // Sube los adjuntos al bucket privado (subida secuencial; fallo aborta sin insertar).
+    const adjuntos: Array<{ v: 1; ruta: string; nombre: string; mime: string; tamano: number }> = [];
+    for (const f of archivos) {
+      const meta = await this.storage.subirChatAdjunto(f);
+      adjuntos.push({ v: 1, ...meta });
+    }
+
     const { data, error } = await this.supabase.client
       .from(this.supabase.tabla.mensaje)
       .insert({
@@ -143,7 +162,7 @@ export class MessageService {
         destinatario_id: otroId,
         hilo_id: hilo,
         cuerpo: texto,
-        adjuntos: [],
+        adjuntos,
       })
       .select()
       .single();
