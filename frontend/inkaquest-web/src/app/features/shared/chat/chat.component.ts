@@ -76,8 +76,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                   <span class="shrink-0 text-[0.65rem] font-bold text-brand-600">Enviar</span>
                 </button>
               } @empty {
-                <p class="px-2 py-6 text-center text-xs text-marine-500">{{ busqueda() ? 'Nadie coincide con la búsqueda.' : soyDocente() ? 'No tienes estudiantes en este curso.' : 'No tienes compañeros/docentes en este curso.' }}</p>
-                <p class="px-2 pb-4 text-center text-[0.68rem] text-marine-400">Diagnóstico: {{ diagnostico() }}</p>
+                <p class="px-2 py-6 text-center text-xs text-marine-500">{{ busqueda() ? 'Nadie coincide con la búsqueda.' : soyDocente() ? 'No tienes estudiantes en este curso todavía.' : 'No tienes compañeros/docentes en este curso todavía.' }}</p>
               }
             } @else if (busqueda()) {
               @for (p of resultados(); track p.id) {
@@ -237,19 +236,6 @@ export class ChatComponent implements OnInit, OnDestroy {
   protected readonly totalNoLeidos = computed(() =>
     this.hilos().reduce((s, t) => s + t.noLeidos, 0),
   );
-
-  /** Diagnóstico visible en pantalla sobre cursos/miembros cargados. */
-  protected readonly diagnostico = computed(() => {
-    const n = this.misCursos().length;
-    const sel = this.cursoSel();
-    if (!sel) {
-      return n === 0
-        ? 'Tu cuenta no detectó ninguno de tus cursos. Verifica tu matrícula.'
-        : `Tu cuenta detectó ${n} curso(s). Selecciona uno en el selector y verás a los miembros aquí.`;
-    }
-    const titulo = this.misCursos().find((c) => c.id === sel)?.titulo ?? 'este curso';
-    return `Mostrando a ${this.miembrosCurso().length} miembro(s) de «${titulo}».`;
-  });
 
   protected readonly modoMiembros = computed(() => this.cursoSel() !== null);
 
