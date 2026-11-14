@@ -279,6 +279,11 @@ export class ChatComponent implements OnInit, OnDestroy {
   protected async refrescar(): Promise<void> {
     const otro = this.sel();
     await this.cargarHilos();
+    await this.cargarMisCursos();
+    const curso = this.cursoSel();
+    if (curso) {
+      await this.cargarMiembros(curso);
+    }
     if (otro) await this.cargarMensajes(otro);
   }
 
