@@ -189,7 +189,7 @@ export class MessageService {
 
   /** Muestra los miembros del curso: docente(s) y estudiantes matriculados. */
   async listarMiembrosCurso(cursoId: string): Promise<MiembroCurso[]> {
-    const [{ data: matriculas }, { data: docentes }] = await Promise.all([
+    const [{ data: matriculas, error: errorMatriculas }, { data: docentes, error: errorDocentes }] = await Promise.all([
       this.supabase.client
         .from(this.supabase.tabla.matricula)
         .select('estudiante_id')
@@ -201,6 +201,9 @@ export class MessageService {
         .eq('curso_id', cursoId)
         .eq('activo', true),
     ]);
+
+    if (errorMatriculas) throw new Error(errorMatriculas.message);
+    if (errorDocentes) throw new Error(errorDocentes.message);
 
     const estudianteIds = [...new Set((matriculas ?? []).map((m) => m['estudiante_id'] as string))];
     const docenteIds = [...new Set((docentes ?? []).map((d) => d['docente_id'] as string))];
@@ -237,7 +240,7 @@ export class MessageService {
       .in('id', ids);
 
     if (error) {
-      return [];
+      throw new Error(`No se pudieron cargar los perfiles de los miembros: ${error.message}`);
     }
     return (data ?? []) as Perfil[];
   }
