@@ -94,6 +94,9 @@ export class TeacherService {
       }
 
       if (error) {
+        if ((error as { code?: string }).code === '23505') {
+          return { ok: false, mensaje: 'Ya tienes una solicitud de docente pendiente de revisión.' };
+        }
         return { ok: false, mensaje: error.message };
       }
       return {

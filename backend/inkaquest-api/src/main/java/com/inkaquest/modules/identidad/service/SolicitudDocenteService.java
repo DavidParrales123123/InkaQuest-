@@ -71,7 +71,17 @@ public class SolicitudDocenteService {
             Map<String, Object> adj = request.documentosAdjuntos();
             s.setDocumentosAdjuntos(adj == null ? Map.of() : adj);
 
-            return SolicitudDocenteResponse.from(solicitudDocenteRepository.save(s));
+            try {
+                return SolicitudDocenteResponse.from(solicitudDocenteRepository.saveAndFlush(s));
+            } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+                // Índice parcial solicitud_docente_unica_pendiente: carrera ganada
+                // a otro intento del mismo usuario (doble envío).
+                String detalle = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : "";
+                if (detalle != null && detalle.contains("solicitud_docente_unica_pendiente")) {
+                    throw new BadRequestException("Ya tienes una solicitud de docente pendiente de revisión.");
+                }
+                throw ex;
+            }
         });
     }
 
