@@ -219,6 +219,20 @@ export class MessageService {
       });
   }
 
+  /** Numero de mensajes no leidos del usuario. */
+  async contarNoLeidos(usuarioId: string): Promise<number> {
+    const { count, error } = await this.supabase.client
+      .from(this.supabase.tabla.mensaje)
+      .select('id', { count: 'exact', head: true })
+      .eq('destinatario_id', usuarioId)
+      .is('leido_en', null);
+
+    if (error) {
+      return 0;
+    }
+    return count ?? 0;
+  }
+
   /** Perfiles por ids (solo lectura). */
   private async listarPerfiles(ids: string[]): Promise<Perfil[]> {
     if (ids.length === 0) {

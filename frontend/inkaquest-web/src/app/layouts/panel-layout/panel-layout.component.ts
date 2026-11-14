@@ -15,6 +15,7 @@ import { filter } from 'rxjs';
 
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { MessageService } from '../../core/services/message.service';
 import { LogoComponent } from '../../shared/components/logo/logo.component';
 
 /** Elemento de navegacion de un panel. */
@@ -139,6 +140,9 @@ export interface SeccionPanel {
                         </svg>
                       </span>
                       <span class="truncate">{{ elemento.texto }}</span>
+                      @if (elemento.ruta.endsWith('/mensajes') && mensajesNoLeidos() > 0) {
+                        <span class="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[0.65rem] font-extrabold text-white">{{ mensajesNoLeidos() > 9 ? '9+' : mensajesNoLeidos() }}</span>
+                      }
                     </a>
                   </li>
                 }
@@ -227,6 +231,8 @@ export class PanelLayoutComponent implements OnInit {
   protected readonly auth = inject(AuthService);
   /** Servicio de notificaciones. */
   private readonly notifications = inject(NotificationService);
+  /** Servicio de mensajes (contadores de no leídos para la sidebar). */
+  private readonly mensajes = inject(MessageService);
   /** Router. */
   private readonly router = inject(Router);
   /** Limpieza de suscripciones. */
@@ -236,6 +242,8 @@ export class PanelLayoutComponent implements OnInit {
   protected readonly menuAbierto = signal(false);
   /** Numero de notificaciones no leidas. */
   protected readonly noLeidas = signal(0);
+  /** Numero de mensajes de chat no leidos. */
+  protected readonly mensajesNoLeidos = signal(0);
 
   /** Nombre visible del usuario. */
   protected readonly nombreUsuario = computed(() => {
@@ -282,11 +290,13 @@ export class PanelLayoutComponent implements OnInit {
   /** Refresca el contador al recuperar el foco de la ventana (p. ej. tras alt-tab). */
   private readonly manejarFocoVentana = (): void => {
     void this.cargarNoLeidas();
+    void this.cargarMensajesNoLeidos();
   };
 
   /** Carga el numero de notificaciones sin leer. */
   ngOnInit(): void {
     void this.cargarNoLeidas();
+    void this.cargarMensajesNoLeidos();
     this.router.events
       .pipe(
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
@@ -294,6 +304,7 @@ export class PanelLayoutComponent implements OnInit {
       )
       .subscribe(() => {
         void this.cargarNoLeidas();
+        void this.cargarMensajesNoLeidos();
       });
 
     // Sondea cada 60 s mientras la pestaña está visible (el estado de lectura
@@ -303,6 +314,7 @@ export class PanelLayoutComponent implements OnInit {
       const intervalo = window.setInterval(() => {
         if (document.visibilityState === 'visible') {
           void this.cargarNoLeidas();
+          void this.cargarMensajesNoLeidos();
         }
       }, 60_000);
       window.addEventListener('focus', this.manejarFocoVentana);
@@ -323,6 +335,19 @@ export class PanelLayoutComponent implements OnInit {
       this.noLeidas.set(await this.notifications.contarNoLeidas(usuario.id));
     } catch {
       this.noLeidas.set(0);
+    }
+  }
+
+  /** Consulta el contador de mensajes de chat pendientes. */
+  private async cargarMensajesNoLeidos(): Promise<void> {
+    const usuario = this.auth.usuario();
+    if (!usuario) {
+      return;
+    }
+    try {
+      this.mensajesNoLeidos.set(await this.mensajes.contarNoLeidos(usuario.id));
+    } catch {
+      this.mensajesNoLeidos.set(0);
     }
   }
 
