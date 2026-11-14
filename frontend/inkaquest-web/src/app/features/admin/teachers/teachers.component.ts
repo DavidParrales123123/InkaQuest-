@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -175,9 +176,14 @@ export class TeachersComponent implements OnInit {
     [...this.docentes()].sort((a, b) => this.nombre(a).localeCompare(this.nombre(b)))
   );
 
+  private readonly cambiosFiltros = toSignal(this.filtros.valueChanges, {
+    initialValue: this.filtros.getRawValue(),
+  });
+
   protected readonly docentesFiltrados = computed(() => {
-    const b = this.filtros.controls.busqueda.value.toLowerCase().trim();
-    const e = this.filtros.controls.estado.value;
+    const { busqueda, estado } = this.cambiosFiltros();
+    const b = (busqueda ?? '').toLowerCase().trim();
+    const e = estado ?? '';
     return this.docentesOrdenados().filter(
       (u) => (!e || u.estado_cuenta === e) && (!b || `${u.nombre} ${u.apellido ?? ''} ${u.email}`.toLowerCase().includes(b))
     );
@@ -214,7 +220,7 @@ export class TeachersComponent implements OnInit {
       const [docentes, cursos, asignaciones] = await Promise.all([
         this.adminService.listarUsuarios({ rol: 'docente', limite: 1000 }),
         this.adminService.listarTodosLosCursos(),
-        this.adminService.listarAsignacionesDocenteCurso().catch(() => [] as DocenteCurso[]),
+        this.adminService.listarAsignacionesDocenteCurso(),
       ]);
       this.docentes.set(docentes);
       this.cursos.set(cursos);

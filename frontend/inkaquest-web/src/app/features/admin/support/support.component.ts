@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 
-import { SupabaseService } from '../../../core/services/supabase.service';
+import { AdminService } from '../../../core/services/admin.service';
 import { Ticket } from '../../../core/models/domain.models';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -37,7 +37,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
   `,
 })
 export class SupportComponent implements OnInit {
-  private readonly supabase = inject(SupabaseService);
+  private readonly adminService = inject(AdminService);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly tickets = signal<Ticket[]>([]);
@@ -46,9 +46,7 @@ export class SupportComponent implements OnInit {
   protected async cargar(): Promise<void> {
     this.cargando.set(true); this.error.set(null);
     try {
-      const { data, error } = await this.supabase.client.from(this.supabase.tabla.ticket).select('*').order('creado_en', { ascending: false }).limit(200);
-      if (error) throw new Error(error.message);
-      this.tickets.set((data ?? []) as Ticket[]);
+      this.tickets.set(await this.adminService.listarTicketsAdmin(200));
     } catch (e) { this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar los tickets.'); }
     finally { this.cargando.set(false); }
   }

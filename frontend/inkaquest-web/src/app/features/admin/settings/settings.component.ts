@@ -20,7 +20,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
             @else {
               <ul class="mt-3 space-y-2 text-sm">
                 @for (c of config(); track c.id) {
-                  <li class="rounded-button bg-surface-50 p-3"><p class="font-medium">{{ c.clave }}</p><p class="text-marine-500 break-all">{{ c.valor }}</p></li>
+                  <li class="rounded-xl bg-surface-50 p-3"><p class="font-medium">{{ c.clave }}</p><p class="text-marine-500 break-all">{{ c.valor }}</p></li>
                 }
               </ul>
             }
@@ -31,7 +31,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
             @else {
               <ul class="mt-3 space-y-2 text-sm">
                 @for (p of parametros(); track p.id) {
-                  <li class="rounded-button bg-surface-50 p-3"><p class="font-medium">{{ p.clave }}</p><p class="text-marine-500 break-all">{{ p.valor }}</p></li>
+                  <li class="rounded-xl bg-surface-50 p-3"><p class="font-medium">{{ p.clave }}</p><p class="text-marine-500 break-all">{{ p.valor }}</p></li>
                 }
               </ul>
             }

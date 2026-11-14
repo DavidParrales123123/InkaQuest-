@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
 import { AdminService } from '../../../core/services/admin.service';
-import { SupabaseService } from '../../../core/services/supabase.service';
 import { Curso, Matricula, Perfil } from '../../../core/models/domain.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
@@ -77,7 +77,6 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
   `,
 })
 export class EnrollmentsComponent implements OnInit {
-  private readonly supabase = inject(SupabaseService);
   private readonly adminService = inject(AdminService);
   private readonly fb = inject(FormBuilder);
 
@@ -87,10 +86,14 @@ export class EnrollmentsComponent implements OnInit {
   protected readonly usuarios = signal<Perfil[]>([]);
   protected readonly cursos = signal<Curso[]>([]);
   protected readonly filtros = this.fb.nonNullable.group({ busqueda: [''], estado: [''] });
+  private readonly cambiosFiltros = toSignal(this.filtros.valueChanges, {
+    initialValue: this.filtros.getRawValue(),
+  });
 
   protected readonly filtradas = computed(() => {
-    const b = this.filtros.controls.busqueda.value.toLowerCase().trim();
-    const e = this.filtros.controls.estado.value;
+    const { busqueda, estado } = this.cambiosFiltros();
+    const b = (busqueda ?? '').toLowerCase().trim();
+    const e = estado ?? '';
     return this.matriculas().filter((m) => {
       if (e && m.estado !== e) return false;
       if (!b) return true;
@@ -112,13 +115,12 @@ export class EnrollmentsComponent implements OnInit {
   protected async cargar(): Promise<void> {
     this.cargando.set(true); this.error.set(null);
     try {
-      const [mRes, usuarios, cursos] = await Promise.all([
-        this.supabase.client.from(this.supabase.tabla.matricula).select('*').order('creado_en', { ascending: false }).limit(500),
-        this.adminService.listarUsuarios({ limite: 500 }).catch(() => [] as Perfil[]),
-        this.adminService.listarTodosLosCursos().catch(() => [] as Curso[]),
+      const [matriculas, usuarios, cursos] = await Promise.all([
+        this.adminService.listarMatriculasAdmin(),
+        this.adminService.listarUsuarios({ limite: 500 }),
+        this.adminService.listarTodosLosCursos(),
       ]);
-      if (mRes.error) throw new Error(mRes.error.message);
-      this.matriculas.set((mRes.data ?? []) as Matricula[]);
+      this.matriculas.set(matriculas.slice(0, 500));
       this.usuarios.set(usuarios);
       this.cursos.set(cursos);
     } catch (e) { this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar las matrículas.'); }

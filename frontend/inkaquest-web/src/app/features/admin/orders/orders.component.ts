@@ -351,12 +351,8 @@ export class OrdersComponent implements OnInit {
   }
 
   /** Carga los perfiles visibles para el administrador. */
-  private async cargarUsuarios(): Promise<Perfil[]> {
-    try {
-      return await this.adminService.listarUsuarios({ limite: 500 });
-    } catch {
-      return [];
-    }
+  private cargarUsuarios(): Promise<Perfil[]> {
+    return this.adminService.listarUsuarios({ limite: 500 });
   }
 
   /** Despliega o contrae las lineas del pedido indicado. */

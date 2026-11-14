@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
@@ -92,9 +93,12 @@ export class UsersComponent implements OnInit {
   protected readonly mensaje = signal('');
   protected readonly exito = signal(false);
   protected readonly filtros = this.fb.nonNullable.group({ busqueda: [''], rol: [''] });
+  private readonly cambiosFiltros = toSignal(this.filtros.valueChanges, {
+    initialValue: this.filtros.getRawValue(),
+  });
   protected readonly filtrados = computed(() => {
-    const { busqueda, rol } = this.filtros.getRawValue();
-    return filtrarUsuarios(this.usuarios(), busqueda, rol);
+    const { busqueda, rol } = this.cambiosFiltros();
+    return filtrarUsuarios(this.usuarios(), busqueda ?? '', rol ?? '');
   });
 
   ngOnInit(): void { void this.cargar(); }

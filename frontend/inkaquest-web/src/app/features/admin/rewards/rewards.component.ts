@@ -195,10 +195,10 @@ export class RewardsComponent implements OnInit {
     this.cargando.set(true); this.error.set(null);
     try {
       const [misiones, insignias, cursos, eventos] = await Promise.all([
-        this.adminService.listarMisionesAdmin().catch(() => [] as Mision[]),
-        this.adminService.listarInsigniasAdmin().catch(() => [] as Insignia[]),
-        this.adminService.listarTodosLosCursos().catch(() => [] as Curso[]),
-        this.adminService.listarEventosParaMision().catch(() => [] as EventoGamificacion[]),
+        this.adminService.listarMisionesAdmin(),
+        this.adminService.listarInsigniasAdmin(),
+        this.adminService.listarTodosLosCursos(),
+        this.adminService.listarEventosParaMision(),
       ]);
       this.misiones.set(misiones);
       this.insignias.set(insignias);

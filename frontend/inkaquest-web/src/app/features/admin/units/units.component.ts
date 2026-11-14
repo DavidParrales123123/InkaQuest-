@@ -112,13 +112,12 @@ export class UnitsComponent implements OnInit {
 
   protected cursoTitulo(id: string): string { return this.cursos().find(c => c.id === id)?.titulo ?? id.slice(0,8) + '…'; }
   protected onFiltroChange(v: string): void { this.filtroCursoId.set(v); }
-  protected limpiarFiltro(): void { this.filtroCursoId.set(''); }
   private setMsg(ok: boolean, msg: string): void { this.exito.set(ok); this.mensaje.set(msg); }
 
   protected async cargar(): Promise<void> {
     this.cargando.set(true); this.error.set(null);
     try {
-      const [u, c] = await Promise.all([this.adminService.listarUnidadesAdmin(), this.adminService.listarTodosLosCursos().catch(() => [] as Curso[])]);
+      const [u, c] = await Promise.all([this.adminService.listarUnidadesAdmin(), this.adminService.listarTodosLosCursos()]);
       this.unidades.set(u); this.cursos.set(c);
       if (!this.form.controls.curso_id.value && c.length) this.form.patchValue({ curso_id: c[0].id }, { emitEvent: false });
     } catch (e) { this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar las unidades.'); }

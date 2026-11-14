@@ -46,10 +46,10 @@ export class DashboardComponent implements OnInit {
     this.cargando.set(true); this.error.set(null);
     try {
       const [u, s, c, a] = await Promise.all([
-        this.adminService.listarUsuarios({ limite: 500 }).catch(() => []),
-        this.adminService.listarSolicitudesDocente(['pendiente', 'en_revision']).catch(() => []),
-        this.adminService.listarTodosLosCursos().catch(() => []),
-        this.adminService.listarAuditoria(50).catch(() => []),
+        this.adminService.listarUsuarios({ limite: 500 }),
+        this.adminService.listarSolicitudesDocente(['pendiente', 'en_revision']),
+        this.adminService.listarTodosLosCursos(),
+        this.adminService.listarAuditoria(50),
       ]);
       this.usuarios.set(u.length); this.solicitudes.set(s.length); this.cursos.set(c.length); this.auditoria.set(a.length);
     } catch (e) { this.error.set(e instanceof Error ? e.message : 'No se pudo cargar el panel.'); }

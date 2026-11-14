@@ -46,10 +46,10 @@ export class GamificationComponent implements OnInit {
     this.cargando.set(true); this.error.set(null);
     try {
       const [r, t, m, e] = await Promise.all([
-        this.gamification.listarReglasProgresion().catch(() => []),
-        this.gamification.listarTemporadas().catch(() => []),
-        this.gamification.listarMisionesCatalogo().catch(() => []),
-        this.gamification.listarEventos().catch(() => []),
+        this.gamification.listarReglasProgresion(),
+        this.gamification.listarTemporadas(),
+        this.gamification.listarMisionesCatalogo(),
+        this.gamification.listarEventos(),
       ]);
       this.reglas.set(r); this.temporadas.set(t); this.misiones.set(m); this.eventos.set(e);
     } catch (e) { this.error.set(e instanceof Error ? e.message : 'No se pudo cargar la gamificación.'); }

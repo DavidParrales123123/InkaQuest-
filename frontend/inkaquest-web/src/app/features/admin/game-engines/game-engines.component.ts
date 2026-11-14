@@ -41,7 +41,7 @@ export class GameEnginesComponent implements OnInit {
   protected async cargar(): Promise<void> {
     this.cargando.set(true); this.error.set(null);
     try {
-      const [m, j] = await Promise.all([this.gameService.listarMotores().catch(() => []), this.gameService.listarJuegos().catch(() => [])]);
+      const [m, j] = await Promise.all([this.gameService.listarMotores(), this.gameService.listarJuegos()]);
       this.motores.set(m); this.juegos.set(j);
     } catch (e) { this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar motores/juegos.'); }
     finally { this.cargando.set(false); }

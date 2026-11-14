@@ -167,9 +167,9 @@ export class CoursesComponent implements OnInit {
     try {
       const [cursos, asignaciones, docentes, categorias] = await Promise.all([
         this.adminService.listarTodosLosCursos(),
-        this.adminService.listarAsignacionesDocenteCurso().catch(() => [] as DocenteCurso[]),
-        this.adminService.listarUsuarios({ rol: 'docente', limite: 1000 }).catch(() => [] as Perfil[]),
-        this.adminService.listarCategoriasAdmin().catch(() => [] as Categoria[]),
+        this.adminService.listarAsignacionesDocenteCurso(),
+        this.adminService.listarUsuarios({ rol: 'docente', limite: 1000 }),
+        this.adminService.listarCategoriasAdmin(),
       ]);
       this.cursos.set(cursos);
       this.asignaciones.set(asignaciones);

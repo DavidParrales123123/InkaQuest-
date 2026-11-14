@@ -168,8 +168,8 @@ export class ResourcesComponent implements OnInit {
     this.cargando.set(true); this.error.set(null);
     try {
       const [cursos, recursos] = await Promise.all([
-        this.adminService.listarTodosLosCursos().catch(() => [] as Curso[]),
-        this.adminService.listarRecursosAdmin().catch(() => [] as Recurso[]),
+        this.adminService.listarTodosLosCursos(),
+        this.adminService.listarRecursosAdmin(),
       ]);
       this.cursos.set(cursos);
       this.recursos.set(recursos);
@@ -187,13 +187,17 @@ export class ResourcesComponent implements OnInit {
       if (esArchivo) { this.leccionesArchivo.set([]); } else { this.leccionesEnlace.set([]); }
       return;
     }
-    const lecciones = await this.adminService.listarLeccionesDeCursoAdmin(cursoId).catch(() => [] as LeccionCtx[]);
-    if (esArchivo) {
-      this.leccionesArchivo.set(lecciones);
-      this.formArchivo.patchValue({ leccion_id: '' });
-    } else {
-      this.leccionesEnlace.set(lecciones);
-      this.formEnlace.patchValue({ leccion_id: '' });
+    try {
+      const lecciones = await this.adminService.listarLeccionesDeCursoAdmin(cursoId);
+      if (esArchivo) {
+        this.leccionesArchivo.set(lecciones);
+        this.formArchivo.patchValue({ leccion_id: '' });
+      } else {
+        this.leccionesEnlace.set(lecciones);
+        this.formEnlace.patchValue({ leccion_id: '' });
+      }
+    } catch (e) {
+      this.setMsg(false, e instanceof Error ? `No se pudieron cargar las lecciones del curso: ${e.message}` : 'No se pudieron cargar las lecciones del curso.');
     }
   }
 

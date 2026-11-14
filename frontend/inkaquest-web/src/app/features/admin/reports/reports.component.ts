@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -18,15 +18,6 @@ interface FilaCurso {
   completadas: number;
   pendientes: number;
   porcentaje_pago: number;
-}
-
-interface FilaTicket {
-  id: string;
-  asunto: string;
-  estado: string;
-  prioridad: string;
-  email: string;
-  creado_en: string;
 }
 
 @Component({
@@ -56,7 +47,7 @@ interface FilaTicket {
         <app-stat-card etiqueta="Docentes" [valor]="docentes().length" tono="gold" [icono]="true">
           <span icono><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/></svg></span>
         </app-stat-card>
-        <app-stat-card etiqueta="Cursos publicados" [valor]="cursosPublicados()" tono="success" [icono]="true">
+        <app-stat-card etiqueta="Cursos publicados" [valor]="cursosPublicados()" tono="gold" [icono]="true">
           <span icono><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></span>
         </app-stat-card>
         <app-stat-card etiqueta="Matrículas activas" [valor]="matriculasActivas().length" tono="brand" [icono]="true">
@@ -151,8 +142,6 @@ export class ReportsComponent implements OnInit {
   protected readonly docentes = computed(() => this.perfiles().filter((p) => p.rol === 'docente'));
   protected readonly cursosPublicados = computed(() => this.cursos().filter((c) => c.estado === 'publicado').length);
   protected readonly matriculasActivas = computed(() => this.matriculas().filter((m) => m.estado === 'activa'));
-  protected readonly matriculasCompletadas = computed(() => this.matriculas().filter((m) => m.estado === 'completada'));
-  protected readonly matriculasPendientes = computed(() => this.matriculas().filter((m) => m.estado === 'pendiente_pago'));
   protected readonly ticketsAbiertos = computed(() =>
     this.tickets().filter((t) => t.estado !== 'cerrado' && t.estado !== 'resuelto'),
   );
@@ -201,3 +190,4 @@ export class ReportsComponent implements OnInit {
     }
   }
 }
+

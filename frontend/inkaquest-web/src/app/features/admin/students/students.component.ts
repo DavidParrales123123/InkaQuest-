@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
@@ -79,10 +80,14 @@ export class StudentsComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly estudiantes = signal<Perfil[]>([]);
   protected readonly filtros = this.fb.nonNullable.group({ busqueda: [''], estado: [''] });
+  private readonly cambiosFiltros = toSignal(this.filtros.valueChanges, {
+    initialValue: this.filtros.getRawValue(),
+  });
 
   protected readonly filtrados = computed(() => {
-    const b = this.filtros.controls.busqueda.value.toLowerCase().trim();
-    const e = this.filtros.controls.estado.value;
+    const { busqueda, estado } = this.cambiosFiltros();
+    const b = (busqueda ?? '').toLowerCase().trim();
+    const e = estado ?? '';
     return this.estudiantes().filter((u) => (!e || u.estado_cuenta === e) && (!b || `${u.nombre} ${u.apellido ?? ''} ${u.email}`.toLowerCase().includes(b)));
   });
   protected readonly activos = computed(() => this.estudiantes().filter((u) => u.estado_cuenta === 'activo').length);
