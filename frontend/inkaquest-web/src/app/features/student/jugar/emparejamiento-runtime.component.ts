@@ -44,12 +44,13 @@ interface LadoItem {
         <div class="h-2 bg-brand-500 transition-all duration-500" [style.width.%]="progreso()"></div>
       </div>
       <p class="text-sm text-marine-600">Selecciona un concepto de la izquierda y luego su definición correcta.</p>
+      @if (aviso()) { <p class="text-xs font-semibold text-warning-500" role="status">{{ aviso() }}</p> }
 
       <div class="grid gap-3 sm:grid-cols-2">
         <div class="space-y-2">
           <p class="text-xs font-bold uppercase tracking-wider text-marine-400">Concepto</p>
           @for (c of conceptos(); track c.grupo) {
-            <button type="button" [class]="claseItem(c)" [disabled]="c.estado === 'emparejado'" (click)="elegirConcepto(c)">
+            <button type="button" [class]="claseConcepto(c)" [disabled]="c.estado === 'emparejado'" (click)="elegirConcepto(c)">
               <span class="min-w-0 break-words">{{ c.texto }}</span>
               @if (c.estado === 'emparejado') { <span class="ml-auto text-success-600">✓</span> }
             </button>
@@ -58,7 +59,7 @@ interface LadoItem {
         <div class="space-y-2">
           <p class="text-xs font-bold uppercase tracking-wider text-marine-400">Definición</p>
           @for (d of definiciones(); track d.grupo) {
-            <button type="button" [class]="claseItem(d)" [disabled]="d.estado === 'emparejado'" (click)="elegirDefinicion(d)">
+            <button type="button" [class]="claseDefinicion(d)" [disabled]="d.estado === 'emparejado'" (click)="elegirDefinicion(d)">
               <span class="min-w-0 break-words">{{ d.texto }}</span>
               @if (d.estado === 'emparejado') { <span class="ml-auto text-success-600">✓</span> }
             </button>
@@ -88,6 +89,7 @@ interface LadoItem {
     .emp-item:disabled { cursor: default; opacity: .7; }
     .emp-emp { border-color: #12736b; background: #e8f6f4; color: #0f5d57; }
     .emp-sel { border-color: #f5b43c; background: rgba(245, 180, 60, .18); box-shadow: 0 0 0 2px rgba(245, 180, 60, .35); }
+    .emp-err { border-color: #d6143f; background: rgba(214, 20, 63, .12); box-shadow: 0 0 0 2px rgba(214, 20, 63, .3); }
   `],
 })
 export class EmparejamientoRuntimeComponent {
@@ -102,6 +104,8 @@ export class EmparejamientoRuntimeComponent {
   protected readonly conceptoSel = signal<number | null>(null);
   protected readonly errores = signal(0);
   protected readonly terminado = signal(false);
+  protected readonly aviso = signal('');
+  protected readonly falloFlash = signal<number | null>(null);
   private totalTimer: ReturnType<typeof setInterval> | null = null;
   private tiempoTotalMs = 0;
 
@@ -123,15 +127,16 @@ export class EmparejamientoRuntimeComponent {
       const conceptos: LadoItem[] = pares.map((p, i) => ({ grupo: i, texto: p.concepto, estado: 'nuevo' }));
       const definiciones: LadoItem[] = pares.map((p, i) => ({ grupo: i, texto: p.definicion, estado: 'nuevo' }));
       // Desordenar la columna derecha para que no coincida con el concepto.
-      for (let i = definiciones.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [definiciones[i], definiciones[j]] = [definiciones[j], definiciones[i]];
-      }
+      // Barajar tanto que ninguna definición quede en su posición original
+      // (derangement): si no, se regala un par en el que uno solo debe adivinar.
+      const desordenadas = this.desordenarSinCoincidencias(definiciones);
       this.conceptos.set(conceptos);
-      this.definiciones.set(definiciones);
+      this.definiciones.set(desordenadas);
       this.conceptoSel.set(null);
       this.errores.set(0);
       this.terminado.set(false);
+      this.aviso.set('');
+      this.falloFlash.set(null);
     });
 
     effect(() => {
@@ -145,32 +150,71 @@ export class EmparejamientoRuntimeComponent {
     });
   }
 
-  protected claseItem(l: LadoItem): string {
+  /** Devuelve una copia desordenada sin ningún elemento en su índice original. */
+  private desordenarSinCoincidencias(items: LadoItem[]): LadoItem[] {
+    if (items.length < 2) {
+      return [...items];
+    }
+    const copia = [...items];
+    for (let intento = 0; intento < 300; intento++) {
+      for (let i = copia.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copia[i], copia[j]] = [copia[j], copia[i]];
+      }
+      if (copia.every((item, indice) => item !== items[indice])) {
+        return copia;
+      }
+    }
+    // Fallback determinista: rotación circular (nunca coincide salvo N=1).
+    const rotada = [...copia];
+    const primera = rotada.shift();
+    if (primera !== undefined) { rotada.push(primera); }
+    return rotada;
+  }
+
+  /** El concepto seleccionado se resalta; la definición elegida no se resalta nunca (sería dar la respuesta). */
+  protected claseConcepto(l: LadoItem): string {
     const base = 'emp-item';
     if (l.estado === 'emparejado') return `${base} emp-emp`;
     return l.grupo === this.conceptoSel() ? `${base} emp-sel` : base;
   }
 
+  /** La definición NO recibe emp-sel aunque coincida con el concepto elegido: solo reacciona al clic o al fallo. */
+  protected claseDefinicion(l: LadoItem): string {
+    const base = 'emp-item';
+    if (l.estado === 'emparejado') return `${base} emp-emp`;
+    if (l.grupo === this.falloFlash()) return `${base} emp-err`;
+    return base;
+  }
+
   protected elegirConcepto(c: LadoItem): void {
     if (c.estado === 'emparejado') return;
     this.conceptoSel.set(this.conceptoSel() === c.grupo ? null : c.grupo);
+    this.aviso.set('');
   }
 
   protected elegirDefinicion(d: LadoItem): void {
     if (d.estado === 'emparejado') return;
     const sel = this.conceptoSel();
-    if (sel === null) return; // Primero un concepto, luego una definición.
+    if (sel === null) {
+      this.aviso.set('Primero selecciona un concepto de la columna izquierda.');
+      return; // Primero un concepto, luego una definición.
+    }
 
     if (sel === d.grupo) {
       // Emparejamiento correcto.
       this.conceptos.set(this.conceptos().map((c) => (c.grupo === sel ? { ...c, estado: 'emparejado' as const } : c)));
       this.definiciones.set(this.definiciones().map((x) => (x.grupo === sel ? { ...x, estado: 'emparejado' as const } : x)));
       this.conceptoSel.set(null);
+      this.aviso.set('');
       if (this.conceptos().every((c) => c.estado === 'emparejado')) {
         this.terminado.set(true);
       }
     } else {
       this.errores.update((e) => e + 1);
+      this.aviso.set('No es la pareja correcta. Intenta otra vez.');
+      this.falloFlash.set(d.grupo);
+      setTimeout(() => this.falloFlash.set(null), 700);
       // Parpadear el item equivocado: función lógica de "erro", la UI ya lo muestra como fallo.
       this.conceptoSel.set(null);
     }
