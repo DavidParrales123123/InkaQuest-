@@ -4,6 +4,7 @@ import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 import { AdminService } from '../../../core/services/admin.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { Notificacion } from '../../../core/models/domain.models';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -149,6 +150,7 @@ const SEGMENTOS: Array<{ id: Segmento; etiqueta: string; nota: string }> = [
 })
 export class AdminNotificationsComponent implements OnInit {
   private readonly adminService = inject(AdminService);
+  private readonly confirm = inject(ConfirmService);
 
   protected readonly segmentos = SEGMENTOS;
   protected readonly pestana = signal<Pestana>('enviar');
@@ -193,9 +195,15 @@ export class AdminNotificationsComponent implements OnInit {
     ev.preventDefault();
     if (!this.formularioValido() || this.enviando()) return;
     const detalle = this.segmento() === 'usuario'
-      ? `¿Enviar a ${this.email().trim()}?`
-      : `¿Enviar a ${this.conteo()} usuario(s) activos (${SEGMENTOS.find((s) => s.id === this.segmento())?.etiqueta})?`;
-    if (!window.confirm(`${detalle}\n\nEsta acción no se puede deshacer.`)) return;
+      ? `Se enviará al perfil ${this.email().trim()}.`
+      : `Se enviará a ${this.conteo()} usuario(s) activos (${SEGMENTOS.find((s) => s.id === this.segmento())?.etiqueta}).`;
+    const confirmar = await this.confirm.ask({
+      title: 'Enviar notificación',
+      mensaje: `${detalle}\n\nEsta acción no se puede deshacer.`,
+      textoConfirmar: 'Enviar notificación',
+      variante: 'primario',
+    });
+    if (!confirmar) return;
 
     this.enviando.set(true);
     this.resultado.set(null);
