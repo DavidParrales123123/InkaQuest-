@@ -111,7 +111,7 @@ export class NotificationService {
     try {
       const { error } = await this.supabase.client
         .from(this.supabase.tabla.notificacionDestinatario)
-        .update({ leida_en: new Date().toISOString() })
+        .update({ leida_en: new Date().toISOString(), estado: 'leida' })
         .eq('id', destinatarioId);
 
       if (error) {
@@ -131,7 +131,7 @@ export class NotificationService {
     try {
       const { error } = await this.supabase.client
         .from(this.supabase.tabla.notificacionDestinatario)
-        .update({ leida_en: new Date().toISOString() })
+        .update({ leida_en: new Date().toISOString(), estado: 'leida' })
         .eq('usuario_id', usuarioId)
         .is('leida_en', null);
 

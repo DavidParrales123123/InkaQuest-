@@ -34,11 +34,15 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
             [deshabilitado]="cargando() || noLeidas() === 0"
             (alPulsar)="marcarTodas()"
           >
-            Marcar todas como leidas
+            Marcar todas como leídas
           </app-button>
           <app-button variante="contorno" tamano="sm" (alPulsar)="cargar()">Actualizar</app-button>
         </div>
       </app-page-header>
+
+      @if (mensaje()) {
+        <p class="rounded-lg border p-3 text-sm" [class.border-success-500/40]="exito()" [class.bg-success-50]="exito()" [class.text-success-600]="exito()" [class.border-danger-200]="!exito()" [class.bg-danger-50]="!exito()" [class.text-danger-700]="!exito()" role="status">{{ mensaje() }}</p>
+      }
 
       <div class="grid gap-4 sm:grid-cols-2">
         <app-stat-card etiqueta="Total" [valor]="notificaciones().length" detalle="Notificaciones visibles" [icono]="true" tono="brand">
@@ -112,6 +116,8 @@ export class NotificationsComponent implements OnInit {
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly notificaciones = signal<NotificacionCompleta[]>([]);
+  protected readonly mensaje = signal('');
+  protected readonly exito = signal(false);
 
   protected readonly noLeidas = computed(() => this.notificaciones().filter((n) => !n.leida_en).length);
 
@@ -128,6 +134,7 @@ export class NotificationsComponent implements OnInit {
     }
     this.cargando.set(true);
     this.error.set(null);
+    this.mensaje.set('');
     try {
       this.notificaciones.set(await this.notifications.listarNotificaciones(usuario.id));
     } catch (e) {
@@ -140,6 +147,7 @@ export class NotificationsComponent implements OnInit {
   protected async marcarLeida(n: NotificacionCompleta): Promise<void> {
     if (!n.destinatario_id) return;
     const res = await this.notifications.marcarLeida(n.destinatario_id);
+    this.exito.set(res.ok); this.mensaje.set(res.mensaje);
     if (res.ok) {
       await this.cargar();
     }
@@ -149,6 +157,7 @@ export class NotificationsComponent implements OnInit {
     const usuario = this.auth.usuario();
     if (!usuario) return;
     const res = await this.notifications.marcarTodasLeidas(usuario.id);
+    this.exito.set(res.ok); this.mensaje.set(res.mensaje);
     if (res.ok) {
       await this.cargar();
     }

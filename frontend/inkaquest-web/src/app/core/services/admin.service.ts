@@ -169,6 +169,61 @@ export class AdminService {
   }
 
   /** Listado administrativo de notificaciones. */
+  /** Cuenta los perfiles activos que recibirían una notificación para un segmento dado. */
+  async contarDestinatariosNotificacion(
+    segmento: 'todos' | 'estudiantes' | 'docentes' | 'administradores',
+  ): Promise<number> {
+    let consulta = this.supabase.client
+      .from(this.supabase.tabla.perfil)
+      .select('id', { count: 'exact', head: true })
+      .eq('estado_cuenta', 'activo');
+    if (segmento !== 'todos') {
+      const roles: Record<typeof segmento, string> = {
+        estudiantes: 'estudiante',
+        docentes: 'docente',
+        administradores: 'administrador',
+        todos: '',
+      };
+      consulta = consulta.eq('rol', roles[segmento]);
+    }
+    const { count, error } = await consulta;
+    if (error) return 0;
+    return count ?? 0;
+  }
+
+  /** Envía una notificación admin segmentada vía la función segura del backend (auditoría). */
+  async enviarNotificacionAdmin(input: {
+    titulo: string;
+    mensaje: string;
+    segmento: 'todos' | 'estudiantes' | 'docentes' | 'administradores' | 'usuario';
+    email?: string;
+  }): Promise<{ ok: boolean; mensaje: string; destinatarios?: number }> {
+    try {
+      const { data, error } = await this.supabase.client.rpc('crear_notificacion_admin', {
+        p_titulo: input.titulo,
+        p_mensaje: input.mensaje,
+        p_segmento: input.segmento,
+        p_email: input.segmento === 'usuario' ? (input.email ?? '').trim() : null,
+        p_canal: 'in_app',
+      });
+      if (error) {
+        const msg = (error as { message?: string }).message ?? 'No se pudo enviar la notificación.';
+        return { ok: false, mensaje: msg };
+      }
+      const payload = (data ?? {}) as { destinatarios?: number };
+      return {
+        ok: true,
+        mensaje: `Notificación enviada a ${payload.destinatarios ?? 0} usuario(s).`,
+        destinatarios: payload.destinatarios ?? 0,
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        mensaje: e instanceof Error ? e.message : 'No se pudo enviar la notificación.',
+      };
+    }
+  }
+
   async listarNotificacionesAdmin(): Promise<Notificacion[]> {
     const { data, error } = await this.supabase.client
       .from(this.supabase.tabla.notificacion)

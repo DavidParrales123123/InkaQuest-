@@ -279,6 +279,11 @@ export class PanelLayoutComponent implements OnInit {
     this.menuAbierto.set(false);
   }
 
+  /** Refresca el contador al recuperar el foco de la ventana (p. ej. tras alt-tab). */
+  private readonly manejarFocoVentana = (): void => {
+    void this.cargarNoLeidas();
+  };
+
   /** Carga el numero de notificaciones sin leer. */
   ngOnInit(): void {
     void this.cargarNoLeidas();
@@ -290,6 +295,22 @@ export class PanelLayoutComponent implements OnInit {
       .subscribe(() => {
         void this.cargarNoLeidas();
       });
+
+    // Sondea cada 60 s mientras la pestaña está visible (el estado de lectura
+    // también cambia por acciones ajenas a la navegación, p. ej. desde otro
+    // dispositivo). Se limpia al destruir el layout.
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      const intervalo = window.setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          void this.cargarNoLeidas();
+        }
+      }, 60_000);
+      window.addEventListener('focus', this.manejarFocoVentana);
+      this.destroyRef.onDestroy(() => {
+        window.clearInterval(intervalo);
+        window.removeEventListener('focus', this.manejarFocoVentana);
+      });
+    }
   }
 
   /** Consulta el contador de notificaciones pendientes. */
