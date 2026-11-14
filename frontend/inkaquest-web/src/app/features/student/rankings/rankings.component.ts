@@ -71,7 +71,7 @@ export class RankingsComponent implements OnInit {
   protected async cargarTemporadas(): Promise<void> {
     this.cargando.set(true); this.error.set(null);
     try {
-      const t = await this.gamification.listarTemporadas();
+      const t = await this.gamification.listarTemporadas().catch(() => [] as Temporada[]);
       this.temporadas.set(t);
       const activa = t.find((x) => x.estado === 'activa' || x.estado === 'activo') ?? t[0];
       if (activa) { this.seleccionada.set(activa.id); await this.cargarRanking(); }
@@ -86,7 +86,7 @@ export class RankingsComponent implements OnInit {
     if (!this.seleccionada()) { this.ranking.set([]); return; }
     this.cargando.set(true); this.error.set(null);
     try {
-      this.ranking.set(await this.gamification.listarRanking(this.seleccionada()));
+      this.ranking.set(await this.gamification.listarRanking(this.seleccionada()).catch(() => [] as Ranking[]));
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'No se pudo cargar el ranking.');
     } finally { this.cargando.set(false); }

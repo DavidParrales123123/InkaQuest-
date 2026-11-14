@@ -85,8 +85,8 @@ export class StoreComponent implements OnInit {
     this.error.set(null);
     try {
       const [items, monedero] = await Promise.all([
-        this.rewards.listarTienda(),
-        usuario ? this.gamification.obtenerMonedero(usuario.id) : Promise.resolve(null),
+        this.rewards.listarTienda().catch(() => [] as TiendaItem[]),
+        usuario ? this.gamification.obtenerMonedero(usuario.id).catch(() => null) : Promise.resolve(null),
       ]);
       this.items.set(items);
       this.monedero.set(monedero);

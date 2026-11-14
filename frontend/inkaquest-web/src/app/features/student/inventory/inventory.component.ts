@@ -80,7 +80,7 @@ export class InventoryComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
     try {
-      const inv = await this.rewards.listarInventario(usuario.id);
+      const inv = await this.rewards.listarInventario(usuario.id).catch(() => [] as Array<Inventario & { item: TiendaItem | null }>);
       this.items.set(inv as InventarioConItem[]);
       this.totalUnidades.set(inv.reduce((a, i) => a + (i.cantidad || 0), 0));
     } catch (e) {

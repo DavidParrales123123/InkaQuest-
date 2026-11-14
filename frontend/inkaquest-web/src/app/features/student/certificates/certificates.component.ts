@@ -64,7 +64,7 @@ export class CertificatesComponent implements OnInit {
     if (!user) { this.error.set('Debes iniciar sesión.'); this.cargando.set(false); return; }
     this.cargando.set(true); this.error.set(null);
     try {
-      this.certificados.set(await this.certificateService.listarCertificados(user.id));
+      this.certificados.set(await this.certificateService.listarCertificados(user.id).catch(() => [] as Certificado[]));
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar los certificados.');
     } finally { this.cargando.set(false); }

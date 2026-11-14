@@ -3,9 +3,9 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
-import { GamificationService } from '../../../core/services/gamification.service';
+import { GamificationService, InsigniaCatalogoResponse } from '../../../core/services/gamification.service';
 import { RewardService } from '../../../core/services/reward.service';
-import { CompraVirtual, Insignia, InsigniaUsuario, Monedero, TransaccionMoneda } from '../../../core/models/domain.models';
+import { CompraVirtual, Monedero, TransaccionMoneda } from '../../../core/models/domain.models';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
@@ -46,8 +46,8 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
               @for (iu of insignias().slice(0, 6); track iu.id) {
                 <li class="flex items-center justify-between gap-5 rounded-lg border border-surface-200 p-3">
                   <div>
-                    <p class="font-medium text-marine-900">{{ iu.insignia.nombre || 'Insignia' }}</p>
-                    <p class="text-xs text-marine-500">{{ iu.insignia.rareza || '—' }} · {{ iu.insignia.xp_otorgado || 0 }} XP</p>
+                    <p class="font-medium text-marine-900">{{ iu.nombre || 'Insignia' }}</p>
+                    <p class="text-xs text-marine-500">{{ iu.rareza || '—' }} · +{{ iu.xpRequerido || 0 }} XP</p>
                   </div>
                   <span class="badge badge-success">Obtenida</span>
                 </li>
@@ -124,7 +124,7 @@ export class RewardsComponent implements OnInit {
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly monedero = signal<Monedero | null>(null);
-  protected readonly insignias = signal<(InsigniaUsuario & { insignia: Insignia })[]>([]);
+  protected readonly insignias = signal<InsigniaCatalogoResponse[]>([]);
   protected readonly movimientos = signal<TransaccionMoneda[]>([]);
   protected readonly compras = signal<CompraVirtual[]>([]);
 
@@ -142,14 +142,14 @@ export class RewardsComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
     try {
-      const [monedero, insignias, movimientos, compras] = await Promise.all([
-        this.gamification.obtenerMonedero(usuario.id),
-        this.gamification.listarInsignias(usuario.id),
-        this.gamification.listarHistorialMonedas(usuario.id, 20),
-        this.rewards.listarCompras(usuario.id),
+      const [monedero, todas, movimientos, compras] = await Promise.all([
+        this.gamification.obtenerMonedero(usuario.id).catch(() => null),
+        this.gamification.listarInsignias().catch(() => [] as InsigniaCatalogoResponse[]),
+        this.gamification.listarHistorialMonedas(usuario.id, 20).catch(() => [] as TransaccionMoneda[]),
+        this.rewards.listarCompras(usuario.id).catch(() => [] as CompraVirtual[]),
       ]);
       this.monedero.set(monedero);
-      this.insignias.set(insignias);
+      this.insignias.set(todas.filter((i) => i.obtenida));
       this.movimientos.set(movimientos);
       this.compras.set(compras);
     } catch (e) {
