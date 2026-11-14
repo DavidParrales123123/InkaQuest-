@@ -13,6 +13,7 @@ import {
 } from '../../../core/models/domain.models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import {
+  ContenidoArrastrar,
   ContenidoGenerico,
   ContenidoJuego,
   ContenidoPares,
@@ -24,6 +25,7 @@ import { QuizRuntimeComponent } from './quiz-runtime.component';
 import { MemoriaRuntimeComponent } from './memoria-runtime.component';
 import { EmparejamientoRuntimeComponent } from './emparejamiento-runtime.component';
 import { GenericoRuntimeComponent } from './generico-runtime.component';
+import { ArrastrarSoltarRuntimeComponent } from './arrastrar-soltar-runtime.component';
 
 type Fase = 'cargando' | 'intro' | 'jugando' | 'terminado';
 
@@ -46,6 +48,7 @@ type Fase = 'cargando' | 'intro' | 'jugando' | 'terminado';
     MemoriaRuntimeComponent,
     EmparejamientoRuntimeComponent,
     GenericoRuntimeComponent,
+    ArrastrarSoltarRuntimeComponent,
   ],
   template: `
     <section class="space-y-6">
@@ -110,6 +113,8 @@ type Fase = 'cargando' | 'intro' | 'jugando' | 'terminado';
               } @else {
                 <app-emparejamiento-runtime [contenido]="c" [tiempoLimiteTotalSeg]="juego()?.tiempo_limite_seg ?? null" (finalizado)="alFinalizar($event)" />
               }
+            } @else if (arrastrarContenido(); as c) {
+              <app-arrastrar-soltar-runtime [contenido]="c" [tiempoLimiteTotalSeg]="juego()?.tiempo_limite_seg ?? null" (finalizado)="alFinalizar($event)" />
             } @else if (genericoContenido(); as c) {
               <app-generico-runtime [contenido]="c" (finalizado)="alFinalizar($event)" />
             }
@@ -177,6 +182,10 @@ export class JuegoJugadorComponent implements OnInit {
   protected readonly paresContenido = computed<ContenidoPares | null>(() => {
     const c = this.contenido();
     return c?.tipo === 'memoria' || c?.tipo === 'emparejamiento' ? { tipo: 'emparejamiento', pares: c.pares } : null;
+  });
+  protected readonly arrastrarContenido = computed<ContenidoArrastrar | null>(() => {
+    const c = this.contenido();
+    return c?.tipo === 'arrastrar' ? c : null;
   });
   protected readonly genericoContenido = computed<ContenidoGenerico | null>(() => {
     const c = this.contenido();

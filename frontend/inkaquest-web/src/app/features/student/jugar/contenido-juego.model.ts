@@ -47,7 +47,26 @@ export interface ContenidoGenerico {
   config: Record<string, unknown> | null;
 }
 
-export type ContenidoJuego = ContenidoQuiz | ContenidoPares | ContenidoGenerico;
+/** Un ítem a arrastrar y a qué zona/celda debe llegar. */
+export interface ArrastrarItem {
+  /** Texto visible del chip a arrastrar. */
+  texto: string;
+  /** Identificador de la zona correcta (debe existir en {@code zonas}). */
+  zona: string;
+}
+
+/** Contenido del motor de arrastrar y soltar (HTML5 drag-and-drop). */
+export interface ContenidoArrastrar {
+  tipo: 'arrastrar';
+  /** Instrucción/portada. */
+  instrucciones: string | null;
+  /** Nombres de las zonas de destino, en orden de aparición. */
+  zonas: string[];
+  /** Chips a arrastrar, cada uno con su zona correcta. */
+  items: ArrastrarItem[];
+}
+
+export type ContenidoJuego = ContenidoQuiz | ContenidoPares | ContenidoGenerico | ContenidoArrastrar;
 
 /** Resultado estandarizado que cualquier runtime reporta al anfitrión. */
 export interface ResultadoPartida {
@@ -128,6 +147,35 @@ export function parsearContenido(valor: unknown): ContenidoJuego | null {
     // El motor define la experiencia: memoria voltea cartas, emparejamiento
     // usa dos discretizadas columnas. Sin pistas del motor, se asume memoria.
     return { tipo: 'memoria', pares };
+  }
+
+  // ── Arrastrar y soltar ───────────────────────────────────────────────────
+  if (obj['arrastrar'] === true) {
+    const instrucciones = typeof obj['instrucciones'] === 'string' ? obj['instrucciones'].trim() : null;
+    const zonas = Array.isArray(obj['zonas'])
+      ? (obj['zonas'] as unknown[]).map((z) => (typeof z === 'string' ? z.trim() : String(z ?? '').trim())).filter(Boolean)
+      : [];
+    const items: ArrastrarItem[] = Array.isArray(obj['items'])
+      ? (obj['items'] as unknown[])
+          .map((raw) => {
+            if (!raw || typeof raw !== 'object') return null;
+            const x = raw as Record<string, unknown>;
+            const texto = typeof x['texto'] === 'string' ? x['texto'].trim() : String(x['texto'] ?? '').trim();
+            const zona = typeof x['zona'] === 'string' ? x['zona'].trim() : String(x['zona'] ?? '').trim();
+            if (!texto || !zona) return null;
+            return { texto, zona };
+          })
+          .filter((x): x is ArrastrarItem => !!x)
+      : [];
+    if (zonas.length < 2 || items.length === 0) return null;
+    const zonasUso = new Set(items.map((i) => i.zona));
+    // Cada item valida contra una zona existente.
+    if (items.some((i) => !zonas.includes(i.zona))) return null;
+    if (zonasUso.size !== new Set(zonas).size) {
+      // Zonas sin ningún item asignado no invalidan, pero zonasUso no puede contener zonas inválidas.
+      if ([...zonasUso].some((z) => !zonas.includes(z))) return null;
+    }
+    return { tipo: 'arrastrar', instrucciones, zonas, items } as ContenidoArrastrar;
   }
 
   // ── Genérico (tarjetas de estudio) ──────────────────────────────────────

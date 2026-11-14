@@ -253,6 +253,45 @@ interface ParItem {
                   </div>
                 }
               </div>
+            } @else if (esArrastrar()) {
+              <div class="space-y-3">
+                <div class="rounded-xl bg-brand-50/60 border border-brand-200 p-3">
+                  <p class="text-sm font-bold text-marine-800">Zonas y elementos para arrastrar</p>
+                  <p class="mt-1 text-xs text-marine-500">Configura al menos dos zonas y cuatro chips que pertenecen a cada zona.</p>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <p class="text-xs font-bold uppercase tracking-wider text-marine-500">Zonas de destino</p>
+                  <button type="button" class="btn btn-outline btn-sm" (click)="agregarZona()">+ Agregar zona</button>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  @for (zona of zonasArrastrar(); track $index; let zi = $index) {
+                    <div class="flex items-center gap-1.5 rounded-lg border border-surface-200 bg-white px-2 py-1.5">
+                      <input class="input w-36" [value]="zona" (input)="setZona(zi, $any($event.target).value)" placeholder="Nombre zona" />
+                      <button type="button" class="font-bold text-danger-600 hover:text-danger-800" (click)="eliminarZona(zi)" [disabled]="zonasArrastrar().length <= 2" aria-label="Quitar zona">×</button>
+                    </div>
+                  }
+                </div>
+
+                <div class="flex items-center justify-between gap-2 border-t border-surface-100 pt-3">
+                  <p class="text-xs font-bold uppercase tracking-wider text-marine-500">Elementos arrastrables</p>
+                  <button type="button" class="btn btn-primary btn-sm !px-3" (click)="agregarFilaArrastrar()">+ Agregar item</button>
+                </div>
+                <div class="max-h-96 space-y-2 overflow-y-auto pr-1">
+                  @for (fila of arrastrarRows(); track $index; let i = $index) {
+                    <div class="grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto]">
+                      <input class="input" [value]="fila.texto" (input)="setFilaArrastrar(i, 'texto', $any($event.target).value)" placeholder="Texto del chip" />
+                      <span class="self-center text-xs text-marine-500">→</span>
+                      <select class="select" [value]="fila.zona" (change)="setFilaArrastrar(i, 'zona', $any($event.target).value)">
+                        <option value="">Elige zona…</option>
+                        @for (z of zonasArrastrar(); track z) { <option value="{{ z }}">{{ z }}</option> }
+                      </select>
+                      <button type="button" class="font-bold text-danger-600 hover:text-danger-800" (click)="eliminarFilaArrastrar(i)" [disabled]="arrastrarRows().length <= 4" aria-label="Quitar chip">×</button>
+                    </div>
+                  }
+                </div>
+                <p class="text-xs text-marine-400">{{ arrastrarValidos() }}/{{ arrastrarRows().length }} items válidos · mínimo 4.</p>
+              </div>
             } @else {
               <div class="space-y-3">
                 <div class="rounded-xl bg-brand-50/60 border border-brand-200 p-4">
@@ -324,6 +363,15 @@ export class CrearMinijuegoModalComponent implements OnInit {
     { pregunta: '', opciones: ['', '', '', ''], respuestaCorrecta: 0, explicacion: '', tiempoSeg: 20 },
   ]);
   protected readonly pares = signal<ParItem[]>(Array.from({ length: 8 }, () => ({ concepto: '', definicion: '' })));
+
+  /** Editor de arrastrar-y-soltar — tesis de zonas y chips. */
+  protected readonly zonasArrastrar = signal<string[]>(['Categoría A', 'Categoría B']);
+  protected readonly arrastrarRows = signal<Array<{ texto: string; zona: string }>>([
+    { texto: '', zona: 'Categoría A' },
+    { texto: '', zona: 'Categoría A' },
+    { texto: '', zona: 'Categoría B' },
+    { texto: '', zona: 'Categoría B' },
+  ]);
   /** Número de opciones por pregunta (2 a 6). */
   protected readonly opcionesCount = signal<number>(4);
   /** Editor genérico: una línea por item (tema/nivel/tarjeta). */
@@ -426,7 +474,11 @@ export class CrearMinijuegoModalComponent implements OnInit {
   }
   protected esEmparejamiento(): boolean {
     const c = (this.motorSel()?.codigo ?? '').toLowerCase();
-    return /simulador-memoria|emparejamiento|memoria|relacionar|crucigrama/.test(c);
+    return /simulador-memoria|emparejamiento|memoria|relacionar|crucigrama|seleccion|match/.test(c);
+  }
+  protected esArrastrar(): boolean {
+    const c = (this.motorSel()?.codigo ?? '').toLowerCase();
+    return /arrastrar|soltar|drag-?drop/.test(c);
   }
 
   /** Cambia el número de opciones de las preguntas (2 a 6) y ajusta todas las preguntas. */
@@ -476,6 +528,32 @@ export class CrearMinijuegoModalComponent implements OnInit {
     this.pares.update((arr) => arr.map((x, idx) => (idx === i ? { ...x, [campo]: v } : x)));
   }
 
+  /** ---------- Editor de arrastrar-y-soltar ---------- */
+  protected agregarZona(): void {
+    this.zonasArrastrar.set([...this.zonasArrastrar(), `Zona ${this.zonasArrastrar().length + 1}`]);
+  }
+  protected setZona(i: number, value: string): void {
+    const zonas = this.zonasArrastrar().map((z, idx) => (idx === i ? value : z));
+    this.zonasArrastrar.set(zonas);
+  }
+  protected eliminarZona(i: number): void {
+    const zona = this.zonasArrastrar()[i];
+    this.zonasArrastrar.set(this.zonasArrastrar().filter((_, idx) => idx !== i));
+    this.arrastrarRows.set(this.arrastrarRows().map((r) => (r.zona === zona ? { ...r, zona: '' } : r)));
+  }
+  protected agregarFilaArrastrar(): void {
+    this.arrastrarRows.set([...this.arrastrarRows(), { texto: '', zona: this.zonasArrastrar()[0] ?? '' }]);
+  }
+  protected setFilaArrastrar(i: number, campo: 'texto' | 'zona', value: string): void {
+    this.arrastrarRows.set(this.arrastrarRows().map((r, idx) => (idx === i ? { ...r, [campo]: value } : r)));
+  }
+  protected eliminarFilaArrastrar(i: number): void {
+    this.arrastrarRows.set(this.arrastrarRows().filter((_, idx) => idx !== i));
+  }
+  protected arrastrarValidos(): number {
+    return this.arrastrarRows().filter((r) => r.texto.trim() && r.zona.trim()).length;
+  }
+
   protected contenidoValido(): boolean {
     if (this.formBasico.invalid) return false;
     if (this.esQuiz()) {
@@ -483,6 +561,12 @@ export class CrearMinijuegoModalComponent implements OnInit {
     }
     if (this.esMemoria() || this.esEmparejamiento()) {
       return this.pares().filter((p) => p.concepto.trim() && p.definicion.trim()).length >= 4;
+    }
+    if (this.esArrastrar()) {
+      const filas = this.arrastrarRows().filter((r) => r.texto.trim() && r.zona.trim());
+      if (filas.length < 4) return false;
+      const zonasUsadas = new Set(filas.map((r) => r.zona));
+      return zonasUsadas.size >= 2;
     }
     // Genérico: requiere al menos 4 items válidos y JSON válido (si está presente).
     return this.itemsParseados().length >= 4 && this.genericJsonError() === null;
@@ -501,6 +585,14 @@ export class CrearMinijuegoModalComponent implements OnInit {
         contenido = { preguntas: this.preguntas().filter((p) => p.pregunta.trim()).map((p) => ({ ...p, tiempoSeg: this.tiempoPreguntaSec() })) };
       } else if (this.esMemoria() || this.esEmparejamiento()) {
         contenido = { pares: this.pares().filter((p) => p.concepto.trim()) };
+      } else if (this.esArrastrar()) {
+        const zonas = this.zonasArrastrar().map((z) => z.trim()).filter(Boolean);
+        contenido = {
+          arrastrar: true,
+          instrucciones: v.descripcion,
+          zonas,
+          items: this.arrastrarRows().filter((r) => r.texto.trim() && r.zona.trim()),
+        };
       } else {
         // Editor genérico: cualquier motor no Quiz/Memoria/Emparejamiento selecciona los temas del juego y pasa una config opcional como JSON.
         const items = this.itemsParseados();
