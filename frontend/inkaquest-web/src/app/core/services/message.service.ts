@@ -187,40 +187,30 @@ export class MessageService {
     return (data ?? []) as Perfil[];
   }
 
-  /** Muestra los miembros del curso: docente(s) y estudiantes matriculados. */
+  /** Miembros del curso vía RPC segura (security definer con acceso acotado al propio curso). */
   async listarMiembrosCurso(cursoId: string): Promise<MiembroCurso[]> {
-    const [{ data: matriculas, error: errorMatriculas }, { data: docentes, error: errorDocentes }] = await Promise.all([
-      this.supabase.client
-        .from(this.supabase.tabla.matricula)
-        .select('estudiante_id')
-        .eq('curso_id', cursoId)
-        .in('estado', ['activa', 'completada']),
-      this.supabase.client
-        .from(this.supabase.tabla.docenteCurso)
-        .select('docente_id')
-        .eq('curso_id', cursoId)
-        .eq('activo', true),
-    ]);
-
-    if (errorMatriculas) throw new Error(errorMatriculas.message);
-    if (errorDocentes) throw new Error(errorDocentes.message);
-
-    const estudianteIds = [...new Set((matriculas ?? []).map((m) => m['estudiante_id'] as string))];
-    const docenteIds = [...new Set((docentes ?? []).map((d) => d['docente_id'] as string))];
-    const ids = [...new Set([...estudianteIds, ...docenteIds])].filter((id) => id !== this.auth.usuario()?.id);
-    if (ids.length === 0) return [];
-
-    const perfiles = await this.listarPerfiles(ids);
-    const byId = new Map(perfiles.map((p) => [p.id, p]));
-    const deDocentes = new Set(docenteIds);
-
-    const rolDe = (id: string) => (deDocentes.has(id) ? ('docente' as const) : ('estudiante' as const));
-
-    return ids
-      .map((id) => byId.get(id))
-      .filter((p): p is Perfil => !!p)
-      .filter((p) => p.rol === 'docente' || p.rol === 'estudiante')
-      .map((p) => ({ ...p, rol: rolDe(p.id) }))
+    const { data, error } = await this.supabase.client.rpc('chat_miembros_curso', {
+      p_curso_id: cursoId,
+    });
+    if (error) {
+      throw new Error(error.message ?? 'No se pudieron cargar los miembros del curso.');
+    }
+    const filas = (data ?? []) as Array<Record<string, unknown>>;
+    const propio = this.auth.usuario()?.id;
+    return filas
+      .map((f) => {
+        const id = String(f['id'] ?? '');
+        const rol = (f['rol'] === 'docente' ? 'docente' : 'estudiante') as 'docente' | 'estudiante';
+        return {
+          id,
+          nombre: (f['nombre'] as string) ?? '',
+          apellido: (f['apellido'] as string | null) ?? null,
+          email: (f['email'] as string) ?? '',
+          avatar_url: (f['avatar_url'] as string | null) ?? null,
+          rol,
+        } as Perfil & { rol: 'docente' | 'estudiante' };
+      })
+      .filter((p) => p.id !== propio)
       .sort((a, b) => {
         if (a.rol !== b.rol) return a.rol === 'docente' ? -1 : 1;
         const na = (a.apellido ?? '') || a.nombre;
