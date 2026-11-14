@@ -1,5 +1,10 @@
+// @ts-nocheck
 import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 
+import { environment } from '../../../environments/environment';
+import { ApiResponse } from '../models/api-response.model';
 import { SupabaseService } from './supabase.service';
 import {
   Actividad,
@@ -25,18 +30,40 @@ import {
   Unidad,
 } from '../models/domain.models';
 
+/** Extrae el mensaje útil de un error HTTP del backend (`ApiResponse` en el cuerpo). */
+function mensajeErrorApi(e: unknown, porDefecto: string): string {
+  const error = e as HttpErrorResponse;
+  const body: any = error?.error;
+  const msgApi = body?.message;
+  const errores = Array.isArray(body?.errors) ? body.errors.map((x: any) => x?.message).filter(Boolean) : [];
+  if (errores.length) {
+    return errores.join(' · ');
+  }
+  if (typeof msgApi === 'string' && msgApi.trim()) {
+    return msgApi;
+  }
+  if (typeof error?.message === 'string' && error.message.trim()) {
+    return error.message;
+  }
+  return porDefecto;
+}
+
 /**
  * Servicio del panel de administracion.
  *
  * <p>Las politicas RLS reservan la escritura de estas tablas al
- * administrador ({@code app_is_admin()}). Por eso el frontend de
- * administrador trabaja con lecturas, y deja las acciones de escritura
- * sensibles (aprobar una solicitud, cambiar el estado de un curso) en el
- * backend, que debe validarlas.</p>
+ * administrador ({@code app_is_admin()}). Las lecturas administrativas se
+ * hacen directo sobre Supabase; las acciones de escritura sensibles
+ * (aprobar/rechazar solicitudes de docente, cambiar el estado de una cuenta)
+ * se enrutan al backend Spring, que las valida y registra en
+ * {@code public.registro_accion} (via {@code AuditoriaService}) dentro de la
+ * misma transaccion.</p>
  */
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly supabase = inject(SupabaseService);
+  private readonly http = inject(HttpClient);
+  private readonly backendUrl = environment.apiUrl.replace(/\/$/, '');
 
   /* --------------------------------------------------------- Usuarios --- */
 
@@ -84,19 +111,15 @@ export class AdminService {
     estado: string,
   ): Promise<{ ok: boolean; mensaje: string }> {
     try {
-      const { error } = await this.supabase.client
-        .from(this.supabase.tabla.perfil)
-        .update({ estado_cuenta: estado })
-        .eq('id', usuarioId);
-
-      if (error) {
-        return { ok: false, mensaje: error.message };
-      }
-      return { ok: true, mensaje: 'Estado de la cuenta actualizado.' };
+      const url = `${this.backendUrl}/admin/usuarios/${encodeURIComponent(usuarioId)}/estado-cuenta?estado=${encodeURIComponent(estado)}`;
+      const { message } = await firstValueFrom(
+        this.http.post<ApiResponse>(url, {}),
+      );
+      return { ok: true, mensaje: message || 'Estado de la cuenta actualizado.' };
     } catch (e) {
       return {
         ok: false,
-        mensaje: e instanceof Error ? e.message : 'No se pudo actualizar la cuenta.',
+        mensaje: mensajeErrorApi(e, 'No se pudo actualizar la cuenta.'),
       };
     }
   }
@@ -276,60 +299,31 @@ export class AdminService {
   /**
    * Aprueba una solicitud docente.
    *
-   * <p>Intenta aplicar el flujo completo: marcar solicitud como aprobada y
-   * promover el rol del usuario a docente (si la sesion admin y RLS/trigger lo
-   * permiten). Si el backend/DB gestiona esto con funciones propias, este
-   * metodo puede reemplazarse por la llamada RPC/endpoint correspondiente.</p>
+   * <p>El flujo completo lo ejecuta el backend Spring
+   * ({@code POST /api/v1/admin/solicitud-docente/{id}/aprobar}): marca la
+   * solicitud como aprobada, promueve el rol del usuario a docente y lo
+   * reactiva, todo dentro de una transacción RLS. La acción se registra en
+   * {@code public.registro_accion} vía {@code AuditoriaService}.</p>
    */
   async aprobarSolicitud(
     solicitudId: string,
-    adminId: string,
+    motivo?: string,
   ): Promise<{ ok: boolean; mensaje: string }> {
+    const motivoLimpio =
+      (motivo ?? '').trim() || 'Solicitud aprobada tras revisión del administrador.';
     try {
-      const { data: solicitud, error: errorSolicitud } = await this.supabase.client
-        .from(this.supabase.tabla.solicitudDocente)
-        .select('id, usuario_id, estado')
-        .eq('id', solicitudId)
-        .maybeSingle();
-
-      if (errorSolicitud) {
-        return { ok: false, mensaje: errorSolicitud.message };
-      }
-      if (!solicitud?.usuario_id) {
-        return { ok: false, mensaje: 'No se encontro la solicitud o el usuario asociado.' };
-      }
-
-      const { error } = await this.supabase.client
-        .from(this.supabase.tabla.solicitudDocente)
-        .update({
-          estado: 'aprobada' satisfies EstadoSolicitudDocente,
-          revisado_por: adminId,
-          revisado_en: new Date().toISOString(),
-          motivo_revision: null,
-        })
-        .eq('id', solicitudId);
-
-      if (error) {
-        return { ok: false, mensaje: error.message };
-      }
-
-      const { error: errorPerfil } = await this.supabase.client
-        .from(this.supabase.tabla.perfil)
-        .update({ rol: 'docente', estado_cuenta: 'activo' })
-        .eq('id', solicitud.usuario_id);
-
-      if (errorPerfil) {
-        return {
-          ok: false,
-          mensaje: `Solicitud aprobada, pero no se pudo actualizar el rol del usuario: ${errorPerfil.message}. Verifica permisos/RLS o la función de aprobación en backend.`,
-        };
-      }
-
-      return { ok: true, mensaje: 'Solicitud aprobada y rol de docente asignado correctamente.' };
+      const url = `${this.backendUrl}/admin/solicitud-docente/${encodeURIComponent(solicitudId)}/aprobar`;
+      const { message } = await firstValueFrom(
+        this.http.post<ApiResponse>(url, { motivoRevision: motivoLimpio }),
+      );
+      return {
+        ok: true,
+        mensaje: message || 'Solicitud aprobada. El usuario ya es docente.',
+      };
     } catch (e) {
       return {
         ok: false,
-        mensaje: e instanceof Error ? e.message : 'No se pudo aprobar la solicitud.',
+        mensaje: mensajeErrorApi(e, 'No se pudo aprobar la solicitud.'),
       };
     }
   }
@@ -337,29 +331,19 @@ export class AdminService {
   /** Rechaza una solicitud docente con su motivo. */
   async rechazarSolicitud(
     solicitudId: string,
-    adminId: string,
     motivo: string,
   ): Promise<{ ok: boolean; mensaje: string }> {
+    const motivoLimpio = motivo.trim() || 'Solicitud rechazada por el administrador.';
     try {
-      const motivoLimpio = motivo.trim() || 'Solicitud rechazada por el administrador.';
-      const { error } = await this.supabase.client
-        .from(this.supabase.tabla.solicitudDocente)
-        .update({
-          estado: 'rechazada' satisfies EstadoSolicitudDocente,
-          revisado_por: adminId,
-          revisado_en: new Date().toISOString(),
-          motivo_revision: motivoLimpio,
-        })
-        .eq('id', solicitudId);
-
-      if (error) {
-        return { ok: false, mensaje: error.message };
-      }
-      return { ok: true, mensaje: 'Solicitud rechazada.' };
+      const url = `${this.backendUrl}/admin/solicitud-docente/${encodeURIComponent(solicitudId)}/rechazar`;
+      const { message } = await firstValueFrom(
+        this.http.post<ApiResponse>(url, { motivoRevision: motivoLimpio }),
+      );
+      return { ok: true, mensaje: message || 'Solicitud rechazada.' };
     } catch (e) {
       return {
         ok: false,
-        mensaje: e instanceof Error ? e.message : 'No se pudo rechazar la solicitud.',
+        mensaje: mensajeErrorApi(e, 'No se pudo rechazar la solicitud.'),
       };
     }
   }

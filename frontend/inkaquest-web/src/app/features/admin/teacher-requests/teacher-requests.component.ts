@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { DatePipe } from '@angular/common';
 
 import { AdminService } from '../../../core/services/admin.service';
-import { AuthService } from '../../../core/services/auth.service';
 import { EstadoSolicitudDocente, SolicitudDocente } from '../../../core/models/domain.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
@@ -47,7 +46,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                   }
                 </div>
               </div>
-              <p class="mt-3 text-xs text-marine-400">La aprobación intenta actualizar la solicitud y promover el rol a docente si la BD/RLS lo permite. Si falla, puede requerir RPC/backend o ajustes de permisos.</p>
+              <p class="mt-3 text-xs text-marine-400">La aprobación y el rechazo se ejecutan en el backend y quedan registrados en el registro de acciones de auditoría (<code>/admin/auditoria</code>).</p>
             </article>
           }
         </div>
@@ -57,7 +56,6 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 })
 export class TeacherRequestsComponent implements OnInit {
   private readonly adminService = inject(AdminService);
-  private readonly auth = inject(AuthService);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly solicitudes = signal<SolicitudDocente[]>([]);
@@ -88,17 +86,24 @@ export class TeacherRequestsComponent implements OnInit {
     finally { this.cargando.set(false); }
   }
   protected async aprobar(id: string): Promise<void> {
-    const user = this.auth.usuario(); if (!user) return;
-    this.procesando.set(id); const r = await this.adminService.aprobarSolicitud(id, user.id); this.mensaje.set(r.mensaje); this.exito.set(r.ok); this.procesando.set(null); if (r.ok) await this.cargar();
+    const motivo = typeof window !== 'undefined'
+      ? window.prompt('Motivo de la aprobación (se registra en auditoría):', 'Solicitud aprobada tras revisión del administrador.')
+      : 'Solicitud aprobada tras revisión del administrador.';
+    if (motivo === null) return; // cancelado
+    this.procesando.set(id);
+    const r = await this.adminService.aprobarSolicitud(id, motivo ?? undefined);
+    this.mensaje.set(r.mensaje);
+    this.exito.set(r.ok);
+    this.procesando.set(null);
+    if (r.ok) await this.cargar();
   }
   protected async rechazar(id: string): Promise<void> {
-    const user = this.auth.usuario(); if (!user) return;
     const motivo = typeof window !== 'undefined'
-      ? window.prompt('Indica el motivo del rechazo (opcional):', 'Solicitud rechazada por el administrador.')
+      ? window.prompt('Indica el motivo del rechazo:', 'Solicitud rechazada por el administrador.')
       : 'Solicitud rechazada por el administrador.';
     if (motivo === null) return; // cancelado
     this.procesando.set(id);
-    const r = await this.adminService.rechazarSolicitud(id, user.id, motivo);
+    const r = await this.adminService.rechazarSolicitud(id, motivo);
     this.mensaje.set(r.mensaje);
     this.exito.set(r.ok);
     this.procesando.set(null);
