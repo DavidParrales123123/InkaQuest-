@@ -22,8 +22,11 @@ interface ProgresoConCurso extends ProgresoCurso {
     <section class="space-y-8">
       <app-page-header
         titulo="Mi progreso"
-        descripcion="Seguimiento de tu avance académico por curso, basado en los registros de progreso almacenados en la plataforma."
-      />
+        descripcion="Tu avance académico por curso: lecciones completadas, minutos de estudio y porcentaje de progreso."
+        [acciones]="true"
+      >
+        <div acciones><a routerLink="/estudiante/cursos" class="btn btn-outline btn-sm">Ver mis cursos</a></div>
+      </app-page-header>
 
       <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
         <app-stat-card etiqueta="Cursos con progreso" [valor]="items().length" />
@@ -36,8 +39,8 @@ interface ProgresoConCurso extends ProgresoCurso {
         [cargando]="cargando()"
         [error]="error()"
         [vacio]="items().length === 0"
-        tituloVacio="Aún no hay progreso registrado"
-        descripcionVacia="Cuando avances en las lecciones de tus cursos inscritos, tu progreso se mostrará aquí."
+        tituloVacio="No estás inscrito en ningún curso"
+        descripcionVacia="Matrícula en un curso y pulsa Continuar en el aula: aquí aparecerá tu hoja de progreso con su avance en vivo."
         (alReintentar)="cargar()"
       >
         <div contenido class="grid gap-6 lg:grid-cols-2">
@@ -108,18 +111,54 @@ export class ProgressComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
     try {
-      const progresos = await this.progress.listarMiProgreso(usuario.id);
-      const cursos = await Promise.all(
-        progresos.map((p) => this.courses.obtenerPorId(p.curso_id).catch(() => null)),
-      );
-      const enriquecidos = progresos.map((p, i) => ({ ...p, curso: cursos[i] ?? undefined }));
+      // Senior-fix: las filas en progreso_curso NO se crean al matricularse —
+      // se crean solo tras completar la primera lección. Por tanto, un
+      // estudiante con matrícula activa y cero avances veía una página vacía
+      // sin indicio de lo que tiene que hacer. Ahora combinamos ambas listas:
+      // matrícula (siempre presente en el estudiante matriculado) + progreso.
+      const [matriculados, progresos] = await Promise.all([
+        this.courses.listarCursosDeEstudiante(usuario.id).catch(() => [] as Curso[]),
+        this.progress.listarMiProgreso().catch(() => [] as import('../../../core/services/progress.service').ProgresoCursoResponse[]),
+      ]);
+      const porCurso = new Map(progresos.map((p) => [p.curso_id ?? p.cursoId, p]));
+      const enriquecidos: ProgresoConCurso[] = matriculados.map((c) => {
+        const encontrado = porCurso.get(c.id);
+        if (encontrado) {
+          return { ...encontrado, curso: c, curso_id: c.id } as ProgresoConCurso;
+        }
+        return {
+          id: `mat-${c.id}`,
+          matricula_id: '',
+          estudiante_id: usuario.id,
+          estudianteId: usuario.id,
+          curso: c,
+          curso_id: c.id,
+          cursoId: c.id,
+          cursoTitulo: c.titulo,
+          porcentaje: 0,
+          porcentajeCompletado: 0,
+          lecciones_completadas: 0,
+          leccionesCompletadas: 0,
+          leccionesTotales: 0,
+          minutos_estudio: 0,
+          minutosEstudio: 0,
+          estado: 'no_iniciado',
+          xpGanado: 0,
+          ultima_actividad_en: null,
+          ultimaActividadEn: null,
+          creado_en: null,
+          creadoEn: null,
+          actualizado_en: null,
+          actualizadoEn: null,
+        } as unknown as ProgresoConCurso;
+      });
       this.items.set(enriquecidos);
       this.completados.set(enriquecidos.filter((p) => p.estado === 'completado' || (p.porcentaje || 0) >= 100).length);
       const avg = enriquecidos.length
-        ? Math.round(enriquecidos.reduce((a, p) => a + (p.porcentaje || 0), 0) / enriquecidos.length)
+        ? Math.round(enriquecidos.reduce((a, p) => a + (Number(p.porcentaje) || 0), 0) / enriquecidos.length)
         : 0;
       this.promedio.set(avg);
-      this.lecciones.set(enriquecidos.reduce((a, p) => a + (p.lecciones_completadas || 0), 0));
+      this.lecciones.set(enriquecidos.reduce((a, p) => a + (Number(p.lecciones_completadas ?? p.leccionesCompletadas) || 0), 0));
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'No se pudo cargar tu progreso.');
     } finally {
