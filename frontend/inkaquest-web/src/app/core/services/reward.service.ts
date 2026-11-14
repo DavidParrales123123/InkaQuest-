@@ -46,6 +46,39 @@ export class RewardService {
     return (data as TiendaItem) ?? null;
   }
 
+  /** Compra un artículo validando saldo/xp/stock/límite_en la base de datos (transaccional e idempotente). */
+  async comprar(itemId: string, cantidad = 1): Promise<{
+    ok: boolean;
+    mensaje: string;
+    saldoRestante?: number | null;
+    xpRestante?: number | null;
+    compraId?: string;
+    replay?: boolean;
+  }> {
+    try {
+      const clave = `buy-${itemId}-${crypto.randomUUID()}`;
+      const { data, error } = await this.supabase.client.rpc('tienda_comprar', {
+        p_item_id: itemId,
+        p_cantidad: cantidad,
+        p_clave_idempotencia: clave,
+      });
+      if (error) {
+        return { ok: false, mensaje: error.message ?? 'No se pudo procesar la compra.' };
+      }
+      const payload = (data ?? {}) as Record<string, unknown>;
+      return {
+        ok: true,
+        mensaje: String(payload['mensaje'] ?? `Compra de ${payload['item_nombre'] ?? 'artículo'} registrada.`),
+        saldoRestante: payload['saldo_restante'] as number | null | undefined,
+        xpRestante: payload['xp_restante'] as number | null | undefined,
+        compraId: String(payload['compra_id'] ?? ''),
+        replay: Boolean(payload['replay'] ?? false),
+      };
+    } catch (e) {
+      return { ok: false, mensaje: e instanceof Error ? e.message : 'No se pudo procesar la compra.' };
+    }
+  }
+
   /** Inventario del usuario, con el articulo incluido. */
   async listarInventario(usuarioId: string): Promise<(Inventario & { item: TiendaItem | null })[]> {
     const { data, error } = await this.supabase.client
