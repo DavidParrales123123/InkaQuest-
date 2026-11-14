@@ -273,6 +273,19 @@ export class GameService {
     if (error) throw new Error(error.message);
   }
 
+  /** Elimina un juego (y cascade) creado por el docente o admin vía RPC segura. */
+  async eliminarJuego(id: string): Promise<{ ok: boolean; mensaje: string }> {
+    const { data, error } = await this.supabase.client.rpc('juego_eliminar', { p_juego_id: id });
+    if (error) {
+      return { ok: false, mensaje: error.message ?? 'No se pudo eliminar el juego.' };
+    }
+    const payload = (data ?? {}) as Record<string, unknown>;
+    return {
+      ok: true,
+      mensaje: `Juego «${String(payload['nombre'] ?? '').slice(0, 60)}» eliminado correctamente.`,
+    };
+  }
+
   /** Configuracion de contenidos permitida de un juego (lectura). */
   async listarConfiguracionJuego(juegoId: string): Promise<ConfiguracionJuego[]> {
     const { data, error } = await this.supabase.client

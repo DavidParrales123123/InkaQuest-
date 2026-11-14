@@ -105,9 +105,12 @@ type LeccionCtx = Leccion & { moduloTitulo: string; unidadTitulo: string; unidad
             } @else {
               <ul class="space-y-2">
                 @for (j of misJuegos(); track j.id) {
-                  <li class="rounded-lg border border-surface-200 p-2 text-sm">
-                    <p class="font-semibold text-marine-800">{{ j.nombre }}</p>
-                    <p class="text-[0.65rem] text-marine-500">{{ j.motor?.nombre || 'Motor' }} · {{ j.dificultad }} · {{ j.xp_otorgado }} XP <app-status-badge class="ml-1 align-middle" [estado]="j.estado" /></p>
+                  <li class="flex items-start justify-between gap-2 rounded-lg border border-surface-200 p-2 text-sm">
+                    <div class="min-w-0">
+                      <p class="font-semibold text-marine-800">{{ j.nombre }}</p>
+                      <p class="text-[0.65rem] text-marine-500">{{ j.motor?.nombre || 'Motor' }} · {{ j.dificultad }} · {{ j.xp_otorgado }} XP <app-status-badge class="ml-1 align-middle" [estado]="j.estado" /></p>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm text-danger-600 shrink-0" [disabled]="guardando() === j.id" (click)="eliminarJuego(j)">Eliminar</button>
                   </li>
                 }
               </ul>
@@ -514,6 +517,21 @@ export class GamesComponent implements OnInit {
       await this.cargarCurso(this.cursoIdSel());
     } catch (e) {
       this.setMsg(false, e instanceof Error ? e.message : 'No se pudo eliminar la actividad de juego.');
+    } finally { this.guardando.set(null); }
+  }
+
+  protected async eliminarJuego(j: (Juego & { motor: Motor | null })): Promise<void> {
+    if (!(await this.confirm.ask({ title: 'Eliminar minijuego', mensaje: `¿Eliminar el juego «${j.nombre}»? Se eliminarán también las actividades, intentos y configuraciones asociados. No se puede deshacer.`, textoConfirmar: 'Eliminar' }))) return;
+    this.guardando.set(j.id);
+    try {
+      const r = await this.gameService.eliminarJuego(j.id);
+      if (!r.ok) {
+        this.setMsg(false, r.mensaje);
+      } else {
+        this.misJuegos.set(this.misJuegos().filter((x) => x.id !== j.id));
+        this.juegos.set(this.juegos().filter((x) => x.id !== j.id));
+        this.setMsg(true, r.mensaje);
+      }
     } finally { this.guardando.set(null); }
   }
 
