@@ -218,8 +218,10 @@ export interface SeccionPanel {
         </main>
       </div>
 
-      <!-- Asistente IA global (estudiante · docente · administrador) -->
-      <app-chatbot-widget />
+      <!-- Asistente IA global (estudiante · docente · administrador) — oculto en exámenes -->
+      @if (!sinChatbot()) {
+        <app-chatbot-widget />
+      }
     </div>
   `,
 })
@@ -248,6 +250,8 @@ export class PanelLayoutComponent implements OnInit {
   protected readonly noLeidas = signal(0);
   /** Numero de mensajes de chat no leidos. */
   protected readonly mensajesNoLeidos = signal(0);
+  /** true cuando se está rindiendo una evaluación (sin asistentes IA ni ayudas). */
+  protected readonly sinChatbot = signal(false);
 
   /** Nombre visible del usuario. */
   protected readonly nombreUsuario = computed(() => {
@@ -297,10 +301,18 @@ export class PanelLayoutComponent implements OnInit {
     void this.cargarMensajesNoLeidos();
   };
 
+  /** true en la pantalla de rendir evaluación (oculta el asistente IA). */
+  private actualizarModoExamen(): void {
+    const url = this.router.url.split('?')[0].split('#')[0];
+    this.sinChatbot.set(/^\/estudiante\/evaluaciones\/[^/]+$/.test(url));
+  }
+
   /** Carga el numero de notificaciones sin leer. */
   ngOnInit(): void {
     void this.cargarNoLeidas();
     void this.cargarMensajesNoLeidos();
+    // Ocultar el asistente IA en el modo examen (/estudiante/evaluaciones/:id)
+    this.actualizarModoExamen();
     this.router.events
       .pipe(
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
@@ -309,6 +321,7 @@ export class PanelLayoutComponent implements OnInit {
       .subscribe(() => {
         void this.cargarNoLeidas();
         void this.cargarMensajesNoLeidos();
+        this.actualizarModoExamen();
       });
 
     // Sondea cada 60 s mientras la pestaña está visible (el estado de lectura

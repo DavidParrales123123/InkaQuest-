@@ -291,6 +291,7 @@ export const routes: Routes = [
             (m) => m.EvaluacionTomarComponent,
           ),
         title: 'Tomar evaluación · InkaQuest',
+        data: { sinChatbot: true },
       },
       {
         path: 'minijuegos',
