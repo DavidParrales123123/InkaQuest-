@@ -124,6 +124,8 @@ export class CombateScene extends Phaser.Scene {
   private healOnKill = 0;
   private contadorAtaque = 0;
   private explosionCadaCuatro = false;
+  private attackPulse = 0;
+  private ramboAnimActiva = false;
 
   constructor() {
     super({ key: 'Combate' });
@@ -139,6 +141,10 @@ export class CombateScene extends Phaser.Scene {
     // Sprites de los guardianes (pre-cargados para creación instantánea)
     for (const g of GUARDIANES) {
       this.load.image('guard_' + g.id, g.sprite);
+    }
+    // Frames del ciclo de marcha de Rambo (walk animation)
+    for (let i = 0; i <= 5; i++) {
+      this.load.image('rambo_walk_' + i, `assets/guardianes/walk/rambo_walk_${i}.png`);
     }
   }
 
@@ -159,13 +165,27 @@ export class CombateScene extends Phaser.Scene {
       letterSpacing: 4,
     }).setOrigin(0.5).setDepth(45).setVisible(false);
 
-    // ─── Jugador: guardián elegido (sprite del catálogo) ───
+    // ─── Jugador: guardián elegido (sprite del catálogo, normalizado a 72×72) ───
     const chosen = this.guardianElegido();
     this.player = this.physics.add.sprite(440, 260, 'guard_' + chosen.id);
     this.player.setCircle(16);
+    this.player.setScale(0.85);
     this.player.setCollideWorldBounds(true);
     this.physics.world.setBounds(0, 0, 880, 520);
     this.aplicarGuardian(chosen);
+
+    // Animación de marcha de Rambo
+    if ((this.anims as unknown as { exists: (k: string) => boolean }).exists('rambo_walk')) {
+      // ya creada
+    } else if (this.textures.exists('rambo_walk_0')) {
+      this.anims.create({
+        key: 'rambo_walk',
+        frames: [0, 1, 2, 3, 4, 5].map((i) => ({ key: 'rambo_walk_' + i })),
+        frameRate: 9,
+        repeat: -1,
+      });
+    }
+
     this.startedAt = this.time.now;
     this.startHorda(1);
   }
@@ -530,6 +550,28 @@ export class CombateScene extends Phaser.Scene {
     else if (isDown(KEY_S) || isDown(DOWN)) vy = this.vel;
     this.player.setVelocity(vx, vy);
 
+    // Animación de movimiento:
+    //  - Rambo reproduce su ciclo de 6 frames mientras se mueve.
+    //  - Los demás: bob y tilt sutil + crecimiento de escala al atacar.
+    const moving = vx !== 0 || vy !== 0;
+    const playerSprite = this.player as unknown as Phaser.Physics.Arcade.Sprite;
+    if (this.guardian?.id === 'rambo' && playerSprite.anims) {
+      if (moving && !this.ramboAnimActiva) {
+        playerSprite.anims.play('rambo_walk', true);
+        this.ramboAnimActiva = true;
+      } else if (!moving && this.ramboAnimActiva) {
+        playerSprite.anims.stop();
+        this.ramboAnimActiva = false;
+      }
+    } else if (this.player) {
+      const pulso = Math.sin(this.time.now / 140);
+      const base = 0.85;
+      const ataque = this.attackPulse > 0 ? 1 + Math.sin(this.attackPulse * Math.PI) * 0.22 : 1;
+      this.player.setScale(base * ataque, base * ataque * (1 + (moving ? pulso * 0.03 : 0)));
+      this.player.setRotation(moving ? Math.sin(this.time.now / 200) * 0.035 : 0);
+    }
+    if (this.attackPulse > 0) this.attackPulse = Math.max(0, this.attackPulse - deltaMs / 170);
+
     // Regeneración pasiva
     if (this.regeneraRango > 0) {
       this.regenTick += deltaMs;
@@ -559,13 +601,14 @@ export class CombateScene extends Phaser.Scene {
       if (e.active) this.physics.moveTo(e, this.player.x, this.player.y, 90 + this.hordaActual * 10);
     }
 
-    // Disparo/tajo automático
+    // Disparo/tajo automático + pulso de ataque
     this.fireTimer += deltaMs;
     if (this.fireTimer > this.fireInterval) {
       if (this.attackMode === 'rango') {
-        if (this.enemies.length) { this.fireTimer = 0; this.spawnBullet(); this.muzzleFlash(); }
+        if (this.enemies.length) { this.fireTimer = 0; this.attackPulse = 1; this.spawnBullet(); this.muzzleFlash(); }
       } else {
         this.fireTimer = 0;
+        this.attackPulse = 1;
         this.spawnSlash();
       }
     }
