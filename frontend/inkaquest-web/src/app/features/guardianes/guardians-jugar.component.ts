@@ -688,8 +688,8 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
         physics: { default: 'arcade', arcade: { gravity: { y: 0, x: 0 }, debug: false } },
         callbacks: {
           preBoot: (game) => {
-            // Bioma del arena según el nivel: 1–5 templo · 6–9 desierto · 10+ procedural
-            game.registry.set('mapaArena', this.numero() <= 5 ? '1-5' : this.numero() <= 9 ? '6-9' : 'none');
+            // Bioma del arena según el nivel: 1–5 templo · 6–9 desierto · 10–15 arcano · 16+ procedural
+            game.registry.set('mapaArena', this.numero() <= 5 ? '1-5' : this.numero() <= 9 ? '6-9' : this.numero() <= 15 ? '10-15' : 'none');
           },
         },
         scene: [CombateScene],

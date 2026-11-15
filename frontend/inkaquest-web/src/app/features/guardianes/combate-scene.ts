@@ -184,6 +184,7 @@ export class CombateScene extends Phaser.Scene {
     // Fondos de arena por bioma (niveles 1–5 templo · 6–9 desierto)
     this.load.image('arena_mapa_1_5', 'assets/guardianes/mapa-nivel-1-5-v2.jpg');
     this.load.image('arena_mapa_6_9', 'assets/guardianes/mapa-nivel-6-9-v1.jpg');
+    this.load.image('arena_mapa_10_15', 'assets/guardianes/mapa-nivel-10-15-v1.jpg');
     // Frames del ciclo de marcha / ataque de Guardianes
     for (let i = 0; i <= 5; i++) {
       this.load.image('rambo_walk_' + i, `assets/guardianes/walk/rambo_walk_${i}.png`);
@@ -215,7 +216,7 @@ export class CombateScene extends Phaser.Scene {
 
     // ─── Arena — mapa InkaQuest (niveles 1–5) o paleta procedural ───
     const mapaSel = this.game.registry.get('mapaArena') as string | undefined;
-    const mapaKey = mapaSel === '1-5' ? 'arena_mapa_1_5' : mapaSel === '6-9' ? 'arena_mapa_6_9' : undefined;
+    const mapaKey = mapaSel === '1-5' ? 'arena_mapa_1_5' : mapaSel === '6-9' ? 'arena_mapa_6_9' : mapaSel === '10-15' ? 'arena_mapa_10_15' : undefined;
     this.usarMapaBioma = mapaKey !== undefined && this.textures.exists(mapaKey);
     if (this.usarMapaBioma) {
       this.add
