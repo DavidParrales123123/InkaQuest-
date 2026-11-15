@@ -182,7 +182,7 @@ export class CombateScene extends Phaser.Scene {
       this.load.image('guard_' + g.id, g.sprite);
     }
     // Fondo del arena para niveles 1–5 (mapa InkaQuest)
-    this.load.image('arena_mapa_1_5', 'assets/guardianes/mapa-nivel-1-5.jpg');
+    this.load.image('arena_mapa_1_5', 'assets/guardianes/mapa-nivel-1-5-v2.jpg');
     // Frames del ciclo de marcha / ataque de Guardianes
     for (let i = 0; i <= 5; i++) {
       this.load.image('rambo_walk_' + i, `assets/guardianes/walk/rambo_walk_${i}.png`);
