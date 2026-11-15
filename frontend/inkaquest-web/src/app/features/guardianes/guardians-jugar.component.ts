@@ -36,6 +36,7 @@ import { CombateScene } from './combate-scene';
           <div class="text-xs text-marine-500">
             <p>Enemigos activos: <strong>{{ enemigosVivos() }}</strong></p>
             <p>Tiempo: <strong>{{ tiempoFormateado() }}</strong></p>
+            <p>Horda <strong>{{ hordaActual() }} / 9</strong></p>
           </div>
           <div class="rounded-xl border border-brand-200 bg-brand-50/60 p-3 text-xs text-marine-700">
             <p class="font-bold text-marine-800">Controles</p>
@@ -74,6 +75,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected readonly xp = signal(0);
   protected readonly enemigosVivos = signal(0);
   protected readonly tiempo = signal(0);
+  protected readonly hordaActual = signal(1);
   protected readonly enPausa = signal(false);
   protected readonly xpGanado = signal(0);
   protected readonly monedasGanadas = signal(0);
@@ -212,7 +214,9 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   }
 
   private crearTickHud(scene?: any): void {
-    this.tiempo.set(Math.floor((performance.now() - this.arrancarseMs) / 1000));
+    const elapsedSeg = Math.floor((performance.now() - this.arrancarseMs) / 1000);
+    this.tiempo.set(elapsedSeg);
+    this.hordaActual.set(Math.min(9, Math.floor(elapsedSeg / 10) + 1));
     const s = scene ?? (this.game?.scene?.getScene('Combate') as any);
     if (s) {
       this.salud.set(s.salud ?? 0);

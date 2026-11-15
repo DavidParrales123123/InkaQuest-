@@ -88,7 +88,8 @@ export class CombateScene extends Phaser.Scene {
 
     // Spawn enemigos
     this.spawnTimer += deltaMs;
-    if (this.spawnTimer > 900) {
+    const spawnInterval = Math.max(350, 700 - this.hordaActualActual() * 40);
+    if (this.spawnTimer > spawnInterval) {
       this.spawnTimer = 0;
       this.spawnEnemy();
     }
@@ -178,13 +179,26 @@ export class CombateScene extends Phaser.Scene {
   }
 
   private spawnEnemy(): void {
+    const elapsed = this.time.now - this.startMs;
+    const horda = this.hordaActualActual();
     const side = Math.floor(Math.random() * 4);
     const x = side === 0 ? 0 : side === 1 ? 880 : Math.random() * 880;
     const y = side === 2 ? 0 : side === 3 ? 520 : Math.random() * 520;
     const e = this.physics.add.sprite(x, y, 'enemy_red');
-    e.setCircle(12);
-    e.setTint(0xb3002d);
+    // Tier 1: Espinita · Tier 2: Bug Invalido · Tier 3: Excepcion
+    const tier = horda <= 3 ? 0 : horda <= 6 ? 1 : 2;
+    const tints = [0xb3002d, 0xff4500, 0xffd700];
+    const sizes = [20, 24, 28];
+    e.setTint(tints[tier]);
+    e.setCircle(sizes[tier] / 2);
+    // Enemy HP tracked by scale on setCollideWorldBounds tint; for logic we rely on this.enemies array
+    (e as any).hp = tier === 0 ? 1 : tier === 1 ? 2 : 3;
     this.enemies.push(e);
+  }
+
+  private hordaActualActual(): number {
+    const elapsed = this.time.now - this.startMs;
+    return Math.min(9, Math.floor(elapsed / 10000) + 1);
   }
 
   private hitEnemy(e: Phaser.Physics.Arcade.Sprite): void {
