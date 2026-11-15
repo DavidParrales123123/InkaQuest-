@@ -24,65 +24,129 @@ import { CombateScene, MEJORAS, MEJORAS_EXTRA } from './combate-scene';
       </app-page-header>
 
       <div class="grid gap-4 lg:grid-cols-12">
-        <div class="card card-body lg:col-span-4 order-2 lg:order-1 space-y-3">
-          <h2 class="text-xs font-bold uppercase tracking-wider text-marine-500">Estado de combate</h2>
-          <div>
-            <div class="flex items-center justify-between text-xs text-marine-600"><span>Vida</span><span>{{ salud() }} / 100</span></div>
-            <div class="mt-1 h-2 w-full rounded-full bg-surface-200"><div class="h-2 rounded-full bg-brand-500 transition-all duration-200" [style.width.%]="saludPct()"></div></div>
-          </div>
-          <div>
-            <div class="flex items-center justify-between text-xs text-marine-600"><span>XP acumulada</span><span>{{ xp() }} XP</span></div>
-            <div class="mt-1 h-2 w-full rounded-full bg-surface-200"><div class="h-2 rounded-full bg-gold-500" [style.width.%]="xpPct()"></div></div>
-          </div>
-          <div class="text-xs text-marine-500">
-            <p>Enemigos activos: <strong>{{ enemigosVivos() }}</strong></p>
-            <p>Tiempo: <strong>{{ tiempoFormateado() }}</strong></p>
-            <p>Horda <strong>{{ hordaActual() }} / 9</strong></p>
-            @if (esEvaluacion()) { <p class="mt-1 inline-block rounded-full border border-rose-400/50 bg-rose-500/15 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-widest text-rose-300">⚔ Nivel de evaluación · jefes</p> }
-          </div>
-          <div class="text-[0.7rem] text-marine-500">
-            <p>El apuntado se hace con el <strong>mouse</strong> — durante la partida no verás nada en pantalla.</p>
+        <div class="lg:col-span-4 order-2 lg:order-1 space-y-4">
+          <!-- ─── HUD estilo Brotato ─── -->
+          <div class="relative overflow-hidden rounded-2xl border-2 border-gold-500/70 bg-gradient-to-br from-marine-900 via-marine-800 to-marine-900 p-4 shadow-[0_0_40px_-10px_rgba(242,165,65,0.35)]">
+            <div class="pointer-events-none absolute -top-10 -left-10 size-40 rounded-full bg-brand-500/10 blur-3xl"></div>
+            <div class="pointer-events-none absolute -bottom-10 -right-10 size-40 rounded-full bg-gold-500/10 blur-3xl"></div>
+            <div class="relative flex items-center justify-between gap-2 border-b border-gold-500/20 pb-3">
+              <p class="text-[0.65rem] font-extrabold uppercase tracking-[0.2em] text-gold-400">GUARDIANES · HUD</p>
+              @if (esEvaluacion()) { <span class="inline-block rounded-full border border-rose-400/40 bg-rose-500/10 px-2 py-0.5 text-[0.62rem] font-extrabold uppercase tracking-widest text-rose-300">JEFE · EVALUACIÓN</span> }
+            </div>
+            <!-- Vida -->
+            <div class="relative mt-4">
+              <div class="flex items-end justify-between">
+                <span class="flex items-center gap-2 text-sm font-extrabold text-rose-200">
+                  <svg viewBox="0 0 24 24" class="size-5 fill-rose-400 drop-shadow-[0_0_6px_rgba(244,63,94,0.6)]" aria-hidden="true"><path d="M12 21s-7.5-4.8-10-9.5C.5 7.5 4 4 8 4c2.4 0 3.3 1.4 4 2.4C12.7 5.4 13.6 4 16 4c4 0 7.5 3.5 6 7.5C19.5 16.2 12 21 12 21z"/></svg>
+                  VIDA
+                </span>
+                <span class="font-display text-2xl font-extrabold tabular-nums text-white drop-shadow-[0_2px_0_rgba(0,0,0,0.6)]">{{ salud() }}<span class="text-sm text-marine-400">/{{ saludMax() }}</span></span>
+              </div>
+              <div class="mt-1.5 h-4 w-full rounded-full border border-rose-950/80 bg-rose-950/60 p-[3px] shadow-inner"><div class="h-full rounded-full bg-gradient-to-r from-rose-500 via-rose-400 to-amber-300 shadow-[0_0_10px_rgba(244,63,94,0.6)] transition-all duration-200" [style.width.%]="saludPct()"></div></div>
+            </div>
+            <!-- XP -->
+            <div class="relative mt-4">
+              <div class="flex items-end justify-between">
+                <span class="flex items-center gap-2 text-sm font-extrabold text-gold-300">
+                  <svg viewBox="0 0 24 24" class="size-5 fill-gold-400 drop-shadow-[0_0_6px_rgba(242,165,65,0.7)]" aria-hidden="true"><path d="M12 2l2.6 5.6L21 9.5l-4.5 4.3 1.1 6.2L12 17l-5.6 3 1.1-6.2L3 9.5l6.4-1.9L12 2z"/></svg>
+                  XP
+                </span>
+                <span class="font-display text-2xl font-extrabold tabular-nums text-gold-300 drop-shadow-[0_2px_0_rgba(0,0,0,0.6)]">+{{ xp() }}</span>
+              </div>
+              <div class="mt-1.5 h-3 w-full rounded-full border border-gold-900/80 bg-gold-950/50 p-[2px] shadow-inner"><div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-gold-300 shadow-[0_0_10px_rgba(242,165,65,0.6)] transition-all duration-200" [style.width.%]="xpPct()"></div></div>
+            </div>
+            <!-- Horda + enemigos -->
+            <div class="relative mt-4 flex items-stretch gap-2">
+              <div class="flex-1 rounded-xl border border-gold-500/25 bg-black/40 p-2 text-center">
+                <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-gold-500">Horda</p>
+                <p class="font-display text-3xl font-extrabold leading-none text-white">{{ hordaActual() }}<span class="text-base text-marine-400">/9</span></p>
+              </div>
+              <div class="flex-1 rounded-xl border border-brand-500/25 bg-black/40 p-2 text-center">
+                <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-brand-400">Enemigos</p>
+                <p class="font-display text-3xl font-extrabold leading-none text-brand-200 tabular-nums">{{ enemigosVivos() }}</p>
+              </div>
+              <div class="flex-1 rounded-xl border border-marine-500/25 bg-black/40 p-2 text-center">
+                <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-marine-300">Tiempo</p>
+                <p class="font-display text-3xl font-extrabold leading-none text-white tabular-nums">{{ tiempoFormateado() }}</p>
+              </div>
+            </div>
+            <!-- Progreso de hordas: 9 nueves -->
+            <div class="relative mt-3 flex items-center justify-between gap-1 px-1">
+              @for (i of [1,2,3,4,5,6,7,8,9]; track i) {
+                <span class="aspect-square rounded-full border text-center text-[0.55rem] font-extrabold leading-[1.4]"
+                      [class.border-gold-400]="i <= hordaActual()" [class.bg-gold-500]="i <= hordaActual()" [class.text-marine-900]="i <= hordaActual()"
+                      [class.border-marine-700]="i > hordaActual()" [class.bg-marine-900]="i > hordaActual()" [class.text-marine-600]="i > hordaActual()">{{ i }}</span>
+              }
+            </div>
+            <div class="relative mt-3 rounded-lg border border-gold-500/15 bg-gold-500/5 p-2 text-[0.62rem] leading-snug text-marine-200">
+              <span class="font-bold text-gold-400">Apunta con el mouse</span> — el disparo sale hacia donde apuntas. La pantalla muestra sólo lo esencial: elimina, sobrevive, aprende.
+            </div>
           </div>
         </div>
 
         <div class="lg:col-span-8 order-1 lg:order-2 space-y-4">
-          <div id="juego-root" class="relative h-[60vh] min-h-[420px] w-full overflow-hidden rounded-2xl border border-gold-500/30 bg-marine-900" aria-label="Área de juego. Combate top-down.">
+          <div id="juego-root" class="relative h-[62vh] min-h-[440px] w-full overflow-hidden rounded-2xl border-2 border-gold-500/40 bg-marine-900 shadow-[inset_0_0_80px_rgba(0,0,0,0.7),0_0_60px_-15px_rgba(242,165,65,0.25)]" aria-label="Área de juego. Combate top-down.">
+            <!-- Vignette cinematográfico del arena -->
+            <div class="pointer-events-none absolute inset-0 z-[5]" style="background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.45) 100%)"></div>
             <!-- Overlay de bienvenida con controles (sólo al inicio) -->
             @if (mostrarIntro()) {
               <div class="absolute inset-0 z-20 flex items-center justify-center bg-marine-900/70 p-4 backdrop-blur-sm">
-                <div class="max-w-sm w-full space-y-4 rounded-2xl border border-gold-400/40 bg-gradient-to-br from-marine-800 to-marine-900 p-5 text-center text-white shadow-2xl">
-                  <span class="inline-flex w-fit items-center gap-1.5 rounded-full bg-gold-500/15 px-3 py-1 text-[0.65rem] font-extrabold uppercase tracking-[0.16em] text-gold-400">Guardianes del Conocimiento</span>
-                  <h3 class="text-xl font-extrabold leading-tight">Protege la lección<br/>sobreviviendo las hordas</h3>
-                  <ul class="space-y-2 text-left text-sm text-marine-100">
-                    <li class="flex items-start gap-2"><span class="text-gold-400">◆</span><span><strong>WASD / ← → ↑ ↓</strong> para moverte</span></li>
-                    <li class="flex items-start gap-2"><span class="text-gold-400">◆</span><span><strong>Mouse</strong> para apuntar — el disparo sale hacia donde apuntas</span></li>
-                    <li class="flex items-start gap-2"><span class="text-gold-400">◆</span><span><strong>Elimina hordas</strong> y elige mejoras entre una y otra</span></li>
-                    <li class="flex items-start gap-2"><span class="text-gold-400">◆</span><span><strong>Responde las preguntas</strong> de tu lección y gana más XP</span></li>
+                <div class="max-w-md w-full space-y-4 rounded-2xl border-2 border-gold-400/70 bg-gradient-to-br from-marine-800 via-marine-900 to-black p-6 text-center text-white shadow-[0_0_60px_-10px_rgba(242,165,65,0.6)]">
+                  <!-- Guerrero de patata brotatiano (SVG) -->
+                  <svg viewBox="0 0 120 120" class="mx-auto h-28 w-28 drop-shadow-[0_0_18px_rgba(242,165,65,0.55)]" role="img" aria-label="Guerrero de patata">
+                    <ellipse cx="60" cy="68" rx="24" ry="27" fill="#f6c453" stroke="#3d2600" stroke-width="3.5"/>
+                    <ellipse cx="60" cy="76" rx="26" ry="4" fill="rgba(0,0,0,0.35)"/>
+                    <rect x="38" y="56" width="44" height="12" rx="6" fill="#8ff0ff" stroke="#13333b" stroke-width="2.5"/>
+                    <rect x="42" y="59" width="9" height="3" fill="rgba(255,255,255,0.9)"/>
+                    <line x1="52" y1="42" x2="46" y2="28" stroke="#3d2600" stroke-width="2.5"/>
+                    <line x1="68" y1="42" x2="74" y2="28" stroke="#3d2600" stroke-width="2.5"/>
+                    <circle cx="46" cy="26" r="2.4" fill="#ffd700"/>
+                    <circle cx="74" cy="26" r="2.4" fill="#ffd700"/>
+                    <circle cx="53" cy="61" r="2.4" fill="#fffb00"/>
+                    <circle cx="67" cy="61" r="2.4" fill="#fffb00"/>
+                    <circle cx="53" cy="61" r="1" fill="#082305"/>
+                    <circle cx="67" cy="61" r="1" fill="#082305"/>
+                  </svg>
+                  <span class="inline-flex w-fit items-center gap-1.5 rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-[0.6rem] font-extrabold uppercase tracking-[0.2em] text-gold-400">Guardianes del Conocimiento</span>
+                  <h3 class="font-display text-2xl font-extrabold leading-none text-white">PROTEGE LA LECCIÓN<br/><span class="text-gold-400">DEFENDERÁS PARA SIEMPRE</span></h3>
+                  <ul class="space-y-2 rounded-xl border border-gold-500/20 bg-black/30 p-3 text-left text-sm text-marine-100">
+                    <li class="flex items-center gap-2"><span class="grid size-5 place-items-center rounded border border-gold-500/50 bg-gold-500/10 text-[0.6rem] font-extrabold text-gold-400">W</span><span><strong>WASD / Flechas</strong> — muévete</span></li>
+                    <li class="flex items-center gap-2"><span class="grid size-5 place-items-center rounded border border-brand-500/50 bg-brand-500/10 text-[0.6rem] font-extrabold text-brand-400">◎</span><span><strong>Mouse</strong> — apunta; el disparo sale hacia ti</span></li>
+                    <li class="flex items-center gap-2"><span class="grid size-5 place-items-center rounded border border-rose-500/50 bg-rose-500/10 text-[0.6rem] font-extrabold text-rose-400">×</span><span><strong>Elimina hordas</strong> y elige una mejora</span></li>
+                    <li class="flex items-center gap-2"><span class="grid size-5 place-items-center rounded border border-marine-500/60 bg-marine-500/20 text-[0.6rem] font-extrabold text-marine-300">★</span><span><strong>Responde la pregunta</strong> y gana +15 XP</span></li>
                   </ul>
-                  <button type="button" class="btn btn-gold w-full justify-center" (click)="comenzarPartida()">¡Entendido, jugar!</button>
+                  <button type="button" class="btn btn-gold w-full justify-center !py-3 text-base !font-extrabold tracking-wide shadow-[0_4px_0_#8c4f13]" (click)="comenzarPartida()">¡Entendido, jugar!</button>
                 </div>
               </div>
             }
             <!-- Overlay de mejoras entre hordas -->
             @if (elegirMejora()) {
               <div class="absolute inset-0 z-10 flex items-center justify-center bg-marine-900/80 p-3 backdrop-blur-sm">
-                <div class="w-full max-w-2xl space-y-3 rounded-2xl border border-gold-400/40 bg-gradient-to-br from-marine-900 to-marine-800 p-4 text-white">
-                  <div>
-                    <p class="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-gold-400">Selecciona una mejora</p>
-                    <h3 class="text-lg font-extrabold">¡Horda {{ hordaActual() }} de 9 superada!</h3>
-                    <p class="text-xs text-marine-200">{{ hordaActual() >= 9 ? 'Ceremonia final: elige tu última mejora y vencerás el nivel.' : 'Elige un beneficio académico antes de la próxima horda.' }}</p>
+                <div class="w-full max-w-2xl space-y-4 rounded-2xl border-2 border-gold-400/70 bg-gradient-to-br from-marine-800 via-marine-900 to-black p-5 text-white shadow-[0_0_60px_-15px_rgba(242,165,65,0.55)]">
+                  <div class="text-center">
+                    <span class="inline-block rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-[0.6rem] font-extrabold uppercase tracking-[0.2em] text-gold-400">Mejora entre hordas</span>
+                    <h3 class="mt-2 font-display text-2xl font-extrabold leading-none text-gold-300">¡HORDA {{ hordaActual() }} SUPERADA!</h3>
+                    <p class="mt-1 text-xs text-marine-200">{{ hordaActual() >= 9 ? 'Ceremonia final: elige tu última mejora y vencerás este nivel.' : 'Elige tu recompensa antes de enfrentar la siguiente horda.' }}</p>
                   </div>
                   <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     @for (m of candidatosMejora(); track m.id) {
-                      <button type="button" class="flex flex-col items-start justify-between gap-2 rounded-xl border border-gold-400/25 bg-marine-900/80 p-3 text-left transition hover:-translate-y-0.5 hover:border-gold-400 hover:bg-marine-800" (click)="aplicarMejora(m)">
+                      <button type="button" class="group flex flex-col items-start justify-between gap-2 rounded-xl border-2 p-3 text-left transition hover:-translate-y-1"
+                              [class.border-brand-400]="m.rareza === 'comun'" [class.bg-brand-500/10]="m.rareza === 'comun'"
+                              [class.border-gold-400]="m.rareza === 'academic'" [class.bg-gold-500/10]="m.rareza === 'academic'"
+                              [class.border-rose-400]="m.rareza === 'legendario'" [class.bg-rose-500/10]="m.rareza === 'legendario'"
+                              [class.shadow-[0_0_18px_-8px_rgba(45,210,216,0.4)]]="m.rareza === 'comun'"
+                              [class.shadow-[0_0_18px_-8px_rgba(255,215,0,0.4)]]="m.rareza === 'academic'"
+                              [class.shadow-[0_0_18px_-8px_rgba(244,63,94,0.5)]]="m.rareza === 'legendario'"
+                              (click)="aplicarMejora(m)">
                         <div class="space-y-1">
-                          <p class="text-sm font-bold text-gold-400">{{ m.nombre }}</p>
-                          <p class="text-[0.7rem] text-marine-200">{{ m.descripcion }}</p>
-                          <p class="text-[0.65rem] font-bold uppercase tracking-widest text-brand-300">{{ m.rango > 0 ? 'Mejora a Nv. ' + (m.rango + 1) : 'Nueva adquisición' }}</p>
+                          <p class="text-sm font-extrabold text-white leading-snug">{{ m.nombre }}</p>
+                          <p class="text-[0.7rem] leading-snug text-marine-100">{{ m.descripcion }}</p>
+                          <p class="text-[0.62rem] font-bold uppercase tracking-widest text-brand-300">{{ m.rango > 0 ? 'Mejora a Nv. ' + (m.rango + 1) : 'Nueva adquisición' }}</p>
                         </div>
-                        <div class="flex w-full items-center justify-between gap-2">
-                          <span class="text-[0.65rem] font-extrabold uppercase tracking-widest" [class.text-gold-400]="m.rareza === 'academic'" [class.text-white]="m.rareza === 'comun'" [class.text-rose-400]="m.rareza === 'legendario'">{{ m.rareza === 'comun' ? 'COMÚN' : m.rareza === 'academic' ? 'ACADÉMICA' : 'LEGENDARIA' }}</span>
-                          <span class="text-[0.65rem] font-bold text-marine-300">{{ m.rango }}/{{ m.maxRango }}</span>
+                        <div class="flex w-full items-center justify-between gap-2 border-t border-white/10 pt-2">
+                          <span class="text-[0.62rem] font-extrabold uppercase tracking-widest"
+                                [class.text-brand-300]="m.rareza === 'comun'" [class.text-gold-400]="m.rareza === 'academic'" [class.text-rose-400]="m.rareza === 'legendario'">{{ m.rareza === 'comun' ? 'COMÚN' : m.rareza === 'academic' ? 'ACADÉMICA' : 'LEGENDARIA' }}</span>
+                          <span class="rounded bg-black/40 px-2 py-0.5 text-[0.62rem] font-bold tabular-nums text-marine-200">{{ m.rango }}/{{ m.maxRango }}</span>
                         </div>
                       </button>
                     }
@@ -124,12 +188,24 @@ import { CombateScene, MEJORAS, MEJORAS_EXTRA } from './combate-scene';
             }
           </div>
           @if (fase() === 'victoria' || fase() === 'derrota') {
-            <div class="rounded-2xl border border-gold-500/40 bg-marine-900 p-6 text-center">
-              <p class="text-2xl font-extrabold text-gold-400">{{ fase() === 'victoria' ? '¡Nivel superado!' : 'Nivel perdido' }}</p>
-              <p class="mt-2 text-sm text-marine-100">
-                @if (fase() === 'victoria') { +{{ xpGanado() }} XP · +{{ monedasGanadas() }} monedas }
-              </p>
-              <p class="mt-2 text-[0.7rem] uppercase tracking-widest text-marine-400">{{ mensajeResultado() }}</p>
+            <div class="relative overflow-hidden rounded-2xl border-2 border-gold-500/70 bg-gradient-to-br from-marine-900 via-marine-800 to-marine-900 p-6 text-center shadow-[0_0_60px_-10px_rgba(242,165,65,0.5)]">
+              <div class="pointer-events-none absolute -top-12 left-1/2 size-72 -translate-x-1/2 rounded-full bg-gold-500/10 blur-3xl"></div>
+              @if (fase() === 'victoria') {
+                <svg viewBox="0 0 120 120" class="relative mx-auto h-24 w-24 drop-shadow-[0_0_20px_rgba(242,165,65,0.6)]" aria-hidden="true">
+                  <circle cx="60" cy="60" r="52" fill="#f2a541" stroke="#3d2600" stroke-width="4"/>
+                  <circle cx="60" cy="60" r="38" fill="#dd8a1f" stroke="#3d2600" stroke-width="3"/>
+                  <path d="M40 62l14 14 26-30" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <h3 class="relative mt-4 font-display text-3xl font-extrabold leading-none text-gold-400 drop-shadow-[0_3px_0_rgba(0,0,0,0.5)]">¡NIVEL SUPERADO!</h3>
+                <p class="relative mt-3 text-base font-extrabold text-gold-300">+{{ xpGanado() }} XP · +{{ monedasGanadas() }} monedas</p>
+              } @else {
+                <svg viewBox="0 0 120 120" class="relative mx-auto h-24 w-24" aria-hidden="true">
+                  <path d="M60 8L112 108H8L60 8z" fill="#b3002d" stroke="#2a0510" stroke-width="4" stroke-linejoin="round"/>
+                  <text x="60" y="92" text-anchor="middle" font-size="52" font-weight="900" fill="#fff" font-family="system-ui, sans-serif">!</text>
+                </svg>
+                <h3 class="relative mt-4 font-display text-3xl font-extrabold leading-none text-rose-400 drop-shadow-[0_3px_0_rgba(0,0,0,0.5)]">NIVEL PERDIDO</h3>
+              }
+              <p class="relative mt-4 text-xs uppercase tracking-widest text-marine-400">{{ mensajeResultado() }}</p>
               <div class="mt-4 flex flex-wrap justify-center gap-2">
                 <a routerLink="/estudiante/guardianes" class="btn btn-outline-light">Volver a la campaña</a>
                 <button type="button" class="btn btn-gold" (click)="reiniciar()">Reintentar</button>

@@ -10,11 +10,7 @@ export interface MejoraInfo {
   readonly aplica: (scene: CombateScene) => void;
 }
 
-/**
- * Mejoras posibles entre hordas. Cada una es apilable por rangos: al elegirla
- * sube su nivel y el efecto se acumula (Espada Algorítmica I → II → III…).
- * Ofrecidas 3 al azar por horda ⇒ 9 hordas × 3 = 27 tarjetas por nivel.
- */
+/** Mejoras posibles entre hordas. Cada una es apilable por rangos. */
 export const MEJORAS: MejoraInfo[] = [
   { id: 'dano', nombre: 'Espada Algorítmica', rareza: 'comun', maxRango: 5,
     descripcion: '+1 daño por bala (apilable)',
@@ -42,16 +38,39 @@ export const MEJORAS: MejoraInfo[] = [
     aplica: (s) => { s.regeneraRango += 1; } },
 ];
 
-/** Extensión de reserva cuando el pool alcance su rango máximo (nunca faltan tarjetas). */
+/** Extensión de reserva cuando el pool alcance su rango máximo. */
 export const MEJORAS_EXTRA: MejoraInfo[] = [
   { id: 'vitalidad', nombre: 'Vitamina Vital', rareza: 'comun', maxRango: 99,
     descripcion: '+40 vida al instante',
     aplica: (s) => { s.salud = Math.min(s.saludMax, s.salud + 40); } },
 ];
 
+/** Paletas de entorno por franja de hordas — el escenario respira el peligro. */
+interface PaletaArena {
+  readonly nombre: string;
+  readonly piso: number;
+  readonly grietas: number;
+  readonly filo: number;
+  readonly estrellas: number;
+  readonly acento: number;
+}
+const PALETAS: PaletaArena[] = [
+  { nombre: 'Cripta Eterna', piso: 0x141a35, grietas: 0x1f2750, filo: 0x2aa296, estrellas: 0x6c86ff, acento: 0xf2a541 },   // hordas 1-3
+  { nombre: 'Fragua Ígnea',  piso: 0x2b1410, grietas: 0x3f1f16, filo: 0xdd5a1f, estrellas: 0xffb066, acento: 0xff7a1a },   // hordas 4-6
+  { nombre: 'Ojo de Tormenta', piso: 0x0d2230, grietas: 0x163243, filo: 0x2bd2d8, estrellas: 0x8ff0ff, acento: 0x5ce1e6 }, // hordas 7-8
+  { nombre: 'El Juicio',     piso: 0x120710, grietas: 0x240c1f, filo: 0xb3002d, estrellas: 0xff8080, acento: 0xffd700 },   // horda 9 / jefes
+];
+const paletaPara = (horda: number): PaletaArena =>
+  horda <= 3 ? PALETAS[0] : horda <= 6 ? PALETAS[1] : horda <= 8 ? PALETAS[2] : PALETAS[3];
+
+/** Estructura ligera de partícula. */
+interface Particula {
+  x: number; y: number; vx: number; vy: number;
+  radio: number; color: number; vidaMs: number; maxVidaMs: number;
+}
+
 /** Escena Phaser en vivo: arena top-down de supervivencia por hordas. */
 export class CombateScene extends Phaser.Scene {
-  // Estado público leído por el componente Angular para el HUD
   player?: Phaser.Physics.Arcade.Image;
   salud = 100;
   saludMax = 100;
@@ -71,8 +90,6 @@ export class CombateScene extends Phaser.Scene {
   private emitUpgradePick?: () => void;
 
   hordaActual = 1;
-  /** true en niveles de evaluación (6, 12, 18: prácticas calificadas y examen final):
-   *  hordas 3, 6 y 9 lanzan jefes en lugar de enemigos comunes. */
   evaluacionMode = false;
   private readonly totalHordas = 9;
   private startedAt = 0;
@@ -83,9 +100,16 @@ export class CombateScene extends Phaser.Scene {
   private spawnTimer = 0;
   private fireTimer = 0;
   private damageAccum = 0;
+  private spawnBossCounter = 0;
 
   private enemies: Phaser.Physics.Arcade.Sprite[] = [];
   private bullets: Phaser.Physics.Arcade.Sprite[] = [];
+  private particulas: Particula[] = [];
+  private particulasGfx?: Phaser.GameObjects.Graphics;
+  private bossHpGfx?: Phaser.GameObjects.Graphics;
+  private bossLabel?: Phaser.GameObjects.Text;
+  private avisoHorda?: Phaser.GameObjects.Text;
+  private pisoGfx?: Phaser.GameObjects.Graphics;
   private aimX = 440;
   private aimY = 160;
 
@@ -100,16 +124,62 @@ export class CombateScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.add.rectangle(440, 260, 880, 520, 0x0f1a33).setStrokeStyle(2, 0xf2a541, 0.3);
-    for (let i = 0; i < 300; i++) this.add.rectangle(Math.random() * 880, Math.random() * 520, 2, 2, 0xbfd3ff);
     this.createTextures();
 
-    this.player = this.physics.add.sprite(440, 260, 'player_gold');
-    this.player.setCircle(14);
+    // ─── Arena — fondo con paleta de bioma según horda ───
+    this.pisoGfx = this.add.graphics();
+    this.dibujarPiso();
+
+    // ─── Capas de ambiente ───
+    this.particulasGfx = this.add.graphics();
+    this.bossHpGfx = this.add.graphics().setDepth(40);
+    this.bossLabel = this.add.text(440, 34, 'REY CARMESÍ', {
+      fontSize: '10px',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      color: '#ffd700',
+      letterSpacing: 4,
+    }).setOrigin(0.5).setDepth(45).setVisible(false);
+
+    // ─── Jugador: guerrero de patata con visor ───
+    this.player = this.physics.add.sprite(440, 260, 'player_potato');
+    this.player.setCircle(15);
     this.player.setCollideWorldBounds(true);
     this.physics.world.setBounds(0, 0, 880, 520);
     this.startedAt = this.time.now;
     this.startHorda(1);
+  }
+
+  /** Redibuja el piso según la franja de hordas vigente (transición de bioma). */
+  private dibujarPiso(): void {
+    const g = this.pisoGfx!;
+    const p = paletaPara(this.hordaActual);
+    g.clear();
+    // Base
+    g.fillStyle(p.piso, 1);
+    g.fillRect(0, 0, 880, 520);
+    // Estrellas/elementos lejanos
+    for (let i = 0; i < 200; i++) {
+      const alpha = 0.25 + Math.random() * 0.5;
+      g.fillStyle(p.estrellas, alpha);
+      const size = Math.random() < 0.88 ? 2 : 3;
+      g.fillRect(Math.random() * 880, Math.random() * 520, size, size);
+    }
+    // Grietas/cuarcitas procedurales
+    g.lineStyle(2, p.grietas, 1);
+    for (let i = 0; i < 14; i++) {
+      const x = Math.random() * 880;
+      const y = Math.random() * 520;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x + 30 + Math.random() * 70, y + (Math.random() - 0.5) * 40);
+      g.lineTo(x + 50 + Math.random() * 60, y + (Math.random() - 0.5) * 80);
+      g.strokePath();
+    }
+    // Orillas brillantes (biomas con energía)
+    g.lineStyle(6, p.filo, 0.8);
+    g.strokeRect(3, 3, 874, 514);
+    g.lineStyle(2, p.acento, 0.9);
+    g.strokeRect(10, 10, 860, 500);
   }
 
   private createTextures(): void {
@@ -121,16 +191,212 @@ export class CombateScene extends Phaser.Scene {
       draw(ctx, size);
       this.textures.addCanvas(key, c);
     };
-    make('player_gold', 32, (ctx, s) => {
-      ctx.fillStyle = '#f2a541'; ctx.beginPath(); ctx.arc(s / 2, s / 2, s / 2 - 1, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1b2a4a'; ctx.beginPath(); ctx.arc(s / 2, s / 2, s / 2 - 8, 0, Math.PI * 2); ctx.fill();
+    const radial = (ctx: CanvasRenderingContext2D, x: number, y: number, r0: number, r1: number, c0: string, c1: string): void => {
+      const g = ctx.createRadialGradient(x, y, r0, x, y, r1);
+      g.addColorStop(0, c0);
+      g.addColorStop(1, c1);
+      ctx.fillStyle = g;
+    };
+
+    // ─── Jugador: guerrero de patata, estilo Brotato ───
+    make('player_potato', 44, (ctx, s) => {
+      const c = s / 2;
+      // cuerpo patata (marrón cálido) con sombra
+      radial(ctx, c - 2, c - 3, 4, c, '#f6c453', '#c67d10');
+      ctx.beginPath();
+      ctx.ellipse(c, c + 2, c - 4, c - 1, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // sombra inferior
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.beginPath();
+      ctx.ellipse(c, c + 7, c - 6, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // borde oscuro
+      ctx.strokeStyle = '#3d2600';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(c, c + 2, c - 4, c - 1, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // visor (banda cian brillante)
+      radial(ctx, c, c - 2, 2, 10, '#8ff0ff', '#0f7d8a');
+      ctx.beginPath();
+      ctx.roundRect(c - 11, c - 6, 22, 8, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#01333b';
+      ctx.lineWidth = 2;
+      ctx.roundRect(c - 11, c - 6, 22, 8, 4);
+      ctx.stroke();
+      // brillo del visor
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillRect(c - 8, c - 5, 6, 2);
+      // antenas
+      ctx.strokeStyle = '#3d2600';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(c - 5, c - 9); ctx.lineTo(c - 8, c - 14); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(c + 5, c - 9); ctx.lineTo(c + 8, c - 14); ctx.stroke();
+      ctx.fillStyle = '#ffd700';
+      ctx.beginPath(); ctx.arc(c - 8, c - 14, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(c + 8, c - 14, 2, 0, Math.PI * 2); ctx.fill();
+      // ojos brillantes detrás del visor
+      ctx.fillStyle = '#fffb00';
+      ctx.beginPath(); ctx.arc(c - 5, c - 2, 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(c + 5, c - 2, 1.6, 0, Math.PI * 2); ctx.fill();
     });
-    make('enemy_red', 28, (ctx, s) => { ctx.fillStyle = '#b3002d'; ctx.fillRect(0, 0, s, s); ctx.fillStyle = '#450b16'; ctx.fillRect(s * 0.28, s * 0.3, 4, 4); ctx.fillRect(s * 0.62, s * 0.3, 4, 4); });
-    make('enemy_orange', 28, (ctx, s) => { ctx.fillStyle = '#ff4500'; ctx.fillRect(0, 0, s, s); ctx.fillStyle = '#7c2700'; ctx.fillRect(s * 0.28, s * 0.3, 4, 4); ctx.fillRect(s * 0.62, s * 0.3, 4, 4); });
-    make('enemy_gold', 32, (ctx, s) => { ctx.fillStyle = '#ffd700'; ctx.fillRect(0, 0, s, s); ctx.fillStyle = '#5a4600'; ctx.fillRect(s * 0.28, s * 0.3, 5, 5); ctx.fillRect(s * 0.62, s * 0.3, 5, 5); });
-    make('boss', 56, (ctx, s) => { ctx.fillStyle = '#7c0a0a'; ctx.fillRect(0, 0, s, s); ctx.fillStyle = '#ffd700'; ctx.fillRect(s * 0.25, s * 0.38, 8, 8); ctx.fillRect(s * 0.6, s * 0.38, 8, 8); ctx.fillStyle = '#ffffff'; ctx.fillRect(s * 0.35, s * 0.6, 8, 4); });
-    make('bullet_white', 8, (ctx, s) => { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, s, s); });
-    make('bullet_critical', 10, (ctx, s) => { ctx.fillStyle = '#fffb00'; ctx.fillRect(0, 0, s, s); });
+
+    // ─── Espinita (rojo): bicho con 6 púas — enjambre de hordas 1-3 ───
+    make('enemy_red', 36, (ctx, s) => {
+      const c = s / 2;
+      // púas
+      ctx.fillStyle = '#7c0a1e';
+      for (let i = 0; i < 6; i++) {
+        const a = (i * Math.PI) / 3;
+        const px = c + Math.cos(a) * (c - 3);
+        const py = c + Math.sin(a) * (c - 3);
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(c + Math.cos(a - 0.35) * (c - 12), c + Math.sin(a - 0.35) * (c - 12));
+        ctx.lineTo(c + Math.cos(a + 0.35) * (c - 12), c + Math.sin(a + 0.35) * (c - 12));
+        ctx.closePath();
+        ctx.fill();
+      }
+      // cuerpo
+      radial(ctx, c, c - 1, 3, c - 4, '#ff4d4d', '#b3002d');
+      ctx.beginPath();
+      ctx.arc(c, c, c - 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#3a0513';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(c, c, c - 4, 0, Math.PI * 2); ctx.stroke();
+      // ojos
+      ctx.fillStyle = '#fffb00';
+      ctx.beginPath(); ctx.arc(c - 6, c - 2, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(c + 6, c - 2, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#0a0a0a';
+      ctx.beginPath(); ctx.arc(c - 6, c - 2, 1.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(c + 6, c - 2, 1.2, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // ─── Bug Infector (naranja): bicho con cuernos — hordas 4-6 ───
+    make('enemy_orange', 40, (ctx, s) => {
+      const c = s / 2;
+      // cuernos
+      ctx.fillStyle = '#5a1c00';
+      ctx.beginPath(); ctx.moveTo(c - 8, c - 12); ctx.lineTo(c - 13, c - 18); ctx.lineTo(c - 4, c - 12); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(c + 8, c - 12); ctx.lineTo(c + 13, c - 18); ctx.lineTo(c + 4, c - 12); ctx.closePath(); ctx.fill();
+      // cuerpo alargado
+      radial(ctx, c, c, 3, c - 3, '#ff8c42', '#c2410c');
+      ctx.beginPath();
+      ctx.ellipse(c, c, c - 5, c - 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#3b0f00';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.ellipse(c, c, c - 5, c - 2, 0, 0, Math.PI * 2); ctx.stroke();
+      // mandíbulas
+      ctx.strokeStyle = '#3b0f00';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(c - 7, c + 9); ctx.lineTo(c - 4, c + 5); ctx.moveTo(c - 7, c + 9); ctx.lineTo(c - 10, c + 5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(c + 7, c + 9); ctx.lineTo(c + 4, c + 5); ctx.moveTo(c + 7, c + 9); ctx.lineTo(c + 10, c + 5); ctx.stroke();
+      // ojos verdes (infectado)
+      ctx.fillStyle = '#8af56b';
+      ctx.beginPath(); ctx.arc(c - 6, c - 3, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(c + 6, c - 3, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#061f00';
+      ctx.beginPath(); ctx.arc(c - 6, c - 3, 1.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(c + 6, c - 3, 1.2, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // ─── Excepción (dorado): escarabajo Real dorado — hordas 7-8 ───
+    make('enemy_gold', 40, (ctx, s) => {
+      const c = s / 2;
+      radial(ctx, c, c, 4, c - 3, '#ffe680', '#b8860b');
+      ctx.beginPath();
+      ctx.ellipse(c, c, c - 4, c - 1, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#3d2c00';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.ellipse(c, c, c - 4, c - 1, 0, 0, Math.PI * 2); ctx.stroke();
+      // caparazón: franjas brillantes
+      ctx.strokeStyle = '#ffe98a';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(c, c - 9); ctx.lineTo(c, c + 9); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(c - 9, c); ctx.lineTo(c + 9, c); ctx.stroke();
+      // núcleo energético
+      radial(ctx, c, c, 1, 5, '#fff7b3', '#d4920b');
+      ctx.beginPath(); ctx.arc(c, c, 4, 0, Math.PI * 2); ctx.fill();
+      // ojos ópalo
+      ctx.fillStyle = '#d0f4ff';
+      ctx.beginPath(); ctx.arc(c - 7, c - 4, 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(c + 7, c - 4, 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#09262e';
+      ctx.beginPath(); ctx.arc(c - 7, c - 4, 1, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(c + 7, c - 4, 1, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // ─── Jefe: Rey de la Cripta — araña-corona ───
+    make('boss', 72, (ctx, s) => {
+      const c = s / 2;
+      // corona (5 puntas)
+      ctx.fillStyle = '#ffd700';
+      ctx.strokeStyle = '#3d2c00';
+      ctx.lineWidth = 2.5;
+      const coronoY = c - 17;
+      ctx.beginPath();
+      ctx.moveTo(c - 17, coronoY); ctx.lineTo(c - 17, coronoY - 7); ctx.lineTo(c - 11, coronoY); ctx.lineTo(c - 6, coronoY - 9); ctx.lineTo(c, coronoY - 14); ctx.lineTo(c + 6, coronoY - 9); ctx.lineTo(c + 11, coronoY); ctx.lineTo(c + 17, coronoY - 7); ctx.lineTo(c + 17, coronoY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // cuerpo-saco púrpura/rojo
+      radial(ctx, c, c + 3, 6, c - 3, '#c1133a', '#550a1e');
+      ctx.beginPath();
+      ctx.ellipse(c, c + 4, c - 6, c - 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#2b020e';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(c, c + 4, c - 6, c - 2, 0, 0, Math.PI * 2); ctx.stroke();
+      // ojos carmesí grandes
+      radial(ctx, c - 9, c, 1, 6, '#ff6b6b', '#b3002d');
+      ctx.beginPath(); ctx.arc(c - 9, c + 1, 5, 0, Math.PI * 2); ctx.fill();
+      radial(ctx, c + 9, c, 1, 6, '#ff6b6b', '#b3002d');
+      ctx.beginPath(); ctx.arc(c + 9, c + 1, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#200209';
+      ctx.beginPath(); ctx.arc(c - 9, c + 1, 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(c + 9, c + 1, 2.2, 0, Math.PI * 2); ctx.fill();
+      // patas
+      ctx.strokeStyle = '#2b020e';
+      ctx.lineWidth = 3;
+      for (const sign of [-1, 1]) {
+        ctx.beginPath(); ctx.moveTo(c + sign * 14, c + 3); ctx.lineTo(c + sign * 26, c + 10); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(c + sign * 14, c + 8); ctx.lineTo(c + sign * 27, c + 20); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(c + sign * 10, c - 4); ctx.lineTo(c + sign * 22, c - 10); ctx.stroke();
+      }
+      // colmillos
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.moveTo(c - 5, c + 13); ctx.lineTo(c - 2, c + 20); ctx.lineTo(c + 1, c + 13); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(c + 5, c + 13); ctx.lineTo(c + 2, c + 20); ctx.lineTo(c - 1, c + 13); ctx.closePath(); ctx.fill();
+    });
+
+    // ─── Proyectiles: energía pura ───
+    make('bullet_white', 14, (ctx, s) => {
+      const c = s / 2;
+      radial(ctx, c, c, 1, c, '#ffffff', 'rgba(255,255,255,0)');
+      ctx.beginPath(); ctx.arc(c, c, c, 0, Math.PI * 2); ctx.fill();
+      radial(ctx, c, c, 1, 4, '#ffffff', '#8ff0ff');
+      ctx.beginPath(); ctx.arc(c, c, 4, 0, Math.PI * 2); ctx.fill();
+    });
+    make('bullet_critical', 18, (ctx, s) => {
+      const c = s / 2;
+      radial(ctx, c, c, 1, c, '#fffb00', 'rgba(255,251,0,0)');
+      ctx.beginPath(); ctx.arc(c, c, c, 0, Math.PI * 2); ctx.fill();
+      radial(ctx, c, c, 1, 5, '#fffb00', '#ff8c00');
+      ctx.beginPath(); ctx.arc(c, c, 5, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // ─── Impacto/flash ───
+    make('impact_flash', 32, (ctx, s) => {
+      const c = s / 2;
+      radial(ctx, c, c, 1, c, '#ffffff', 'rgba(255,255,255,0)');
+      ctx.beginPath(); ctx.arc(c, c, c, 0, Math.PI * 2); ctx.fill();
+    });
   }
 
   private startHorda(h: number): void {
@@ -141,13 +407,44 @@ export class CombateScene extends Phaser.Scene {
     this.enemies = [];
     this.bullets.forEach((b) => b.destroy());
     this.bullets = [];
+    this.dibujarPiso();
+    this.mostrarAviso(h);
     this.emitHud?.();
+  }
+
+  /** Banner gigante de peligro (cambio de bioma o jefe). */
+  private mostrarAviso(horda: number): void {
+    this.avisoHorda?.destroy();
+    const p = paletaPara(horda);
+    const esJefe = horda === 9 || (this.evaluacionMode && (horda === 3 || horda === 6));
+    const texto = esJefe ? '⚠ JEFE ⚠' : `HORDA ${horda}`;
+    const sub = esJefe ? paletaPara(horda).nombre : paletaPara(horda).nombre;
+    this.avisoHorda = this.add.text(440, 150, texto, {
+      fontSize: esJefe ? '64px' : '44px',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontStyle: 'bold',
+      color: '#ffd700',
+      stroke: '#1a0a00',
+      strokeThickness: 8,
+      align: 'center',
+    }).setOrigin(0.5).setDepth(50).setAlpha(0);
+    const subT = this.add.text(440, 210, sub.toUpperCase(), {
+      fontSize: '15px',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      color: '#ffffff',
+      letterSpacing: 6,
+      align: 'center',
+    }).setOrigin(0.5).setDepth(50).setAlpha(0);
+    this.tweens.add({ targets: this.avisoHorda, alpha: 1, duration: 180 });
+    this.tweens.add({ targets: subT, alpha: 0.9, duration: 180, delay: 120 });
+    this.time.delayedCall(1700, () => {
+      this.tweens.add({ targets: [this.avisoHorda, subT], alpha: 0, duration: 380, onComplete: () => { this.avisoHorda?.destroy(); subT.destroy(); } });
+    });
   }
 
   update(_time: number, deltaMs: number): void {
     if (!this.player || this.pickingUpgrade || this.gameEnded) return;
 
-    // Apuntado con el mouse — lectura pura para el disparo (sin dibujo en pantalla)
     const ptr = this.input.activePointer;
     if (ptr) {
       this.aimX = ptr.worldX ?? ptr.x;
@@ -166,7 +463,7 @@ export class CombateScene extends Phaser.Scene {
     else if (isDown(KEY_S) || isDown(DOWN)) vy = this.vel;
     this.player.setVelocity(vx, vy);
 
-    // Regeneración pasiva (mejora "Código Médico", +regeneraRango vida/2s)
+    // Regeneración pasiva
     if (this.regeneraRango > 0) {
       this.regenTick += deltaMs;
       if (this.regenTick > 2000) {
@@ -176,7 +473,7 @@ export class CombateScene extends Phaser.Scene {
       }
     }
 
-    // Spawn por horda — cada horda tiene ~33s de ventana de aparición
+    // Spawn por horda
     this.phaseMs += deltaMs;
     this.spawnTimer += deltaMs;
     const hordaWindowMs = 33 * 1000;
@@ -190,22 +487,23 @@ export class CombateScene extends Phaser.Scene {
       this.marcarHordaCompletada();
     }
 
-    // Los enemigos persiguen al jugador
+    // Enemigos persiguen al jugador
     for (const e of this.enemies) {
       if (e.active) this.physics.moveTo(e, this.player.x, this.player.y, 90 + this.hordaActual * 10);
     }
 
-    // Disparo automático al enemigo más cercano
+    // Disparo automático al cursor
     this.fireTimer += deltaMs;
     if (this.fireTimer > this.fireInterval && this.enemies.length) {
       this.fireTimer = 0;
       this.spawnBullet();
+      this.muzzleFlash();
     }
 
-    // Limpieza de balas fuera de la arena
+    // Limpieza de balas
     this.bullets = this.bullets.filter((b) => b.active && b.x >= -30 && b.x <= 910 && b.y >= -30 && b.y <= 550);
 
-    // Colisiones balas ↔ enemigos (con daño real y HP de enemigo)
+    // Colisiones balas ↔ enemigos
     const radioImpacto = this.bulletSize + 8;
     for (const b of this.bullets) {
       if (!b.active) continue;
@@ -213,20 +511,27 @@ export class CombateScene extends Phaser.Scene {
         if (!e.active) continue;
         if (Phaser.Math.Distance.BetweenPoints(b, e) < radioImpacto) {
           const danoMult = (b as unknown as { danoMult?: number }).danoMult ?? 1;
-          this.hitEnemy(e, this.danoActual * danoMult);
+          const dano = this.danoActual * danoMult;
+          this.hitEnemy(e, dano);
+          const impacto = this.add.image(b.x, b.y, 'impact_flash').setDepth(30).setBlendMode(Phaser.BlendModes.ADD).setScale(0.8);
+          this.tweens.add({ targets: impacto, scale: 1.6, alpha: 0, duration: 160, onComplete: () => impacto.destroy() });
           b.destroy();
           break;
         }
       }
     }
 
-    // Colisiones enemigos ↔ jugador (daño con resistencia)
+    // Colisiones enemigos ↔ jugador
     for (const e of this.enemies) {
       if (!e.active) continue;
-      if (Phaser.Math.Distance.BetweenPoints(this.player, e) < 18) {
+      if (Phaser.Math.Distance.BetweenPoints(this.player, e) < 20) {
         this.damageTick(deltaMs);
       }
     }
+
+    // Actualizar partículas
+    this.tickParticulas(deltaMs);
+    this.drawBossHpBar();
 
     // Estado terminal
     if (this.salud <= 0) {
@@ -242,8 +547,20 @@ export class CombateScene extends Phaser.Scene {
       this.damageAccum = 0;
       const daño = Math.max(1, Math.round(5 * (1 - this.resistencia)));
       this.salud = Math.max(0, this.salud - daño);
+      this.cameras.main.shake(120, 0.004);
       this.emitHud?.();
     }
+  }
+
+  /** Muzzle flash: destello breve en el arma. */
+  private muzzleFlash(): void {
+    if (!this.player) return;
+    // cálculo aproximado de la punta del arma en la dirección del cursor
+    const ang = Phaser.Math.Angle.Between(this.player.x, this.player.y, this.aimX, this.aimY);
+    const px = this.player.x + Math.cos(ang) * 22;
+    const py = this.player.y + Math.sin(ang) * 22;
+    const flash = this.add.image(px, py, 'impact_flash').setDepth(28).setBlendMode(Phaser.BlendModes.ADD).setScale(0.55).setAlpha(0.9);
+    this.tweens.add({ targets: flash, scale: 1.1, alpha: 0, duration: 110, onComplete: () => flash.destroy() });
   }
 
   private spawnBullet(): void {
@@ -253,8 +570,6 @@ export class CombateScene extends Phaser.Scene {
     const bullet = this.physics.add.sprite(this.player.x, this.player.y, critico ? 'bullet_critical' : 'bullet_white');
     (bullet as unknown as { danoMult: number }).danoMult = critico ? 2 + this.criticoRango : 1;
 
-    // Disparo hacia donde apunta el mouse; si el cursor coincide con el jugador,
-    // usa al enemigo más cercano como dirección de respaldo
     let dx = this.aimX - this.player.x;
     let dy = this.aimY - this.player.y;
     let len = Math.hypot(dx, dy);
@@ -267,34 +582,32 @@ export class CombateScene extends Phaser.Scene {
     const dirY = dy / len;
     const speed = 560;
     bullet.setVelocity(dirX * speed, dirY * speed);
+    bullet.setDepth(25);
     bullet.body!.setCircle(this.bulletSize);
     this.bullets.push(bullet);
   }
-
-  private spawnBossCounter = 0;
 
   private spawnEnemy(): void {
     const side = Math.floor(Math.random() * 4);
     const x = side === 0 ? 0 : side === 1 ? 880 : Math.random() * 880;
     const y = side === 2 ? 0 : side === 3 ? 520 : Math.random() * 520;
-    // Hordas 1-3 Espinita · 4-6 Bug Infector · 7-8 Excepción · 9 Jefe
-    // Niveles de evaluación (6/12/18): además de la horda 9, también hay jefes
-    // en las hordas 3 y 6. En hordas de jefe, 1 de cada 4 apariciones es jefe real.
     const esHordaJefe = this.hordaActual === 9 || (this.evaluacionMode && (this.hordaActual === 3 || this.hordaActual === 6));
     this.spawnBossCounter++;
     if (esHordaJefe && this.spawnBossCounter % 4 === 1) {
       const hpJefe = this.hordaActual >= 9 ? 14 : this.hordaActual >= 6 ? 9 : 6;
       const boss = this.physics.add.sprite(x, y, 'boss');
-      (boss as unknown as { hp: number }).hp = hpJefe;
-      boss.setCircle(25);
+      (boss as unknown as { hp: number; hpMax: number }).hp = hpJefe;
+      (boss as unknown as { hp: number; hpMax: number }).hpMax = hpJefe;
+      boss.setCircle(30);
+      boss.setDepth(20);
       this.enemies.push(boss);
       return;
     }
     if (esHordaJefe) {
-      // Esbirros de la horda de jefe: Excepción dorada con más vida
       const e = this.physics.add.sprite(x, y, 'enemy_gold');
       (e as unknown as { hp: number }).hp = 4;
-      e.setCircle(12);
+      e.setCircle(13);
+      e.setDepth(20);
       this.enemies.push(e);
       return;
     }
@@ -302,7 +615,8 @@ export class CombateScene extends Phaser.Scene {
     const keys = ['enemy_red', 'enemy_orange', 'enemy_gold'];
     const e = this.physics.add.sprite(x, y, keys[tier]);
     (e as unknown as { hp: number }).hp = tier === 0 ? 1 : tier === 1 ? 2 : 3;
-    e.setCircle(12);
+    e.setCircle(13);
+    e.setDepth(20);
     this.enemies.push(e);
   }
 
@@ -321,21 +635,98 @@ export class CombateScene extends Phaser.Scene {
   private hitEnemy(e: Phaser.Physics.Arcade.Sprite, dano: number): void {
     const target = e as unknown as { hp: number };
     target.hp = (target.hp ?? 1) - dano;
+    // Flash de impacto (Phaser 4: setTint → setTintFill)
+    e.setTint(0xffffff);
+    e.setTintFill();
+    this.time.delayedCall(60, () => { if (e.active) e.clearTint(); });
+    // Partículas
+    this.spawnParticulas(e.x, e.y, target.hp <= 0 ? 0xffd700 : 0xffffff, target.hp <= 0 ? 12 : 5);
+    // Número flotante de daño
+    this.floatingText(`-${dano}`, e.x, e.y - 10, target.hp <= 0 ? '#ffd700' : '#ffffff', target.hp <= 0 ? 15 : 12);
     if (target.hp <= 0) {
       e.destroy();
       this.enemies = this.enemies.filter((x) => x !== e);
       this.xp += 5;
       this.kills += 1;
+      this.cameras.main.shake(90, 0.0025);
       this.emitHud?.();
     }
   }
 
-  /** Nivel actual alcanzado de una mejora (0 si no se ha tomado). */
+  /** Sistema de partículas ligero — estallidos al matar. */
+  private spawnParticulas(x: number, y: number, color: number, cantidad: number): void {
+    for (let i = 0; i < cantidad; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const speed = 80 + Math.random() * 180;
+      this.particulas.push({
+        x, y,
+        vx: Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed,
+        radio: 2 + Math.random() * 2.5,
+        color,
+        vidaMs: 380 + Math.random() * 220,
+        maxVidaMs: 380 + Math.random() * 220,
+      });
+    }
+  }
+
+  private tickParticulas(deltaMs: number): void {
+    if (!this.particulasGfx) return;
+    this.particulasGfx.clear();
+    this.particulas = this.particulas.filter((p) => {
+      p.vidaMs -= deltaMs;
+      p.x += (p.vx * deltaMs) / 1000;
+      p.y += (p.vy * deltaMs) / 1000;
+      p.vx *= 0.92;
+      p.vy *= 0.92;
+      const vidaRatio = Math.max(0, p.vidaMs / p.maxVidaMs);
+      this.particulasGfx!.fillStyle(p.color, vidaRatio);
+      this.particulasGfx!.fillCircle(p.x, p.y, p.radio * vidaRatio + 0.5);
+      return p.vidaMs > 0;
+    });
+  }
+
+  private floatingText(texto: string, x: number, y: number, color: string, size: number): void {
+    const t = this.add.text(x, y, texto, {
+      fontSize: `${size}px`,
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontStyle: 'bold',
+      color,
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(45).setAlpha(0.95);
+    this.tweens.add({ targets: t, y: y - 42, alpha: 0, duration: 720, ease: 'Sine.easeOut', onComplete: () => t.destroy() });
+  }
+
+  /** Dibuja la barra del jefe superior cuando hay uno en escena. */
+  private drawBossHpBar(): void {
+    const g = this.bossHpGfx;
+    if (!g) return;
+    g.clear();
+    const boss = this.enemies.find((e) => e.active && e.texture.key === 'boss');
+    if (!boss) { this.bossLabel?.setVisible(false); return; }
+    const target = boss as unknown as { hp: number; hpMax: number };
+    const max = target.hpMax ?? target.hp;
+    if (max <= 0) { this.bossLabel?.setVisible(false); return; }
+    const ratio = Math.max(0, Math.min(1, target.hp / max));
+    const w = 480;
+    const x = 440 - w / 2;
+    const y = 14;
+    g.fillStyle(0x120710, 0.85);
+    g.fillRect(x - 6, y - 6, w + 12, 22);
+    g.lineStyle(2, 0xffd700, 0.9);
+    g.strokeRect(x - 6, y - 6, w + 12, 22);
+    g.fillStyle(0x2a0510, 1);
+    g.fillRect(x, y, w, 10);
+    g.fillStyle(ratio > 0.5 ? 0xd1345b : 0xff0055, 1);
+    g.fillRect(x, y, Math.max(1, w * ratio), 10);
+    this.bossLabel?.setVisible(true);
+  }
+
   getRango(id: string): number {
     return this.ranks[id] ?? 0;
   }
 
-  /** Llamado externamente por el componente Angular tras el pick de mejora. */
   applyUpgrade(id: string): void {
     const mejora = [...MEJORAS, ...MEJORAS_EXTRA].find((m) => m.id === id);
     if (!mejora) return;
@@ -343,7 +734,6 @@ export class CombateScene extends Phaser.Scene {
     mejora.aplica(this);
   }
 
-  /** Angular bridge: arrancar la siguiente horda tras elegir mejora; en la horda 9 dispara la victoria. */
   comenzarSiguienteHorda(): void {
     if (this.hordaActual >= this.totalHordas) {
       this.finalizar(true);
@@ -354,8 +744,6 @@ export class CombateScene extends Phaser.Scene {
   }
 
   private marcarHordaCompletada(): void {
-    // Todas las hordas (incluida la 9) ofrecen 3 mejoras ⇒ 9 × 3 = 27 tarjetas por nivel.
-    // En la horda 9, la elección actúa como ceremonia final antes de la victoria.
     this.pickingUpgrade = true;
     this.emitUpgradePick?.();
   }
@@ -365,6 +753,11 @@ export class CombateScene extends Phaser.Scene {
     this.gameEnded = true;
     this.physics.pause();
     const t = Math.floor((this.time.now - this.startedAt) / 1000);
+    // Celebra con estallido dorado de partículas en el jugador
+    if (victoria && this.player) {
+      this.spawnParticulas(this.player.x, this.player.y, 0xffd700, 30);
+      this.spawnParticulas(this.player.x, this.player.y, 0xffffff, 12);
+    }
     this.emitDestroy?.(victoria, this.kills, t);
   }
 }
