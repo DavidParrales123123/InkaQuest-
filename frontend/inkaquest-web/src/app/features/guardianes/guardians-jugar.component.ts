@@ -369,7 +369,6 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected readonly guardianesVista = computed(() =>
     GUARDIANES.map((g) => ({ ...g, desbloqueado: this.nivelMaximoAlcanzado() >= (NIVEL_DESBLOQUEO[g.id] ?? 1) }))
   );
-  protected readonly guardianActual = computed(() => GUARDIANES.find((g) => g.id === this.elegido()) ?? null);
   protected readonly preguntaActual = signal<{ preguntaId: string; enunciado: string; opciones: string[]; tema: string; dificultad: string } | null>(null);
   protected readonly respuestaElegida = signal<string | null>(null);
   protected readonly respuestaResultado = signal<{ esCorrecta: boolean; error?: boolean; correcta?: string; explicacion?: string; xp: number; monedas: number } | null>(null);
