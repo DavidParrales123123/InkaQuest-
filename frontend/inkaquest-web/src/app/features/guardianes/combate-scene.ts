@@ -161,7 +161,6 @@ export class CombateScene extends Phaser.Scene {
   private contadorAtaque = 0;
   private attackPulse = 0;
   private ramboAnimActiva = false;
-  private attackLungeAngle = 0;
   private attackLungeUntil = 0;
   meleeAlcance = 140;
   meleeArcRad = 1.05;
@@ -697,7 +696,7 @@ export class CombateScene extends Phaser.Scene {
       this.aimY = ptr.worldY ?? ptr.y;
     }
 
-    // Movimiento (WASD + flechas) + lunge físico durante ataque haz
+    // Movimiento (WASD + flechas) — el mouse NO mueve al guardián
     const kb = this.input.keyboard!;
     const isDown = (code: number): boolean => kb.addKey(code).isDown;
     const KEY_A = 65, KEY_W = 87, KEY_D = 68, KEY_S = 83;
@@ -707,14 +706,6 @@ export class CombateScene extends Phaser.Scene {
     else if (isDown(KEY_D) || isDown(RIGHT)) vx = this.vel;
     if (isDown(KEY_W) || isDown(UP)) vy = -this.vel;
     else if (isDown(KEY_S) || isDown(DOWN)) vy = this.vel;
-    // Lunge: refuerzo del impulso (NO anula el teclado)
-    const lungeEdad = this.attackLungeUntil - this.time.now;
-    if (lungeEdad > 0) {
-      const fwd = lungeEdad / 260;
-      const lungeSpeed = Math.sin(fwd * Math.PI) * this.vel * 0.9;
-      vx += Math.cos(this.attackLungeAngle) * lungeSpeed;
-      vy += Math.sin(this.attackLungeAngle) * lungeSpeed;
-    }
     this.player.setVelocity(vx, vy);
 
     // ─── Mirada lateral: en movimiento manda WASD; en reposo manda el cursor ───
@@ -1177,7 +1168,6 @@ export class CombateScene extends Phaser.Scene {
               : null;
     if (!key) return;
     playerSprite.anims.play(key, true);
-    this.attackLungeAngle = Math.atan2(this.aimY - this.player.y, this.aimX - this.player.x);
     this.attackLungeUntil = this.time.now + 260;
   }
 
