@@ -15,23 +15,15 @@ import { GUARDIANES } from './guardians-catalog';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, PageHeaderComponent, NgClass],
   template: `
-    <section class="relative space-y-4 rounded-[1.5rem] border border-gold-500/10 bg-gradient-to-b from-surface-50 via-white to-surface-100 p-4 md:p-6">
-      <!-- glow decorativo (Brotato-esque) -->
-      <div class="pointer-events-none absolute -top-20 left-1/2 size-72 -translate-x-1/2 rounded-full bg-gold-400/10 blur-3xl"></div>
-      <app-page-header
-        [titulo]="elegido() ? ('Nivel ' + numero() + ' — Guardianes del Conocimiento') : 'Guardianes — Elige tu guardián'"
-        [descripcion]="elegido()
-          ? 'Sobrevive 9 hordas (≈5 min), recibe mejoras y responde chequeos académicos entre hordas.'
-          : 'Arma crítica, pasiva única: tu guardián define cómo peleas. Sin magias, sólo tijeras, acero y plomo.'"
-        [acciones]="true">
-        @if (elegido()) {
-          <div acciones class="flex flex-wrap items-center gap-2">
-            @if (enPausa()) { <button type="button" class="btn btn-primary btn-sm" (click)="reanudar()">Reanudar</button> }
-            @else if (fase() === 'jugando') { <button type="button" class="btn btn-outline btn-sm" (click)="pausar()">Pausa</button> }
-            <a routerLink="/estudiante/guardianes" class="btn btn-outline btn-sm">Abandonar nivel</a>
-          </div>
-        }
-      </app-page-header>
+    <section class="relative min-h-[100dvh] w-full overflow-hidden">
+      <div aria-hidden="true" class="pointer-events-none absolute inset-0 -z-0 bg-[radial-gradient(1200px_circle_at_50%_-20%,rgba(242,165,65,0.08),transparent_60%)]"></div>
+      @if (!elegido()) {
+        <app-page-header
+          [titulo]="'Guardianes — Elige tu guardián'"
+          descripcion="Arma crítica, pasiva única: tu guardián define cómo peleas. Sin magias, sólo tijeras, acero y plomo."
+          [acciones]="false">
+        </app-page-header>
+      }
 
       @if (!elegido()) {
         <!-- ═══ SELECCIÓN DE GUARDIÁN ═══ -->
@@ -67,236 +59,226 @@ import { GUARDIANES } from './guardians-catalog';
         </div>
       } @else {
 
-      <div class="grid gap-5 lg:grid-cols-12">
-        <div class="lg:col-span-4 order-2 lg:order-1 space-y-4">
-          <!-- ─── HUD estilo Brotato ─── -->
-          <div class="relative overflow-hidden rounded-2xl border-2 border-gold-500/70 bg-gradient-to-br from-marine-900 via-marine-800 to-marine-900 p-4 shadow-[0_0_40px_-10px_rgba(242,165,65,0.35)]">
-            <div class="pointer-events-none absolute -top-10 -left-10 size-40 rounded-full bg-brand-500/10 blur-3xl"></div>
-            <div class="pointer-events-none absolute -bottom-10 -right-10 size-40 rounded-full bg-gold-500/10 blur-3xl"></div>
-            <div class="relative flex items-center justify-between gap-2 border-b border-gold-500/20 pb-3">
-              <p class="text-[0.65rem] font-extrabold uppercase tracking-[0.2em] text-gold-400">GUARDIANES · HUD</p>
-              @if (esEvaluacion()) { <span class="inline-block rounded-full border border-rose-400/40 bg-rose-500/10 px-2 py-0.5 text-[0.62rem] font-extrabold uppercase tracking-widest text-rose-300">JEFE · EVALUACIÓN</span> }
-            </div>
-            <!-- Vida -->
-            <div class="relative mt-4">
-              <div class="flex items-end justify-between">
-                <span class="flex items-center gap-2 text-sm font-extrabold text-rose-200">
-                  <svg viewBox="0 0 24 24" class="size-5 fill-rose-400 drop-shadow-[0_0_6px_rgba(244,63,94,0.6)]" aria-hidden="true"><path d="M12 21s-7.5-4.8-10-9.5C.5 7.5 4 4 8 4c2.4 0 3.3 1.4 4 2.4C12.7 5.4 13.6 4 16 4c4 0 7.5 3.5 6 7.5C19.5 16.2 12 21 12 21z"/></svg>
-                  VIDA
-                </span>
-                <span class="font-display text-2xl font-extrabold tabular-nums text-white drop-shadow-[0_2px_0_rgba(0,0,0,0.6)]">{{ salud() }}<span class="text-sm text-marine-400">/{{ saludMax() }}</span></span>
-              </div>
-              <div class="mt-1.5 h-4 w-full rounded-full border border-rose-950/80 bg-rose-950/60 p-[3px] shadow-inner"><div class="h-full rounded-full bg-gradient-to-r from-rose-500 via-rose-400 to-amber-300 shadow-[0_0_10px_rgba(244,63,94,0.6)] transition-all duration-200" [style.width.%]="saludPct()"></div></div>
-            </div>
-            <!-- XP -->
-            <div class="relative mt-4">
-              <div class="flex items-end justify-between">
-                <span class="flex items-center gap-2 text-sm font-extrabold text-gold-300">
-                  <svg viewBox="0 0 24 24" class="size-5 fill-gold-400 drop-shadow-[0_0_6px_rgba(242,165,65,0.7)]" aria-hidden="true"><path d="M12 2l2.6 5.6L21 9.5l-4.5 4.3 1.1 6.2L12 17l-5.6 3 1.1-6.2L3 9.5l6.4-1.9L12 2z"/></svg>
-                  XP
-                </span>
-                <span class="font-display text-2xl font-extrabold tabular-nums text-gold-300 drop-shadow-[0_2px_0_rgba(0,0,0,0.6)]">+{{ xp() }}</span>
-              </div>
-              <div class="mt-1.5 h-3 w-full rounded-full border border-gold-900/80 bg-gold-950/50 p-[2px] shadow-inner"><div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-gold-300 shadow-[0_0_10px_rgba(242,165,65,0.6)] transition-all duration-200" [style.width.%]="xpPct()"></div></div>
-            </div>
-            <!-- Horda + enemigos -->
-            <div class="relative mt-4 flex items-stretch gap-2">
-              <div class="flex-1 rounded-xl border border-gold-500/25 bg-black/40 p-2 text-center">
-                <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-gold-500">Horda</p>
-                <p class="font-display text-3xl font-extrabold leading-none text-white">{{ hordaActual() }}<span class="text-base text-marine-400">/9</span></p>
-              </div>
-              <div class="flex-1 rounded-xl border border-brand-500/25 bg-black/40 p-2 text-center">
-                <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-brand-400">Enemigos</p>
-                <p class="font-display text-3xl font-extrabold leading-none text-brand-200 tabular-nums">{{ enemigosVivos() }}</p>
-              </div>
-              <div class="flex-1 rounded-xl border border-marine-500/25 bg-black/40 p-2 text-center">
-                <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-marine-300">Tiempo</p>
-                <p class="font-display text-3xl font-extrabold leading-none text-white tabular-nums">{{ tiempoFormateado() }}</p>
+        <!-- ─── Fullscreen immersive game shell ─── -->
+        <div class="fixed inset-0 z-[40] flex h-screen flex-col bg-marine-950 overflow-hidden">
+          <!-- Top ribbon -->
+          <header class="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-gold-500/15 bg-marine-950/95 px-2 sm:px-4 backdrop-blur">
+            <div class="flex min-w-0 items-center gap-2 sm:gap-3">
+              <span class="grid size-9 shrink-0 place-items-center rounded bg-gradient-to-br from-gold-400 to-gold-600 text-marine-900 text-base font-black shadow-[0_2px_0_#5c3a07]">{{ numero() }}</span>
+              <div class="min-w-0 leading-tight">
+                <p class="text-[0.55rem] uppercase tracking-[0.18em] text-gold-500">Guardianes · Nivel {{ numero() }}</p>
+                <p class="mt-0.5 truncate text-[0.72rem] font-bold text-marine-100">Horda {{ hordaActual() }} <span class="text-marine-400">/ 9</span>
+                  @if (esEvaluacion()) { <span class="ml-2 rounded-sm bg-rose-500/20 px-1.5 py-[1px] text-[0.55rem] font-extrabold uppercase tracking-widest text-rose-300">Jefe</span> }
+                </p>
               </div>
             </div>
-            <!-- PODER: stats del guardián en columnas grandes (Brotato-style) -->
-            <div class="relative mt-4">
-              <p class="text-[0.6rem] font-extrabold uppercase tracking-[0.2em] text-marine-500 border-b border-gold-500/15 pb-1">Poder</p>
-              <div class="mt-2 grid grid-cols-3 gap-1.5">
-                <div class="rounded-lg border border-rose-900/40 bg-rose-950/30 p-1.5 text-center">
-                  <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-rose-300">ATK</p>
-                  <p class="mt-0.5 font-display text-lg font-extrabold text-white">{{ guardianActual()?.danoBase ?? 0 }}</p>
-                </div>
-                <div class="rounded-lg border border-emerald-900/40 bg-emerald-950/30 p-1.5 text-center">
-                  <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-emerald-300">VID</p>
-                  <p class="mt-0.5 font-display text-lg font-extrabold text-white">{{ saludMax() }}</p>
-                </div>
-                <div class="rounded-lg border border-sky-900/40 bg-sky-950/30 p-1.5 text-center">
-                  <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-sky-300">VEL</p>
-                  <p class="mt-0.5 font-display text-lg font-extrabold text-white">{{ 240 + (guardianActual()?.velocidadExtra ?? 0) }}</p>
-                </div>
-              </div>
+            <div class="flex items-center gap-1.5">
+              @if (enPausa()) { <button type="button" class="btn btn-gold btn-sm" (click)="reanudar()">Reanudar</button> }
+              @else if (fase() === 'jugando') { <button type="button" class="btn btn-outline-light btn-sm" (click)="pausar()">Pausa</button> }
+              <a routerLink="/estudiante/guardianes" class="grid size-9 place-items-center rounded-lg bg-white/5 text-marine-100 hover:bg-white/10" aria-label="Abandonar nivel">
+                <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </a>
             </div>
-            <!-- Guardián elegido -->
-            @if (guardianActual()) {
-              <div class="relative mt-3 flex items-center gap-3 rounded-xl border border-gold-500/40 bg-gold-500/5 p-2 ring-1 ring-gold-500/25">
-                <img [src]="guardianActual()!.sprite" [alt]="guardianActual()!.nombre" class="size-16 object-contain drop-shadow-[0_2px_0_rgba(0,0,0,0.6)]" />
-                <div class="min-w-0 flex-1">
-                  <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-gold-400">{{ guardianActual()!.titulo }}</p>
-                  <p class="truncate text-xs font-extrabold text-white">{{ guardianActual()!.nombre }} · {{ guardianActual()!.pasivaNombre }}</p>
-                  <button type="button" class="mt-0.5 text-[0.6rem] font-bold uppercase tracking-widest text-marine-300 underline underline-offset-2 hover:text-marine-100" (click)="elegirGuardian('__cancel__')">Cambiar guardián</button>
-                </div>
-              </div>
-            }
-            <!-- Progreso de hordas: 9 nueves -->
-            <div class="relative mt-3">
-              <div class="flex items-center justify-between border-b border-gold-500/15 pb-1">
-                <p class="text-[0.6rem] font-extrabold uppercase tracking-[0.2em] text-marine-500">Progreso · 18 Paso</p>
-                <p class="text-[0.6rem] font-extrabold tabular-nums text-gold-400">Nivel {{ hordaActual() }} / 9</p>
-              </div>
-              <div class="mt-2 flex items-center justify-between gap-1">
-                @for (i of [1,2,3,4,5,6,7,8,9]; track i) {
-                  <span class="flex size-7 items-center justify-center rounded-md border text-[0.55rem] font-extrabold transition-all duration-200"
-                        [class.border-gold-400]="i <= hordaActual()" [class.bg-gold-500]="i <= hordaActual()" [class.text-marine-900]="i <= hordaActual()" [class.shadow-[0_0_10px_rgba(242,165,65,0.5)]]="i <= hordaActual()"
-                        [class.border-marine-800]="i > hordaActual()" [class.bg-marine-900]="i > hordaActual()" [class.text-marine-700]="i > hordaActual()">{{ i }}</span>
-                }
-              </div>
-            </div>
-            <div class="relative mt-3 rounded-lg border border-gold-500/20 bg-gold-500/5 p-2.5 text-[0.7rem] leading-snug text-marine-100">
-              <div class="flex items-center gap-1.5">
-                <span class="grid size-5 place-items-center rounded border border-gold-500/40 bg-gold-500/15 text-[0.6rem] font-extrabold text-gold-400">?</span>
-                <span class="font-bold uppercase tracking-wider text-gold-400">Recordatorio</span>
-              </div>
-              <p class="mt-1">Apunta con el <strong>mouse</strong> — el disparo sale hacia donde apuntas. La pantalla solo muestra lo esencial: elimina, sobrevive, aprende.</p>
-            </div>
-          </div>
-        </div>
+          </header>
 
-        <div class="lg:col-span-8 order-1 lg:order-2 space-y-4">
-          <div id="juego-root" class="relative flex h-[82vh] min-h-[580px] w-full items-center justify-center overflow-hidden rounded-2xl border-4 border-gold-500/60 bg-marine-900 shadow-[inset_0_0_120px_rgba(0,0,0,0.75),0_0_80px_-15px_rgba(242,165,65,0.35)] [&_canvas]:max-h-full [&_canvas]:max-w-full [&_canvas]:[image-rendering:pixelated]" aria-label="Área de juego. Combate top-down.">
-            <!-- Vignette cinematográfico del arena -->
-            <div class="pointer-events-none absolute inset-0 z-[5]" style="background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.45) 100%)"></div>
-            <!-- Overlay de bienvenida con controles (sólo al inicio) -->
-            @if (mostrarIntro()) {
-              <div class="absolute inset-0 z-20 flex items-center justify-center bg-marine-900/70 p-4 backdrop-blur-sm">
-                <div class="max-w-md w-full space-y-4 rounded-2xl border-2 border-gold-400/70 bg-gradient-to-br from-marine-800 via-marine-900 to-black p-6 text-center text-white shadow-[0_0_60px_-10px_rgba(242,165,65,0.6)]">
-                  <!-- Guerrero de patata brotatiano (SVG) -->
-                  <svg viewBox="0 0 120 120" class="mx-auto h-28 w-28 drop-shadow-[0_0_18px_rgba(242,165,65,0.55)]" role="img" aria-label="Guerrero de patata">
-                    <ellipse cx="60" cy="68" rx="24" ry="27" fill="#f6c453" stroke="#3d2600" stroke-width="3.5"/>
-                    <ellipse cx="60" cy="76" rx="26" ry="4" fill="rgba(0,0,0,0.35)"/>
-                    <rect x="38" y="56" width="44" height="12" rx="6" fill="#8ff0ff" stroke="#13333b" stroke-width="2.5"/>
-                    <rect x="42" y="59" width="9" height="3" fill="rgba(255,255,255,0.9)"/>
-                    <line x1="52" y1="42" x2="46" y2="28" stroke="#3d2600" stroke-width="2.5"/>
-                    <line x1="68" y1="42" x2="74" y2="28" stroke="#3d2600" stroke-width="2.5"/>
-                    <circle cx="46" cy="26" r="2.4" fill="#ffd700"/>
-                    <circle cx="74" cy="26" r="2.4" fill="#ffd700"/>
-                    <circle cx="53" cy="61" r="2.4" fill="#fffb00"/>
-                    <circle cx="67" cy="61" r="2.4" fill="#fffb00"/>
-                    <circle cx="53" cy="61" r="1" fill="#082305"/>
-                    <circle cx="67" cy="61" r="1" fill="#082305"/>
-                  </svg>
-                  <span class="inline-flex w-fit items-center gap-1.5 rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-[0.6rem] font-extrabold uppercase tracking-[0.2em] text-gold-400">Guardianes del Conocimiento</span>
-                  <h3 class="font-display text-2xl font-extrabold leading-none text-white">PROTEGE LA LECCIÓN<br/><span class="text-gold-400">DEFENDERÁS PARA SIEMPRE</span></h3>
-                  <ul class="space-y-2 rounded-xl border border-gold-500/20 bg-black/30 p-3 text-left text-sm text-marine-100">
-                    <li class="flex items-center gap-2"><span class="grid size-5 place-items-center rounded border border-gold-500/50 bg-gold-500/10 text-[0.6rem] font-extrabold text-gold-400">W</span><span><strong>WASD / Flechas</strong> — muévete</span></li>
-                    <li class="flex items-center gap-2"><span class="grid size-5 place-items-center rounded border border-brand-500/50 bg-brand-500/10 text-[0.6rem] font-extrabold text-brand-400">◎</span><span><strong>Mouse</strong> — apunta; el disparo sale hacia ti</span></li>
-                    <li class="flex items-center gap-2"><span class="grid size-5 place-items-center rounded border border-rose-500/50 bg-rose-500/10 text-[0.6rem] font-extrabold text-rose-400">×</span><span><strong>Elimina hordas</strong> y elige una mejora</span></li>
-                    <li class="flex items-center gap-2"><span class="grid size-5 place-items-center rounded border border-marine-500/60 bg-marine-500/20 text-[0.6rem] font-extrabold text-marine-300">★</span><span><strong>Responde la pregunta</strong> y gana +15 XP</span></li>
-                  </ul>
-                  <button type="button" class="btn btn-gold w-full justify-center !py-3 text-base !font-extrabold tracking-wide shadow-[0_4px_0_#8c4f13]" (click)="comenzarPartida()">¡Entendido, jugar!</button>
+          <main class="relative flex flex-1 min-h-0">
+            <!-- Sidebar HUD on the left -->
+            <aside class="hidden lg:flex w-72 xl:w-[19rem] shrink-0 flex-col gap-2 border-r border-gold-500/15 bg-gradient-to-b from-marine-900 to-marine-950 p-3 overflow-y-auto">
+              <!-- Vida -->
+              <div class="rounded-xl border border-rose-900/40 bg-rose-950/30 p-2.5 shadow-[0_0_16px_-8px_rgba(244,63,94,0.35)]">
+                <div class="flex items-center justify-between">
+                  <span class="flex items-center gap-1.5 text-[0.65rem] font-extrabold uppercase tracking-widest text-rose-200">
+                    <svg viewBox="0 0 24 24" class="size-4 fill-rose-400" aria-hidden="true"><path d="M12 21s-7.5-4.8-10-9.5C.5 7.5 4 4 8 4c2.4 0 3.3 1.4 4 2.4C12.7 5.4 13.6 4 16 4c4 0 7.5 3.5 6 7.5C19.5 16.2 12 21 12 21z"/></svg>
+                    Vida
+                  </span>
+                  <span class="font-display text-xs font-extrabold tabular-nums text-white">{{ salud() }}<span class="text-[0.65rem] text-marine-400">/{{ saludMax() }}</span></span>
+                </div>
+                <div class="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-rose-950/60"><div class="h-full rounded-full bg-gradient-to-r from-rose-500 via-rose-400 to-amber-300 transition-all duration-200" [style.width.%]="saludPct()"></div></div>
+              </div>
+              <!-- XP -->
+              <div class="rounded-xl border border-gold-900/40 bg-gold-950/30 p-2.5 shadow-[0_0_16px_-8px_rgba(242,165,65,0.45)]">
+                <div class="flex items-center justify-between">
+                  <span class="flex items-center gap-1.5 text-[0.65rem] font-extrabold uppercase tracking-widest text-gold-300">
+                    <svg viewBox="0 0 24 24" class="size-4 fill-gold-400" aria-hidden="true"><path d="M12 2l2.6 5.6L21 9.5l-4.5 4.3 1.1 6.2L12 17l-5.6 3 1.1-6.2L3 9.5l6.4-1.9L12 2z"/></svg>
+                    XP
+                  </span>
+                  <span class="font-display text-xs font-extrabold tabular-nums text-gold-300">+{{ xp() }}</span>
+                </div>
+                <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gold-950/50"><div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-gold-300 transition-all duration-200" [style.width.%]="xpPct()"></div></div>
+              </div>
+              <!-- PODER -->
+              <div class="grid grid-cols-3 gap-1.5">
+                <div class="rounded-lg border border-rose-900/50 bg-black/30 p-1.5 text-center">
+                  <p class="text-[0.55rem] font-extrabold uppercase tracking-widest text-rose-400">ATK</p>
+                  <p class="mt-0.5 font-display text-base font-extrabold text-white">{{ guardianActual()?.danoBase ?? 0 }}</p>
+                </div>
+                <div class="rounded-lg border border-emerald-900/50 bg-black/30 p-1.5 text-center">
+                  <p class="text-[0.55rem] font-extrabold uppercase tracking-widest text-emerald-400">VID</p>
+                  <p class="mt-0.5 font-display text-base font-extrabold text-white">{{ saludMax() }}</p>
+                </div>
+                <div class="rounded-lg border border-sky-900/50 bg-black/30 p-1.5 text-center">
+                  <p class="text-[0.55rem] font-extrabold uppercase tracking-widest text-sky-400">VEL</p>
+                  <p class="mt-0.5 font-display text-base font-extrabold text-white">{{ 240 + (guardianActual()?.velocidadExtra ?? 0) }}</p>
                 </div>
               </div>
-            }
-            <!-- Overlay de mejoras entre hordas -->
-            @if (elegirMejora()) {
-              <div class="absolute inset-0 z-10 flex items-center justify-center bg-marine-900/80 p-3 backdrop-blur-sm">
-                <div class="w-full max-w-2xl space-y-4 rounded-2xl border-2 border-gold-400/70 bg-gradient-to-br from-marine-800 via-marine-900 to-black p-5 text-white shadow-[0_0_60px_-15px_rgba(242,165,65,0.55)]">
-                  <div class="text-center">
-                    <span class="inline-block rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-[0.6rem] font-extrabold uppercase tracking-[0.2em] text-gold-400">Mejora entre hordas</span>
-                    <h3 class="mt-2 font-display text-2xl font-extrabold leading-none text-gold-300">¡HORDA {{ hordaActual() }} SUPERADA!</h3>
-                    <p class="mt-1 text-xs text-marine-200">{{ hordaActual() >= 9 ? 'Ceremonia final: elige tu última mejora y vencerás este nivel.' : 'Elige tu recompensa antes de enfrentar la siguiente horda.' }}</p>
-                  </div>
-                  <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    @for (m of candidatosMejora(); track m.id) {
-                      <button type="button" class="group flex flex-col items-start justify-between gap-2 rounded-xl border-2 p-3 text-left transition hover:-translate-y-1"
-                              [class.border-brand-400]="m.rareza === 'comun'" [class.bg-brand-500/10]="m.rareza === 'comun'"
-                              [class.border-gold-400]="m.rareza === 'academic'" [class.bg-gold-500/10]="m.rareza === 'academic'"
-                              [class.border-rose-400]="m.rareza === 'legendario'" [class.bg-rose-500/10]="m.rareza === 'legendario'"
-                              [class.shadow-[0_0_18px_-8px_rgba(45,210,216,0.4)]]="m.rareza === 'comun'"
-                              [class.shadow-[0_0_18px_-8px_rgba(255,215,0,0.4)]]="m.rareza === 'academic'"
-                              [class.shadow-[0_0_18px_-8px_rgba(244,63,94,0.5)]]="m.rareza === 'legendario'"
-                              (click)="aplicarMejora(m)">
-                        <div class="space-y-1">
-                          <p class="text-sm font-extrabold text-white leading-snug">{{ m.nombre }}</p>
-                          <p class="text-[0.7rem] leading-snug text-marine-100">{{ m.descripcion }}</p>
-                          <p class="text-[0.62rem] font-bold uppercase tracking-widest text-brand-300">{{ m.rango > 0 ? 'Mejora a Nv. ' + (m.rango + 1) : 'Nueva adquisición' }}</p>
-                        </div>
-                        <div class="flex w-full items-center justify-between gap-2 border-t border-white/10 pt-2">
-                          <span class="text-[0.62rem] font-extrabold uppercase tracking-widest"
-                                [class.text-brand-300]="m.rareza === 'comun'" [class.text-gold-400]="m.rareza === 'academic'" [class.text-rose-400]="m.rareza === 'legendario'">{{ m.rareza === 'comun' ? 'COMÚN' : m.rareza === 'academic' ? 'ACADÉMICA' : 'LEGENDARIA' }}</span>
-                          <span class="rounded bg-black/40 px-2 py-0.5 text-[0.62rem] font-bold tabular-nums text-marine-200">{{ m.rango }}/{{ m.maxRango }}</span>
-                        </div>
-                      </button>
-                    }
+              <!-- Guardián -->
+              @if (guardianActual()) {
+                <div class="rounded-xl border border-gold-500/25 bg-black/40 p-2 flex items-center gap-2">
+                  <img [src]="guardianActual()!.sprite" alt="" class="size-12 object-contain" />
+                  <div class="min-w-0 flex-1">
+                      <p class="text-[0.55rem] font-extrabold uppercase tracking-widest text-gold-400">{{ guardianActual()!.titulo }}</p>
+                      <p class="truncate text-xs font-bold text-white">{{ guardianActual()!.nombre }}</p>
+                      <p class="truncate text-[0.6rem] text-marine-300">{{ guardianActual()!.pasivaNombre }}</p>
                   </div>
                 </div>
+              }
+              <!-- Enemigos + Tiempo -->
+              <div class="grid grid-cols-2 gap-1.5">
+                <div class="rounded-lg border border-brand-900/50 bg-black/30 p-2 text-center">
+                  <p class="text-[0.55rem] font-extrabold uppercase tracking-widest text-brand-400">Enemigos</p>
+                  <p class="font-display text-xl font-extrabold text-white tabular-nums">{{ enemigosVivos() }}</p>
+                </div>
+                <div class="rounded-lg border border-sky-900/50 bg-black/30 p-2 text-center">
+                  <p class="text-[0.55rem] font-extrabold uppercase tracking-widest text-sky-400">Tiempo</p>
+                  <p class="font-display text-xl font-extrabold text-white tabular-nums">{{ tiempoFormateado() }}</p>
+                </div>
               </div>
-            }
-            <!-- Overlay de chequeo académico entre hordas -->
-            @if (preguntaActual(); as p) {
-              <div class="absolute inset-0 z-10 flex items-center justify-center bg-marine-900/80 p-3 backdrop-blur-sm">
-                <div class="w-full max-w-xl space-y-3 rounded-2xl border border-brand-400/40 bg-gradient-to-br from-marine-900 to-marine-800 p-4 text-white">
-                  <div class="flex items-start justify-between gap-3">
-                    <div>
-                      <p class="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-brand-400">Chequeo académico · Horda {{ hordaActual() }}</p>
-                      <h3 class="mt-1 text-base font-extrabold leading-snug">{{ p.enunciado }}</h3>
-                      @if (p.tema) { <p class="mt-1 text-[0.65rem] uppercase tracking-widest text-marine-400">{{ p.tema }} · {{ p.dificultad }}</p> }
-                    </div>
-                    @if (!respuestaResultado()) {
-                      <button type="button" class="shrink-0 text-[0.65rem] font-bold uppercase tracking-widest text-marine-400 underline underline-offset-2 hover:text-marine-200" (click)="omitirChequeo()">Omitir</button>
-                    }
-                  </div>
-                  <div class="grid gap-2">
-                    @for (op of p.opciones; track op) {
-                      <button type="button" [ngClass]="claseOpcion(op)" (click)="elegirOpcion(op)">{{ op }}</button>
-                    }
-                  </div>
-                  @if (respuestaResultado(); as r) {
-                    <div class="rounded-xl border p-3 text-sm" [class.border-emerald-400/40]="r.esCorrecta" [class.bg-emerald-400/10]="r.esCorrecta" [class.border-rose-400/40]="!r.esCorrecta" [class.bg-rose-400/10]="!r.esCorrecta">
-                      <p class="font-extrabold" [class.text-emerald-300]="r.esCorrecta" [class.text-rose-300]="!r.esCorrecta">{{ r.esCorrecta ? '¡Correcto! +' + r.xp + ' XP · +' + r.monedas + ' monedas' : 'Respuesta incorrecta' }}</p>
-                      @if (!r.esCorrecta && r.correcta) { <p class="mt-1 text-marine-100">Respuesta correcta: <strong>{{ r.correcta }}</strong></p> }
-                      @if (r.explicacion) { <p class="mt-1 text-[0.75rem] text-marine-200">{{ r.explicacion }}</p> }
-                    </div>
-                    <button type="button" class="btn btn-gold w-full justify-center" (click)="continuarTrasChequeo()">Continuar →</button>
-                  } @else {
-                    <button type="button" class="btn btn-primary w-full justify-center disabled:opacity-40" [disabled]="!respuestaElegida()" (click)="confirmarRespuesta()">Comprobar respuesta</button>
+              <!-- Progreso de hordas -->
+              <div>
+                <div class="flex items-center justify-between border-b border-gold-500/10 pb-1">
+                  <p class="text-[0.55rem] font-extrabold uppercase tracking-widest text-marine-500">Progreso</p>
+                  <p class="text-[0.55rem] tabular-nums font-extrabold text-gold-400">{{ hordaActual() }} / 9</p>
+                </div>
+                <div class="mt-1.5 flex items-center justify-between gap-1">
+                  @for (i of [1,2,3,4,5,6,7,8,9]; track i) {
+                    <span class="size-5 rounded text-center text-[0.55rem] font-extrabold leading-5"
+                          [class.bg-gold-500]="i <= hordaActual()" [class.text-marine-900]="i <= hordaActual()"
+                          [class.bg-marine-800]="i > hordaActual()" [class.text-marine-500]="i > hordaActual()">{{ i }}</span>
                   }
                 </div>
               </div>
-            }
-          </div>
-          @if (fase() === 'victoria' || fase() === 'derrota') {
-            <div class="relative overflow-hidden rounded-2xl border-2 border-gold-500/70 bg-gradient-to-br from-marine-900 via-marine-800 to-marine-900 p-6 text-center shadow-[0_0_60px_-10px_rgba(242,165,65,0.5)]">
-              <div class="pointer-events-none absolute -top-12 left-1/2 size-72 -translate-x-1/2 rounded-full bg-gold-500/10 blur-3xl"></div>
-              @if (fase() === 'victoria') {
-                <svg viewBox="0 0 120 120" class="relative mx-auto h-24 w-24 drop-shadow-[0_0_20px_rgba(242,165,65,0.6)]" aria-hidden="true">
-                  <circle cx="60" cy="60" r="52" fill="#f2a541" stroke="#3d2600" stroke-width="4"/>
-                  <circle cx="60" cy="60" r="38" fill="#dd8a1f" stroke="#3d2600" stroke-width="3"/>
-                  <path d="M40 62l14 14 26-30" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <h3 class="relative mt-4 font-display text-3xl font-extrabold leading-none text-gold-400 drop-shadow-[0_3px_0_rgba(0,0,0,0.5)]">¡NIVEL SUPERADO!</h3>
-                <p class="relative mt-3 text-base font-extrabold text-gold-300">+{{ xpGanado() }} XP · +{{ monedasGanadas() }} monedas</p>
-              } @else {
-                <svg viewBox="0 0 120 120" class="relative mx-auto h-24 w-24" aria-hidden="true">
-                  <path d="M60 8L112 108H8L60 8z" fill="#b3002d" stroke="#2a0510" stroke-width="4" stroke-linejoin="round"/>
-                  <text x="60" y="92" text-anchor="middle" font-size="52" font-weight="900" fill="#fff" font-family="system-ui, sans-serif">!</text>
-                </svg>
-                <h3 class="relative mt-4 font-display text-3xl font-extrabold leading-none text-rose-400 drop-shadow-[0_3px_0_rgba(0,0,0,0.5)]">NIVEL PERDIDO</h3>
-              }
-              <p class="relative mt-4 text-xs uppercase tracking-widest text-marine-400">{{ mensajeResultado() }}</p>
-              <div class="mt-4 flex flex-wrap justify-center gap-2">
-                <a routerLink="/estudiante/guardianes" class="btn btn-outline-light">Volver a la campaña</a>
-                <button type="button" class="btn btn-gold" (click)="reiniciar()">Reintentar</button>
+              <div class="mt-auto rounded-lg border border-gold-500/10 bg-gold-500/5 p-2 text-[0.6rem] leading-snug text-marine-200">
+                <span class="font-bold uppercase tracking-wider text-gold-400">Apunta con el mouse</span><br/>La pantalla muestra solo lo esencial.
+              </div>
+            </aside>
+            <!-- Canvas fills the rest -->
+            <div class="relative flex min-w-0 flex-1 flex-col">
+              <div id="juego-root" class="relative flex flex-1 min-h-0 w-full items-center justify-center overflow-hidden bg-marine-900 [&_canvas]:max-h-full [&_canvas]:max-w-full" aria-label="Área de juego. Combate top-down.">
+                <!-- Overlay de bienvenida con controles (sólo al inicio) -->
+                @if (mostrarIntro()) {
+                  <div class="absolute inset-0 z-20 flex items-center justify-center bg-marine-900/80 p-4 backdrop-blur-sm">
+                    <div class="max-w-md w-full space-y-4 rounded-2xl border border-gold-400/60 bg-gradient-to-br from-marine-800 via-marine-900 to-black p-5 text-center text-white shadow-[0_0_60px_-10px_rgba(242,165,65,0.6)]">
+                      <span class="inline-flex w-fit items-center gap-2 rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-[0.6rem] font-extrabold uppercase tracking-[0.18em] text-gold-400">Guardianes · Roster</span>
+                      <h3 class="font-display text-2xl font-extrabold text-white leading-none">Protege la lección<br/><span class="text-gold-400">sobreviviendo las hordas</span></h3>
+                      <ul class="space-y-1.5 rounded-xl border border-gold-500/20 bg-black/30 p-2 text-left text-xs text-marine-100">
+                        <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-gold-500/50 bg-gold-500/10 text-[0.6rem] font-extrabold text-gold-400">W</span><span><strong>WASD / Flechas</strong> — muévete</span></li>
+                        <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-brand-500/50 bg-brand-500/10 text-[0.6rem] font-extrabold text-brand-400">◎</span><span><strong>Mouse</strong> — apunta con el cursor</span></li>
+                        <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-rose-500/50 bg-rose-500/10 text-[0.6rem] font-extrabold text-rose-400">×</span><span><strong>Elimina hordas</strong> y elige una mejora</span></li>
+                        <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-sky-500/50 bg-sky-500/10 text-[0.6rem] font-extrabold text-sky-400">★</span><span><strong>Responde</strong> la pregunta y gana +15 XP</span></li>
+                      </ul>
+                      <button type="button" class="btn btn-gold w-full justify-center !py-3 text-base !font-extrabold" (click)="comenzarPartida()">¡Entendido, jugar!</button>
+                    </div>
+                  </div>
+                }
+                <!-- Overlay de mejoras entre hordas -->
+                @if (elegirMejora()) {
+                  <div class="absolute inset-0 z-30 flex items-center justify-center bg-marine-900/80 p-3 backdrop-blur-sm">
+                    <div class="w-full max-w-2xl space-y-4 rounded-2xl border-2 border-gold-400/60 bg-gradient-to-br from-marine-800 via-marine-900 to-black p-4 text-white shadow-[0_0_60px_-15px_rgba(242,165,65,0.55)]">
+                      <div class="text-center">
+                        <span class="inline-block rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-[0.55rem] font-extrabold uppercase tracking-[0.18em] text-gold-400">Mejora entre hordas</span>
+                        <h3 class="mt-2 text-xl font-extrabold text-gold-300 leading-none">¡HORDA {{ hordaActual() }} SUPERADA!</h3>
+                        <p class="mt-1 text-[0.7rem] text-marine-200">{{ hordaActual() >= 9 ? 'Ceremonia final: elige tu última mejora y vencerás este nivel.' : 'Elige tu recompensa antes de enfrentar la siguiente horda.' }}</p>
+                      </div>
+                      <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        @for (m of candidatosMejora(); track m.id) {
+                          <button type="button" class="group flex flex-col gap-2 rounded-xl border-2 p-3 text-left transition hover:-translate-y-1"
+                                  [class.border-brand-400]="m.rareza === 'comun'" [class.bg-brand-500/10]="m.rareza === 'comun'"
+                                  [class.border-gold-400]="m.rareza === 'academic'" [class.bg-gold-500/10]="m.rareza === 'academic'"
+                                  [class.border-rose-400]="m.rareza === 'legendario'" [class.bg-rose-500/10]="m.rareza === 'legendario'"
+                                  (click)="aplicarMejora(m)">
+                            <p class="text-sm font-extrabold text-white">{{ m.nombre }}</p>
+                            <p class="text-[0.62rem] leading-snug text-marine-100">{{ m.descripcion }}</p>
+                            <p class="text-[0.55rem] font-bold uppercase tracking-widest text-brand-300">{{ m.rango > 0 ? 'Mejora a Nv. ' + (m.rango + 1) : 'Nueva adquisición' }}</p>
+                            <div class="mt-auto flex items-center justify-between border-t border-white/10 pt-2 rounded-sm">
+                              <span class="text-[0.55rem] font-extrabold uppercase tracking-widest"
+                                    [class.text-brand-300]="m.rareza === 'comun'" [class.text-gold-400]="m.rareza === 'academic'" [class.text-rose-400]="m.rareza === 'legendario'">{{ m.rareza === 'comun' ? 'COMÚN' : m.rareza === 'academic' ? 'ACADÉMICA' : 'LEGENDARIA' }}</span>
+                              <span class="text-[0.6rem] tabular-nums font-bold text-marine-300">{{ m.rango }}/{{ m.maxRango }}</span>
+                            </div>
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                }
+                <!-- Overlay de chequeo académico entre hordas -->
+                @if (preguntaActual(); as p) {
+                  <div class="absolute inset-0 z-30 flex items-center justify-center bg-marine-900/80 p-3 backdrop-blur-sm">
+                    <div class="w-full max-w-xl space-y-3 rounded-2xl border border-brand-400/50 bg-gradient-to-br from-marine-800 to-marine-950 p-4 text-white">
+                      <div class="flex items-start justify-between gap-3">
+                        <div>
+                          <p class="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-brand-400">Chequeo académico · Horda {{ hordaActual() }}</p>
+                          <h3 class="mt-1 text-base font-extrabold leading-snug">{{ p.enunciado }}</h3>
+                          @if (p.tema) { <p class="mt-1 text-[0.6rem] uppercase tracking-widest text-marine-400">{{ p.tema }} · {{ p.dificultad }}</p> }
+                        </div>
+                        @if (!respuestaResultado()) { <button type="button" class="shrink-0 text-[0.6rem] font-bold uppercase tracking-widest text-marine-400 underline hover:text-marine-200" (click)="omitirChequeo()">Omitir</button> }
+                      </div>
+                      <div class="grid gap-2">
+                        @for (op of p.opciones; track op) {
+                          <button type="button" [ngClass]="claseOpcion(op)" (click)="elegirOpcion(op)">{{ op }}</button>
+                        }
+                      </div>
+                      @if (respuestaResultado(); as r) {
+                        <div class="rounded-xl border border-emerald-400/40 bg-emerald-400/10 p-3 text-sm">
+                          <p class="font-extrabold text-emerald-300">{{ r.esCorrecta ? '¡Correcto! +' + r.xp + ' XP' : 'Respuesta incorrecta' }}</p>
+                          @if (!r.esCorrecta && r.correcta) { <p class="mt-1 text-marine-100">Respuesta: <strong>{{ r.correcta }}</strong></p> }
+                          @if (r.explicacion) { <p class="mt-1 text-[0.75rem] text-marine-200">{{ r.explicacion }}</p> }
+                        </div>
+                        <button type="button" class="btn btn-gold w-full justify-center" (click)="continuarTrasChequeo()">Continuar →</button>
+                      } @else {
+                        <button type="button" class="btn btn-primary w-full justify-center disabled:opacity-40" [disabled]="!respuestaElegida()" (click)="confirmarRespuesta()">Comprobar respuesta</button>
+                      }
+                    </div>
+                  </div>
+                }
+                <!-- Resultado -->
+                @if (fase() === 'victoria' || fase() === 'derrota') {
+                  <div class="absolute inset-0 z-30 flex items-center justify-center bg-marine-900/85 backdrop-blur-sm">
+                    <div class="relative w-full max-w-md p-6 text-center text-white">
+                      @if (fase() === 'victoria') {
+                        <svg viewBox="0 0 120 120" class="mx-auto h-28 w-28 drop-shadow-[0_0_30px_rgba(242,165,65,0.7)]" aria-hidden="true">
+                          <circle cx="60" cy="60" r="52" fill="#f2a541" stroke="#3d2600" stroke-width="4"/>
+                          <circle cx="60" cy="60" r="37" fill="#dd8a1f" stroke="#3d2600" stroke-width="3"/>
+                          <path d="M40 62l14 14 26-30" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <h2 class="mt-4 text-3xl font-extrabold text-gold-400 drop-shadow-[0_3px_0_rgba(0,0,0,0.5)]">¡NIVEL SUPERADO!</h2>
+                        <p class="mt-2 text-base font-extrabold text-gold-300">+{{ xpGanado() }} XP · +{{ monedasGanadas() }} monedas</p>
+                      } @else {
+                        <svg viewBox="0 0 120 120" class="mx-auto h-28 w-24" aria-hidden="true">
+                          <path d="M60 8L112 108H8L60 8z" fill="#b3002d" stroke="#2a0510" stroke-width="4" stroke-linejoin="round"/>
+                          <text x="60" y="92" text-anchor="middle" font-size="52" font-weight="900" fill="#fff" font-family="system-ui">!</text>
+                        </svg>
+                        <h2 class="mt-4 text-3xl font-extrabold text-rose-400 drop-shadow-[0_3px_0_rgba(0,0,0,0.5)]">NIVEL PERDIDO</h2>
+                      }
+                      <p class="mt-3 text-[0.65rem] uppercase tracking-widest text-marine-400">{{ mensajeResultado() }}</p>
+                      <div class="mt-5 flex flex-wrap justify-center gap-2">
+                        <a routerLink="/estudiante/guardianes" class="btn btn-outline-light">Volver a la campaña</a>
+                        <button type="button" class="btn btn-gold" (click)="reiniciar()">Reintentar</button>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+              <!-- Mobile HUD (sin sidebar) -->
+              <div class="lg:hidden border-t border-gold-500/15 bg-marine-950 px-4 py-2 text-xs">
+                <div class="flex items-center justify-between gap-4">
+                  <span class="flex items-center gap-1.5 font-extrabold text-rose-300">VID <span class="tabular-nums">{{ salud() }}/{{ saludMax() }}</span></span>
+                  <span class="flex items-center gap-1.5 font-extrabold text-gold-300">Horda <span class="tabular-nums">{{ hordaActual() }}/9</span></span>
+                  <span class="flex items-center gap-1.5 font-extrabold text-brand-300">Ene <span class="tabular-nums">{{ enemigosVivos() }}</span></span>
+                </div>
               </div>
             </div>
-          }
+          </main>
         </div>
-      </div>
       }
     </section>
   `,
