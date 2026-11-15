@@ -42,7 +42,7 @@ import { CombateScene, MEJORAS, MEJORAS_EXTRA } from './combate-scene';
           </div>
           <div class="rounded-xl border border-brand-200 bg-brand-50/60 p-3 text-xs text-marine-700">
             <p class="font-bold text-marine-800">Controles</p>
-            <p class="mt-1"><strong>WASD / ← → ↑ ↓</strong><br/>Disparo automático al enemigo más cercano</p>
+            <p class="mt-1"><strong>WASD / ← → ↑ ↓</strong> para moverte<br/><strong>Mouse</strong> para apuntar<br/>Disparo automático hacia donde apuntas</p>
           </div>
         </div>
 

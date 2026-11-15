@@ -86,6 +86,10 @@ export class CombateScene extends Phaser.Scene {
 
   private enemies: Phaser.Physics.Arcade.Sprite[] = [];
   private bullets: Phaser.Physics.Arcade.Sprite[] = [];
+  private crosshair?: Phaser.GameObjects.Image;
+  private aimGraphics?: Phaser.GameObjects.Graphics;
+  private aimX = 440;
+  private aimY = 160;
 
   constructor() {
     super({ key: 'Combate' });
@@ -102,10 +106,17 @@ export class CombateScene extends Phaser.Scene {
     for (let i = 0; i < 300; i++) this.add.rectangle(Math.random() * 880, Math.random() * 520, 2, 2, 0xbfd3ff);
     this.createTextures();
 
+    // Cruz de apuntado (sigue al mouse) + línea de mira desde el jugador
+    this.aimGraphics = this.add.graphics().setDepth(8);
+    this.crosshair = this.add.image(440, 160, 'crosshair').setDepth(9);
+
     this.player = this.physics.add.sprite(440, 260, 'player_gold');
     this.player.setCircle(14);
     this.player.setCollideWorldBounds(true);
     this.physics.world.setBounds(0, 0, 880, 520);
+    // Ocultar el cursor del sistema dentro del canvas; el apuntado se ve con la cruz
+    this.input.setDefaultCursor('none');
+    this.input.mouse?.disableContextMenu();
     this.startedAt = this.time.now;
     this.startHorda(1);
   }
@@ -129,6 +140,20 @@ export class CombateScene extends Phaser.Scene {
     make('boss', 56, (ctx, s) => { ctx.fillStyle = '#7c0a0a'; ctx.fillRect(0, 0, s, s); ctx.fillStyle = '#ffd700'; ctx.fillRect(s * 0.25, s * 0.38, 8, 8); ctx.fillRect(s * 0.6, s * 0.38, 8, 8); ctx.fillStyle = '#ffffff'; ctx.fillRect(s * 0.35, s * 0.6, 8, 4); });
     make('bullet_white', 8, (ctx, s) => { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, s, s); });
     make('bullet_critical', 10, (ctx, s) => { ctx.fillStyle = '#fffb00'; ctx.fillRect(0, 0, s, s); });
+    make('crosshair', 26, (ctx, s) => {
+      const c = s / 2;
+      ctx.strokeStyle = '#f2a541';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(c, c, 7, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(c, 1); ctx.lineTo(c, 6);
+      ctx.moveTo(c, s - 1); ctx.lineTo(c, s - 6);
+      ctx.moveTo(1, c); ctx.lineTo(6, c);
+      ctx.moveTo(s - 1, c); ctx.lineTo(s - 6, c);
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(c, c, 1.6, 0, Math.PI * 2); ctx.fill();
+    });
   }
 
   private startHorda(h: number): void {
@@ -144,6 +169,22 @@ export class CombateScene extends Phaser.Scene {
 
   update(_time: number, deltaMs: number): void {
     if (!this.player || this.pickingUpgrade || this.gameEnded) return;
+
+    // Apuntado con el mouse — posición del cursor en coordenadas del canvas
+    const ptr = this.input.activePointer;
+    if (ptr) {
+      this.aimX = ptr.worldX ?? ptr.x;
+      this.aimY = ptr.worldY ?? ptr.y;
+    }
+    if (this.crosshair) this.crosshair.setPosition(this.aimX, this.aimY);
+    if (this.aimGraphics && this.player) {
+      this.aimGraphics.clear();
+      this.aimGraphics.lineStyle(2, 0xf2a541, 0.35);
+      this.aimGraphics.beginPath();
+      this.aimGraphics.moveTo(this.player.x, this.player.y);
+      this.aimGraphics.lineTo(this.aimX, this.aimY);
+      this.aimGraphics.strokePath();
+    }
 
     // Movimiento (WASD + flechas)
     const kb = this.input.keyboard!;
@@ -238,17 +279,26 @@ export class CombateScene extends Phaser.Scene {
   }
 
   private spawnBullet(): void {
-    const nearest = this.nearestEnemy();
-    if (!nearest || !this.player) return;
+    if (!this.player) return;
     this.criticoCounter++;
     const critico = this.criticoRango > 0 && this.criticoCounter % 3 === 0;
     const bullet = this.physics.add.sprite(this.player.x, this.player.y, critico ? 'bullet_critical' : 'bullet_white');
     (bullet as unknown as { danoMult: number }).danoMult = critico ? 2 + this.criticoRango : 1;
-    const dx = nearest.x - this.player.x;
-    const dy = nearest.y - this.player.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const speed = 540;
-    bullet.setVelocity((dx / len) * speed, (dy / len) * speed);
+
+    // Disparo hacia donde apunta el mouse; si el cursor coincide con el jugador,
+    // usa al enemigo más cercano como dirección de respaldo
+    let dx = this.aimX - this.player.x;
+    let dy = this.aimY - this.player.y;
+    let len = Math.hypot(dx, dy);
+    if (len < 8) {
+      const nearest = this.nearestEnemy();
+      if (nearest) { dx = nearest.x - this.player.x; dy = nearest.y - this.player.y; len = Math.hypot(dx, dy) || 1; }
+      else return;
+    }
+    const dirX = dx / len;
+    const dirY = dy / len;
+    const speed = 560;
+    bullet.setVelocity(dirX * speed, dirY * speed);
     bullet.body!.setCircle(this.bulletSize);
     this.bullets.push(bullet);
   }
