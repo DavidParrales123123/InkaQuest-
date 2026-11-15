@@ -5,6 +5,7 @@ import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { CourseService } from '../../core/services/course.service';
 import { SupabaseService } from '../../core/services/supabase.service';
+import { CURSO_PRINCIPIOS_ALGORITMOS } from '../../core/services/guardianes-acceso.service';
 
 interface NivelItem {
   numero: number;
@@ -126,7 +127,7 @@ export class GuardiansComponent implements OnInit, OnDestroy {
       // Matrícula activa de este usuario en el curso Principios de Algoritmos
       const USER = this.auth.usuario();
       if (!USER) return;
-      const COURSE_ID = 'ab8e59ef-ab9f-40eb-8f31-790ac7edba4a';
+      const COURSE_ID = CURSO_PRINCIPIOS_ALGORITMOS;
       const supabase = this.supabase.client;
       const { data: matricula, error: matriculaErr } = await supabase
         .from('matricula')

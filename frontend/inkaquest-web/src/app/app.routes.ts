@@ -2,6 +2,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard, roleGuard } from './core/guards/auth.guard';
+import { guardianesEstudianteGuard, guardianesDocenteGuard } from './core/guards/guardianes-acceso.guard';
 
 /**
  * Tablero de rutas de InkaQuest.
@@ -286,12 +287,14 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/guardianes/guardians.component').then((m) => m.GuardiansComponent),
         title: 'Guardianes del Conocimiento · InkaQuest',
+        canActivate: [guardianesEstudianteGuard],
       },
       {
         path: 'guardianes/nivel/:numero',
         loadComponent: () =>
           import('./features/guardianes/guardians-jugar.component').then((m) => m.GuardiansJugarComponent),
         title: 'Jugar · Guardianes del Conocimiento',
+        canActivate: [guardianesEstudianteGuard],
       },
       {
         path: 'minijuegos/:id',
@@ -515,6 +518,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/teacher/guardianes/teacher-guardianes.component').then((m) => m.TeacherGuardiansComponent),
         title: 'Seguimiento videojuego · InkaQuest',
+        canActivate: [guardianesDocenteGuard],
       },
       {
         path: 'estudiantes',
