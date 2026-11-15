@@ -146,7 +146,7 @@ export class CombateScene extends Phaser.Scene {
   private avisoHorda?: Phaser.GameObjects.Text;
   private pisoGfx?: Phaser.GameObjects.Graphics;
   /** true cuando el arena usa el mapa de niveles 1–5 como fondo. */
-  private usarMapaNivel15 = false;
+  private usarMapaBioma = false;
   private aimX: number = 640;
   private aimY = 160;
   private playerShadow?: Phaser.GameObjects.Image;
@@ -181,8 +181,9 @@ export class CombateScene extends Phaser.Scene {
     for (const g of GUARDIANES) {
       this.load.image('guard_' + g.id, g.sprite);
     }
-    // Fondo del arena para niveles 1–5 (mapa InkaQuest)
+    // Fondos de arena por bioma (niveles 1–5 templo · 6–9 desierto)
     this.load.image('arena_mapa_1_5', 'assets/guardianes/mapa-nivel-1-5-v2.jpg');
+    this.load.image('arena_mapa_6_9', 'assets/guardianes/mapa-nivel-6-9-v1.jpg');
     // Frames del ciclo de marcha / ataque de Guardianes
     for (let i = 0; i <= 5; i++) {
       this.load.image('rambo_walk_' + i, `assets/guardianes/walk/rambo_walk_${i}.png`);
@@ -213,10 +214,12 @@ export class CombateScene extends Phaser.Scene {
     this.createTextures();
 
     // ─── Arena — mapa InkaQuest (niveles 1–5) o paleta procedural ───
-    this.usarMapaNivel15 = this.game.registry.get('mapaNivel15') === true && this.textures.exists('arena_mapa_1_5');
-    if (this.usarMapaNivel15) {
+    const mapaSel = this.game.registry.get('mapaArena') as string | undefined;
+    const mapaKey = mapaSel === '1-5' ? 'arena_mapa_1_5' : mapaSel === '6-9' ? 'arena_mapa_6_9' : undefined;
+    this.usarMapaBioma = mapaKey !== undefined && this.textures.exists(mapaKey);
+    if (this.usarMapaBioma) {
       this.add
-        .image(CombateScene.ARENA_W / 2, CombateScene.ARENA_H / 2, 'arena_mapa_1_5')
+        .image(CombateScene.ARENA_W / 2, CombateScene.ARENA_H / 2, mapaKey!)
         .setDisplaySize(CombateScene.ARENA_W, CombateScene.ARENA_H)
         .setDepth(-20);
       // Velo navy suave: mantiene el contraste de enemigos y telas
@@ -348,8 +351,8 @@ export class CombateScene extends Phaser.Scene {
   private dibujarPiso(): void {
     const g = this.pisoGfx!;
     g.clear();
-    // Con el mapa de niveles 1–5 solo encuadramos el arena (el arte manda)
-    if (this.usarMapaNivel15) {
+    // Con mapa de bioma solo encuadramos el arena (el arte manda)
+    if (this.usarMapaBioma) {
       g.lineStyle(6, 0xf2a541, 0.35);
       g.strokeRect(3, 3, CombateScene.ARENA_W - 6, CombateScene.ARENA_H - 6);
       g.lineStyle(2, 0xf2a541, 0.55);
