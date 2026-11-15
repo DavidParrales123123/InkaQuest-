@@ -38,6 +38,7 @@ import { CombateScene, MEJORAS, MEJORAS_EXTRA } from './combate-scene';
             <p>Enemigos activos: <strong>{{ enemigosVivos() }}</strong></p>
             <p>Tiempo: <strong>{{ tiempoFormateado() }}</strong></p>
             <p>Horda <strong>{{ hordaActual() }} / 9</strong></p>
+            @if (esEvaluacion()) { <p class="mt-1 inline-block rounded-full border border-rose-400/50 bg-rose-500/15 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-widest text-rose-300">⚔ Nivel de evaluación · jefes</p> }
           </div>
           <div class="rounded-xl border border-brand-200 bg-brand-50/60 p-3 text-xs text-marine-700">
             <p class="font-bold text-marine-800">Controles</p>
@@ -137,6 +138,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected readonly enemigosVivos = signal(0);
   protected readonly tiempo = signal(0);
   protected readonly hordaActual = signal(1);
+  protected readonly esEvaluacion = signal(false);
   protected readonly enPausa = signal(false);
   protected readonly xpGanado = signal(0);
   protected readonly monedasGanadas = signal(0);
@@ -167,6 +169,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const n = Number(this.route.snapshot.paramMap.get('numero')) || 1;
     this.numero.set(n);
+    this.esEvaluacion.set([6, 12, 18].includes(n));
     queueMicrotask(() => this.arrancar());
   }
 
@@ -339,6 +342,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
         const scene = this.game?.scene?.getScene('Combate') as any;
         const nivelIdLocal = nivelId;
         if (scene && nivelIdLocal) {
+          scene.evaluacionMode = this.esEvaluacion();
           scene.emitHud = () => this.crearTickHud(scene);
           scene.emitUpgradePick = () => this.abrirMenuMejoras();
           scene.emitDestroy = (victoria: boolean, matados: number, tiempoSeg: number) => {

@@ -71,6 +71,9 @@ export class CombateScene extends Phaser.Scene {
   private emitUpgradePick?: () => void;
 
   hordaActual = 1;
+  /** true en niveles de evaluación (6, 12, 18: prácticas calificadas y examen final):
+   *  hordas 3, 6 y 9 lanzan jefes en lugar de enemigos comunes. */
+  evaluacionMode = false;
   private readonly totalHordas = 9;
   private startedAt = 0;
   private phaseMs = 0;
@@ -250,24 +253,39 @@ export class CombateScene extends Phaser.Scene {
     this.bullets.push(bullet);
   }
 
+  private spawnBossCounter = 0;
+
   private spawnEnemy(): void {
     const side = Math.floor(Math.random() * 4);
     const x = side === 0 ? 0 : side === 1 ? 880 : Math.random() * 880;
     const y = side === 2 ? 0 : side === 3 ? 520 : Math.random() * 520;
     // Hordas 1-3 Espinita · 4-6 Bug Infector · 7-8 Excepción · 9 Jefe
-    const tier = this.hordaActual <= 3 ? 0 : this.hordaActual <= 6 ? 1 : this.hordaActual <= 8 ? 2 : 3;
-    if (tier === 3) {
+    // Niveles de evaluación (6/12/18): además de la horda 9, también hay jefes
+    // en las hordas 3 y 6. En hordas de jefe, 1 de cada 4 apariciones es jefe real.
+    const esHordaJefe = this.hordaActual === 9 || (this.evaluacionMode && (this.hordaActual === 3 || this.hordaActual === 6));
+    this.spawnBossCounter++;
+    if (esHordaJefe && this.spawnBossCounter % 4 === 1) {
+      const hpJefe = this.hordaActual >= 9 ? 14 : this.hordaActual >= 6 ? 9 : 6;
       const boss = this.physics.add.sprite(x, y, 'boss');
-      (boss as unknown as { hp: number }).hp = 12;
+      (boss as unknown as { hp: number }).hp = hpJefe;
       boss.setCircle(25);
       this.enemies.push(boss);
-    } else {
-      const keys = ['enemy_red', 'enemy_orange', 'enemy_gold'];
-      const e = this.physics.add.sprite(x, y, keys[tier]);
-      (e as unknown as { hp: number }).hp = tier === 0 ? 1 : tier === 1 ? 2 : 3;
+      return;
+    }
+    if (esHordaJefe) {
+      // Esbirros de la horda de jefe: Excepción dorada con más vida
+      const e = this.physics.add.sprite(x, y, 'enemy_gold');
+      (e as unknown as { hp: number }).hp = 4;
       e.setCircle(12);
       this.enemies.push(e);
+      return;
     }
+    const tier = this.hordaActual <= 3 ? 0 : this.hordaActual <= 6 ? 1 : 2;
+    const keys = ['enemy_red', 'enemy_orange', 'enemy_gold'];
+    const e = this.physics.add.sprite(x, y, keys[tier]);
+    (e as unknown as { hp: number }).hp = tier === 0 ? 1 : tier === 1 ? 2 : 3;
+    e.setCircle(12);
+    this.enemies.push(e);
   }
 
   private nearestEnemy(): Phaser.Physics.Arcade.Sprite | null {
