@@ -511,6 +511,12 @@ export const routes: Routes = [
         title: 'Minijuegos · InkaQuest',
       },
       {
+        path: 'guardianes',
+        loadComponent: () =>
+          import('./features/teacher/guardianes/teacher-guardianes.component').then((m) => m.TeacherGuardiansComponent),
+        title: 'Seguimiento videojuego · InkaQuest',
+      },
+      {
         path: 'estudiantes',
         loadComponent: () =>
           import('./features/teacher/students/students.component').then((m) => m.StudentsComponent),
@@ -827,6 +833,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/admin/settings/settings.component').then((m) => m.SettingsComponent),
         title: 'Configuración · InkaQuest',
+      },
+      {
+        path: 'guardianes',
+        loadComponent: () =>
+          import('./features/admin/guardianes/admin-guardianes.component').then((m) => m.AdminGuardiansComponent),
+        title: 'Guardianes · InkaQuest',
       },
     ],
   },

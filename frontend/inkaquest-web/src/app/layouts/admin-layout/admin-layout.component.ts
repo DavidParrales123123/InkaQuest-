@@ -83,6 +83,7 @@ export class AdminLayoutComponent {
       elementos: [
         { texto: 'Mi perfil', ruta: '/admin/perfil', icono: 'users' },
         { texto: 'Notificaciones', ruta: '/admin/notificaciones', icono: 'bell' },
+        { texto: 'Guardianes · Estado', ruta: '/admin/guardianes', icono: 'trophy' },
         { texto: 'Soporte', ruta: '/admin/soporte', icono: 'help' },
         { texto: 'Configuración', ruta: '/admin/configuracion', icono: 'cog' },
       ],

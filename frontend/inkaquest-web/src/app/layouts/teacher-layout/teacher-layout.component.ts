@@ -55,6 +55,7 @@ export class TeacherLayoutComponent {
       titulo: 'Comunicación',
       elementos: [
         { texto: 'Mensajes', ruta: '/docente/mensajes', icono: 'inbox' },
+        { texto: 'Videojuego', ruta: '/docente/guardianes', icono: 'trophy' },
         { texto: 'Anuncios', ruta: '/docente/anuncios', icono: 'bell' },
         { texto: 'Calendario', ruta: '/docente/calendario', icono: 'calendar' },
         { texto: 'Notificaciones', ruta: '/docente/notificaciones', icono: 'bell' },
