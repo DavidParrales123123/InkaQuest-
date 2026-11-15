@@ -717,8 +717,10 @@ export class CombateScene extends Phaser.Scene {
     }
     this.player.setVelocity(vx, vy);
 
-    // ─── Mirada lateral: el personaje mira hacia donde apunta (flip-X) ───
-    const mirarIzquierda = this.aimX < this.player.x;
+    // ─── Mirada lateral: en movimiento manda WASD; en reposo manda el cursor ───
+    const moviendoIzq = vx < 0;
+    const moviendoDer = vx > 0;
+    const mirarIzquierda = moviendoIzq ? true : moviendoDer ? false : this.aimX < this.player.x;
     if (mirarIzquierda !== this.mirarIzquierda) {
       this.mirarIzquierda = mirarIzquierda;
       (this.player as unknown as Phaser.GameObjects.Image).setFlipX(mirarIzquierda);
@@ -798,7 +800,7 @@ export class CombateScene extends Phaser.Scene {
       const seed = spr.spawnSeed ?? 0;
 
       if (spr.esGunner) {
-        // Pistolero: mantiene distancia y dispara plasma
+        // Pistolero: dispara plasma desde cualquier distancia (cadencia ~1.5-2.1s)
         if (dist < 225) {
           const anguloFuera = Math.atan2(spr.y - this.player.y, spr.x - this.player.x);
           this.physics.moveTo(spr, spr.x + Math.cos(anguloFuera) * 200, spr.y + Math.sin(anguloFuera) * 200, 110);
@@ -807,7 +809,7 @@ export class CombateScene extends Phaser.Scene {
         } else {
           this.physics.moveTo(spr, spr.x + Math.cos(seed) * 60, spr.y + Math.sin(seed) * 60, 30);
         }
-        if (dist < 540 && ahora >= (spr.fireCdUntil ?? 0)) {
+        if (ahora >= (spr.fireCdUntil ?? 0)) {
           spr.fireCdUntil = ahora + 1500 + Math.random() * 650;
           this.spawnAlienBullet(spr);
         }
