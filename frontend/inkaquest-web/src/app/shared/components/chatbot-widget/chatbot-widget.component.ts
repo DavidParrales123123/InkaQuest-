@@ -69,9 +69,14 @@ const SUGERENCIAS = [
       }
     </button>
 
+    <!-- Backdrop (solo en expandido): click fuera = volver a compacto -->
+    @if (abierto() && expandido()) {
+      <button type="button" class="fixed inset-0 z-[58] cursor-pointer bg-marine-950/70 backdrop-blur-sm" (click)="expandido.set(false)" aria-label="Reducir asistente"></button>
+    }
+
     <!-- Panel -->
     @if (abierto()) {
-      <div class="chat-panel fixed z-40 flex flex-col overflow-hidden border border-gold-500/30 shadow-[0_40px_90px_-30px_rgba(0,0,0,0.85)] backdrop-blur-xl transition-all duration-300"
+      <div class="chat-panel fixed z-[60] flex flex-col overflow-hidden border border-gold-500/30 shadow-[0_40px_90px_-30px_rgba(0,0,0,0.85)] backdrop-blur-xl transition-all duration-300"
            [class]="expandido()
              ? 'inset-2 rounded-3xl sm:inset-4'
              : 'bottom-[5.5rem] right-3 w-[calc(100vw-1.5rem)] max-w-[30rem] rounded-3xl sm:bottom-24 sm:right-6'"
@@ -270,10 +275,12 @@ export class ChatbotWidgetComponent {
     });
   }
 
-  /** Esc: cerrar si está abierto */
+  /** Esc: primero reduce la expansión, luego cierra. */
   @HostListener('document:keydown.escape')
   protected escape(): void {
-    if (this.abierto()) this.alternar();
+    if (!this.abierto()) return;
+    if (this.expandido()) { this.expandido.set(false); return; }
+    this.alternar();
   }
 
   protected alternar(): void {
