@@ -210,6 +210,21 @@ export const routes: Routes = [
   },
 
   /* ===========================================================================
+     Evaluación del estudiante — ruta independiente e inmersiva
+     (SIN layout de panel: sin sidebar, sin asistente IA — anticheo total)
+     ========================================================================= */
+  {
+    path: 'estudiante/evaluaciones/:id',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['estudiante'] },
+    loadComponent: () =>
+      import('./features/student/evaluacion-tomar/evaluacion-tomar.component').then(
+        (m) => m.EvaluacionTomarComponent,
+      ),
+    title: 'Tomar evaluación · InkaQuest',
+  },
+
+  /* ===========================================================================
      Guardianes del Conocimiento — partida inmersiva a pantalla completa
      (SIN el layout del panel: sin sidebar ni barra superior blanca,
      para que el jugador vea todo el HUD y el campo de juego)
@@ -283,15 +298,6 @@ export const routes: Routes = [
             (m) => m.EvaluationsComponent,
           ),
         title: 'Evaluaciones · InkaQuest',
-      },
-      {
-        path: 'evaluaciones/:id',
-        loadComponent: () =>
-          import('./features/student/evaluacion-tomar/evaluacion-tomar.component').then(
-            (m) => m.EvaluacionTomarComponent,
-          ),
-        title: 'Tomar evaluación · InkaQuest',
-        data: { sinChatbot: true },
       },
       {
         path: 'minijuegos',
