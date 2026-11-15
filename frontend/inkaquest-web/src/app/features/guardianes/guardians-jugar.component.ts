@@ -64,23 +64,58 @@ import { GUARDIANES } from './guardians-catalog';
 
         <!-- ─── Fullscreen immersive game shell ─── -->
         <div class="fixed inset-0 z-[40] flex h-screen flex-col bg-marine-950 overflow-hidden">
-          <!-- Top ribbon -->
-          <header class="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-gold-500/15 bg-marine-950/95 px-2 sm:px-4 backdrop-blur">
-            <div class="flex min-w-0 items-center gap-2 sm:gap-3">
-              <span class="grid size-9 shrink-0 place-items-center rounded bg-gradient-to-br from-gold-400 to-gold-600 text-marine-900 text-base font-black shadow-[0_2px_0_#5c3a07]">{{ numero() }}</span>
-              <div class="min-w-0 leading-tight">
-                <p class="text-[0.55rem] uppercase tracking-[0.18em] text-gold-500">Guardianes · Nivel {{ numero() }}</p>
-                <p class="mt-0.5 truncate text-[0.72rem] font-bold text-marine-100">Horda {{ hordaActual() }} <span class="text-marine-400">/ 9</span>
-                  @if (esEvaluacion()) { <span class="ml-2 rounded-sm bg-rose-500/20 px-1.5 py-[1px] text-[0.55rem] font-extrabold uppercase tracking-widest text-rose-300">Jefe</span> }
-                </p>
+          <!-- Top ribbon + HUD -->
+          <header class="shrink-0 border-b border-gold-500/15 bg-marine-950/95 backdrop-blur">
+            <div class="flex h-14 items-center justify-between gap-3 px-2 sm:px-4">
+              <div class="flex min-w-0 items-center gap-2 sm:gap-3">
+                <span class="grid size-9 shrink-0 place-items-center rounded bg-gradient-to-br from-gold-400 to-gold-600 text-marine-900 text-base font-black shadow-[0_2px_0_#5c3a07]">{{ numero() }}</span>
+                <div class="min-w-0 leading-tight">
+                  <p class="text-[0.55rem] uppercase tracking-[0.18em] text-gold-500">Guardianes · Nivel {{ numero() }}</p>
+                  <p class="mt-0.5 truncate text-[0.72rem] font-bold text-marine-100">Horda {{ hordaActual() }} <span class="text-marine-400">/ 9</span>
+                    @if (esEvaluacion()) { <span class="ml-2 rounded-sm bg-rose-500/20 px-1.5 py-[1px] text-[0.55rem] font-extrabold uppercase tracking-widest text-rose-300">Jefe</span> }
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                @if (enPausa()) { <button type="button" class="btn btn-gold btn-sm" (click)="reanudar()">Reanudar</button> }
+                @else if (fase() === 'jugando') { <button type="button" class="btn btn-gold btn-sm" (click)="pausar()">Pausa</button> }
+                <a routerLink="/estudiante/guardianes" class="inline-flex size-9 items-center justify-center rounded-lg border border-danger-600/40 bg-danger-600/80 text-white shadow-[0_2px_0_#6d0017] hover:bg-danger-600" aria-label="Abandonar nivel">
+                  <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </a>
               </div>
             </div>
-            <div class="flex items-center gap-1.5">
-              @if (enPausa()) { <button type="button" class="btn btn-gold btn-sm" (click)="reanudar()">Reanudar</button> }
-              @else if (fase() === 'jugando') { <button type="button" class="btn btn-gold btn-sm" (click)="pausar()">Pausa</button> }
-              <a routerLink="/estudiante/guardianes" class="inline-flex size-9 items-center justify-center rounded-lg border border-danger-600/40 bg-danger-600/80 text-white shadow-[0_2px_0_#6d0017] hover:bg-danger-600" aria-label="Abandonar nivel">
-                <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-              </a>
+            <!-- HUD: vida · XP · poder · enemigos · tiempo (siempre visible) -->
+            <div class="flex items-center gap-3 overflow-x-auto border-t border-white/5 px-2 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:px-4" role="status" aria-label="Estado de la partida">
+              <!-- Vida -->
+              <div class="flex min-w-[8.5rem] items-center gap-1.5 sm:min-w-0">
+                <svg viewBox="0 0 24 24" class="size-4 shrink-0 fill-rose-400" aria-hidden="true"><path d="M12 21s-7.5-4.8-10-9.5C.5 7.5 4 4 8 4c2.4 0 3.3 1.4 4 2.4C12.7 5.4 13.6 4 16 4c4 0 7.5 3.5 6 7.5C19.5 16.2 12 21 12 21z"/></svg>
+                <span class="whitespace-nowrap text-[0.7rem] font-extrabold tabular-nums text-rose-200">{{ salud() }}<span class="text-marine-500">/{{ saludMax() }}</span></span>
+                <div class="h-2 w-16 overflow-hidden rounded-full bg-rose-950/70 sm:w-24 xl:w-32"><div class="h-full rounded-full bg-gradient-to-r from-rose-500 via-rose-400 to-amber-300 transition-all duration-200" [style.width.%]="saludPct()"></div></div>
+              </div>
+              <!-- XP -->
+              <div class="flex min-w-[7rem] items-center gap-1.5 sm:min-w-0">
+                <svg viewBox="0 0 24 24" class="size-4 shrink-0 fill-gold-400" aria-hidden="true"><path d="M12 2l2.6 5.6L21 9.5l-4.5 4.3 1.1 6.2L12 17l-5.6 3 1.1-6.2L3 9.5l6.4-1.9L12 2z"/></svg>
+                <span class="whitespace-nowrap text-[0.7rem] font-extrabold tabular-nums text-gold-300">+{{ xp() }}</span>
+                <div class="h-2 w-12 overflow-hidden rounded-full bg-gold-950/60 sm:w-20 xl:w-28"><div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-gold-300 transition-all duration-200" [style.width.%]="xpPct()"></div></div>
+              </div>
+              <!-- PODER -->
+              <div class="hidden items-center gap-1 md:flex" aria-label="Poder del guardián">
+                <span class="rounded-md border border-rose-900/60 bg-rose-950/40 px-1.5 py-0.5 text-[0.6rem] font-extrabold tabular-nums text-rose-300">ATK {{ guardianActual()?.danoBase ?? 0 }}</span>
+                <span class="rounded-md border border-emerald-900/60 bg-emerald-950/40 px-1.5 py-0.5 text-[0.6rem] font-extrabold tabular-nums text-emerald-300">VID {{ saludMax() }}</span>
+                <span class="rounded-md border border-sky-900/60 bg-sky-950/40 px-1.5 py-0.5 text-[0.6rem] font-extrabold tabular-nums text-sky-300">VEL {{ 240 + (guardianActual()?.velocidadExtra ?? 0) }}</span>
+              </div>
+              <span class="hidden h-4 w-px bg-white/10 md:block"></span>
+              <!-- Enemigos -->
+              <div class="flex items-center gap-1.5" title="Enemigos vivos">
+                <svg viewBox="0 0 24 24" class="size-4 shrink-0 text-brand-400" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>
+                <span class="text-[0.7rem] font-extrabold tabular-nums text-brand-300">{{ enemigosVivos() }}</span>
+                <span class="hidden text-[0.55rem] font-extrabold uppercase tracking-widest text-marine-500 lg:inline">Enemigos</span>
+              </div>
+              <!-- Tiempo -->
+              <div class="flex items-center gap-1.5" title="Tiempo de partida">
+                <svg viewBox="0 0 24 24" class="size-4 shrink-0 text-sky-400" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                <span class="text-[0.7rem] font-extrabold tabular-nums text-sky-300">{{ tiempoFormateado() }}</span>
+              </div>
             </div>
           </header>
 
@@ -276,14 +311,6 @@ import { GUARDIANES } from './guardians-catalog';
                     </div>
                   </div>
                 }
-              </div>
-              <!-- Mobile HUD (sin sidebar) -->
-              <div class="lg:hidden border-t border-gold-500/15 bg-marine-950 px-4 py-2 text-xs">
-                <div class="flex items-center justify-between gap-4">
-                  <span class="flex items-center gap-1.5 font-extrabold text-rose-300">VID <span class="tabular-nums">{{ salud() }}/{{ saludMax() }}</span></span>
-                  <span class="flex items-center gap-1.5 font-extrabold text-gold-300">Horda <span class="tabular-nums">{{ hordaActual() }}/9</span></span>
-                  <span class="flex items-center gap-1.5 font-extrabold text-brand-300">Ene <span class="tabular-nums">{{ enemigosVivos() }}</span></span>
-                </div>
               </div>
             </div>
           </main>
