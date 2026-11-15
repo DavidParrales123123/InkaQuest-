@@ -5,6 +5,7 @@ export class CombateScene extends Phaser.Scene {
   private player?: Phaser.Physics.Arcade.Image;
   private salud = 100;
   private xp = 0;
+  private kills = 0;
   private startMs = 0;
   private spawnTimer = 0;
   private hordaTimer = 0;
@@ -12,15 +13,15 @@ export class CombateScene extends Phaser.Scene {
   private damageBlink = 0;
 
   private emitHud?: () => void;
-  private emitDestroy?: () => void;
+  private emitDestroy?: (victoria: boolean, matados: number, tiempo: number) => void;
 
   constructor() {
     super({ key: 'Combate' });
   }
 
-  init(data: { onUpdate?: () => void; onEnd?: (victoria: boolean) => void } = {}): void {
+  init(data: { onUpdate?: () => void; onEnd?: (victoria: boolean, matados: number, tiempo: number) => void } = {}): void {
     this.emitHud = data.onUpdate;
-    this.emitDestroy = () => data.onEnd?.(false);
+    this.emitDestroy = data.onEnd;
   }
 
   create(): void {
@@ -126,6 +127,7 @@ export class CombateScene extends Phaser.Scene {
           this.hitEnemy(e);
           b.destroy();
           this.xp += 5;
+          this.kills += 1;
           this.emitHud?.();
         }
       }
@@ -150,12 +152,14 @@ export class CombateScene extends Phaser.Scene {
 
     // Estado terminal
     if (this.salud <= 0) {
-      this.emitDestroy?.();
+      const tiempoSeg = Math.floor((this.time.now - this.startMs) / 1000);
+      this.emitDestroy?.(false, this.kills, tiempoSeg);
       this.scene.start('gameOver');
       return;
     }
     if (this.time.now - this.startMs > 90_000) {
-      this.emitHud?.();
+      const tiempoSeg = Math.floor((this.time.now - this.startMs) / 1000);
+      this.emitDestroy?.(true, this.kills, tiempoSeg);
       this.scene.start('gameOver');
       return;
     }
