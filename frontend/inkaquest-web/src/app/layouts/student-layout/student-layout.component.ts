@@ -37,6 +37,7 @@ export class StudentLayoutComponent {
     {
       titulo: 'Práctica',
       elementos: [
+        { texto: 'Videojuego · Guardianes', ruta: '/estudiante/guardianes', icono: 'trophy' },
         { texto: 'Minijuegos', ruta: '/estudiante/minijuegos', icono: 'gamepad' },
       ],
     },

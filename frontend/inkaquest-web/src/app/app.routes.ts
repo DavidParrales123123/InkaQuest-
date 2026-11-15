@@ -282,6 +282,18 @@ export const routes: Routes = [
         title: 'Minijuegos · InkaQuest',
       },
       {
+        path: 'guardianes',
+        loadComponent: () =>
+          import('./features/guardianes/guardians.component').then((m) => m.GuardiansComponent),
+        title: 'Guardianes del Conocimiento · InkaQuest',
+      },
+      {
+        path: 'guardianes/nivel/:numero',
+        loadComponent: () =>
+          import('./features/guardianes/guardians-jugar.component').then((m) => m.GuardiansJugarComponent),
+        title: 'Jugar · Guardianes del Conocimiento',
+      },
+      {
         path: 'minijuegos/:id',
         loadComponent: () =>
           import('./features/student/game-detail/game-detail.component').then(
