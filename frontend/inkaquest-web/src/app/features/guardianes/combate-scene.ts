@@ -153,7 +153,6 @@ export class CombateScene extends Phaser.Scene {
   private bulletSizeBoost = 1;
   private healOnKill = 0;
   private contadorAtaque = 0;
-  private explosionCadaCuatro = false;
   private attackPulse = 0;
   private ramboAnimActiva = false;
   private attackLungeAngle = 0;
@@ -176,19 +175,19 @@ export class CombateScene extends Phaser.Scene {
     for (const g of GUARDIANES) {
       this.load.image('guard_' + g.id, g.sprite);
     }
-    // Frames del ciclo de marcha de Guardianes
+    // Frames del ciclo de marcha / ataque de Guardianes
     for (let i = 0; i <= 5; i++) {
       this.load.image('rambo_walk_' + i, `assets/guardianes/walk/rambo_walk_${i}.png`);
+      this.load.image('maga_walk_' + i, `assets/guardianes/walk/maga_walk_${i}.png`);
     }
     for (let i = 0; i <= 2; i++) {
       this.load.image('sasuke_walk_' + i, `assets/guardianes/walk/sasuke_walk_${i}.png`);
       this.load.image('sasuke_atk_' + i, `assets/guardianes/walk/sasuke_atk_${i}.png`);
-      this.load.image('natalia_walk_' + i, `assets/guardianes/walk/natalia_walk_${i}.png`);
       this.load.image('scythe_walk_' + i, `assets/guardianes/walk/scythe_walk_${i}.png`);
     }
-    // natalia_atk y scythe_atk tienen 2 frames cada uno — no cargar un fantasma
-    this.load.image('natalia_atk_0', 'assets/guardianes/walk/natalia_atk_0.png');
-    this.load.image('natalia_atk_1', 'assets/guardianes/walk/natalia_atk_1.png');
+    for (let i = 0; i <= 3; i++) {
+      this.load.image('maga_atk_' + i, `assets/guardianes/walk/maga_atk_${i}.png`);
+    }
     this.load.image('scythe_atk_0', 'assets/guardianes/walk/scythe_atk_0.png');
     this.load.image('scythe_atk_1', 'assets/guardianes/walk/scythe_atk_1.png');
     // Si algo falla, lo mostramos en consola para depurar
@@ -252,19 +251,19 @@ export class CombateScene extends Phaser.Scene {
         repeat: 0,
       });
     }
-    if (this.textures.exists('natalia_walk_0') && !anims.exists('natalia_walk')) {
+    if (this.textures.exists('maga_walk_0') && !anims.exists('maga_walk')) {
       anims.create({
-        key: 'natalia_walk',
-        frames: [0, 1, 2].map((i) => ({ key: 'natalia_walk_' + i })),
-        frameRate: 8,
+        key: 'maga_walk',
+        frames: [0, 1, 2, 3, 4, 5].map((i) => ({ key: 'maga_walk_' + i })),
+        frameRate: 9,
         repeat: -1,
       });
     }
-    if (this.textures.exists('natalia_atk_0') && !anims.exists('natalia_atk')) {
+    if (this.textures.exists('maga_atk_0') && !anims.exists('maga_atk')) {
       anims.create({
-        key: 'natalia_atk',
-        frames: [0, 1].map((i) => ({ key: 'natalia_atk_' + i })),
-        frameRate: 10,
+        key: 'maga_atk',
+        frames: [0, 1, 2, 3].map((i) => ({ key: 'maga_atk_' + i })),
+        frameRate: 11,
         repeat: 0,
       });
     }
@@ -306,10 +305,9 @@ export class CombateScene extends Phaser.Scene {
     this.salud = this.saludMax;
     this.vel = 240 + g.velocidadExtra;
     this.fireInterval = g.intervaloAtaque;
-    this.bulletSpeedMult = g.id === 'rambo' ? 1.35 : 1;
-    if (g.id === 'pistola') this.bulletSize = Math.ceil(this.bulletSize * 1.5); // Plomo de Otro Mundo
+    this.bulletSpeedMult = g.id === 'rambo' ? 1.35 : g.id === 'maga' ? 1.1 : 1;
+    if (g.id === 'maga') this.bulletSize = Math.ceil(this.bulletSize * 1.5); // Cometa Azul
     this.healOnKill = g.id === 'scythe' ? 4 : 0;
-    this.explosionCadaCuatro = g.id === 'natalia';
     this.emitHud?.();
   }
 
@@ -677,26 +675,27 @@ export class CombateScene extends Phaser.Scene {
     }
 
     // Animación de movimiento:
-    //  - Rambo y Sasuke reproducen su ciclo de frames mientras se mueven.
-    //  - Natalia y La Herencia: postura estática (bloque — sin walk cycle).
-    //  - El cuerpo a cuerpo dispara la animación de corte específica sin mover la postura.
+    //  - Rambo y Maga (rango): ciclo de walk de 6 frames.
+    //  - Sasuke y La Herencia (haz): ciclo de walk de 3 frames.
     const moving = vx !== 0 || vy !== 0;
     const ahora = this.time.now;
     const playerSprite = this.player as unknown as Phaser.Physics.Arcade.Sprite;
     const esRambo = this.guardian?.id === 'rambo';
+    const esMaga = this.guardian?.id === 'maga';
     const esSasuke = this.guardian?.id === 'sasuke';
     const esScythe = this.guardian?.id === 'scythe';
     if (moving && playerSprite.anims) {
       if (esSasuke && ahora >= this.attackLungeUntil) {
         playerSprite.anims.play('sasuke_walk', true);
+      } else if (esMaga && ahora >= this.attackLungeUntil) {
+        playerSprite.anims.play('maga_walk', true);
       } else if (esScythe && ahora >= this.attackLungeUntil) {
         playerSprite.anims.play('scythe_walk', true);
       } else if (esRambo) {
         playerSprite.anims.play('rambo_walk', true);
       }
-      // esNatalia: postura estática (como se acordó).
     } else if (playerSprite.anims) {
-      if ((esSasuke && ahora >= this.attackLungeUntil) || esScythe || esRambo) {
+      if ((esSasuke && ahora >= this.attackLungeUntil) || esMaga || esScythe || esRambo) {
         playerSprite.anims.stop();
       }
       this.player.setRotation(0);
@@ -736,18 +735,12 @@ export class CombateScene extends Phaser.Scene {
     this.fireTimer += deltaMs;
     if (this.fireTimer > this.fireInterval) {
       if (this.attackMode === 'rango') {
-        if (this.enemies.length) { this.fireTimer = 0; this.attackPulse = 1; this.spawnBullet(); this.muzzleFlash(); }
+        if (this.enemies.length) { this.fireTimer = 0; this.attackPulse = 1; this.spawnBullet(); this.muzzleFlash(); this.playGuardianAtk(); }
       } else {
         this.fireTimer = 0;
         this.attackPulse = 1;
         this.spawnSlash();
-        // Sasuke, Natalia y Scythe: animación de corte activo (no loop) por un instante
-        if ((this.guardian?.id === 'sasuke' || this.guardian?.id === 'natalia' || this.guardian?.id === 'scythe') && playerSprite.anims) {
-          const key = this.guardian?.id === 'sasuke' ? 'sasuke_atk' : this.guardian?.id === 'natalia' ? 'natalia_atk' : 'scythe_atk';
-          playerSprite.anims.play(key, true);
-          this.attackLungeAngle = Math.atan2(this.aimY - this.player!.y, this.aimX - this.player!.x);
-          this.attackLungeUntil = this.time.now + 260;
-        }
+        this.playGuardianAtk();
       }
     }
 
@@ -864,21 +857,6 @@ export class CombateScene extends Phaser.Scene {
       this.hitEnemy(e, dano);
     }
 
-    // Pasiva de Natalia: cada 4º tajo → estallido que daña y empuja
-    if (this.explosionCadaCuatro && this.contadorAtaque % 4 === 0) {
-      this.cameras.main.shake(120, 0.003);
-      const alcanceEstallido = 230;
-      for (const e of [...this.enemies]) {
-        if (!e.active) continue;
-        const distancia = Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y);
-        if (distancia > alcanceEstallido) continue;
-        this.hitEnemy(e, 5);
-        this.physics.moveTo(e, e.x + (e.x - p.x), e.y + (e.y - p.y), 380);
-      }
-      const ring = this.add.image(p.x, p.y, 'impact_flash').setDepth(29).setBlendMode(Phaser.BlendModes.ADD).setScale(2.2).setAlpha(0.9);
-      this.tweens.add({ targets: ring, scale: 4.6, alpha: 0, duration: 280, onComplete: () => ring.destroy() });
-      this.floatingText('¡SISMO!', p.x, p.y - 34, '#ffd700', 16);
-    }
   }
 
   private spawnEnemy(): void {
@@ -1017,6 +995,22 @@ export class CombateScene extends Phaser.Scene {
     g.fillStyle(ratio > 0.5 ? 0xd1345b : 0xff0055, 1);
     g.fillRect(x, y, Math.max(1, w * ratio), 10);
     this.bossLabel?.setVisible(true);
+  }
+
+  /** Reproduce la animación de ataque del guardián actual y dispara lunge físico. */
+  private playGuardianAtk(): void {
+    const id = this.guardian?.id;
+    if (!id || !this.player) return;
+    const playerSprite = this.player as unknown as Phaser.Physics.Arcade.Sprite;
+    if (!playerSprite.anims) return;
+    const key = id === 'sasuke' ? 'sasuke_atk'
+              : id === 'scythe' ? 'scythe_atk'
+              : id === 'maga'  ? 'maga_atk'
+              : null;
+    if (!key) return;
+    playerSprite.anims.play(key, true);
+    this.attackLungeAngle = Math.atan2(this.aimY - this.player.y, this.aimX - this.player.x);
+    this.attackLungeUntil = this.time.now + 260;
   }
 
   getRango(id: string): number {

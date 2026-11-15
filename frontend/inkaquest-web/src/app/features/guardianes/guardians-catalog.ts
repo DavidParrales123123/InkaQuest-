@@ -56,18 +56,18 @@ export const GUARDIANES: readonly GuardianConfig[] = [
     rareza: 'heroe',
   },
   {
-    id: 'natalia',
-    nombre: 'Natalia',
-    titulo: 'Hacha Esmeralda',
-    descripcion: 'Matona del hacha. Daño brutal y ganancia dramática cada cuatro tajos.',
-    ataque: 'haz',
-    sprite: 'assets/guardianes/natalia.png',
-    danoBase: 4,
-    vidaExtra: 25,
-    velocidadExtra: 0,
-    intervaloAtaque: 340,
-    pasivaNombre: 'Golpe sísmico',
-    pasivaDescripcion: 'Cada 4º ataque: estallido que daña a todos los cercanos.',
+    id: 'maga',
+    nombre: 'Maga Aurora',
+    titulo: 'Bruja de la Estrella',
+    descripcion: 'Bruja de pixel cuteness armada con un bastón de cristal. Proyectil más grande y daño brutal.',
+    ataque: 'rango',
+    sprite: 'assets/guardianes/maga.png',
+    danoBase: 3,
+    vidaExtra: 20,
+    velocidadExtra: 15,
+    intervaloAtaque: 240,
+    pasivaNombre: 'Cometa Azul',
+    pasivaDescripcion: 'Sus balas son un 50% más grandes.',
     rareza: 'heroe',
   },
   {
@@ -91,5 +91,5 @@ export const GUARDIAN_POR_DEFECTO = 'rambo';
 
 /** Etiqueta legible del tipo de ataque. */
 export function nombreArma(g: GuardianConfig): string {
-  return g.ataque === 'rango' ? 'Rango · Rifle/Gatillo' : 'Haz · Cuerpo a cuerpo';
+  return g.ataque === 'rango' ? 'Rango · Rifle/Gatillo' : 'Haz · Corte cuerpo a cuerpo';
 }
