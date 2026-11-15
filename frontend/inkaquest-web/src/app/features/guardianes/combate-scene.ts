@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
 
+import { GUARDIANES, GUARDIAN_POR_DEFECTO } from './guardians-catalog';
+import type { GuardianConfig } from './guardians-catalog';
+
 /** Estructura de datos de una mejora accesible. */
 export interface MejoraInfo {
   readonly id: string;
@@ -113,6 +116,15 @@ export class CombateScene extends Phaser.Scene {
   private aimX = 440;
   private aimY = 160;
 
+  // ─── Personaje/guardián elegido ───
+  guardian?: GuardianConfig;
+  private attackMode: 'rango' | 'haz' = 'rango';
+  private bulletSpeedMult = 1;
+  private bulletSizeBoost = 1;
+  private healOnKill = 0;
+  private contadorAtaque = 0;
+  private explosionCadaCuatro = false;
+
   constructor() {
     super({ key: 'Combate' });
   }
@@ -121,6 +133,13 @@ export class CombateScene extends Phaser.Scene {
     this.emitHud = data.onUpdate;
     this.emitDestroy = data.onEnd;
     this.emitUpgradePick = data.onUpgrade;
+  }
+
+  preload(): void {
+    // Sprites de los guardianes (pre-cargados para creación instantánea)
+    for (const g of GUARDIANES) {
+      this.load.image('guard_' + g.id, g.sprite);
+    }
   }
 
   create(): void {
@@ -140,13 +159,39 @@ export class CombateScene extends Phaser.Scene {
       letterSpacing: 4,
     }).setOrigin(0.5).setDepth(45).setVisible(false);
 
-    // ─── Jugador: guerrero de patata con visor ───
-    this.player = this.physics.add.sprite(440, 260, 'player_potato');
-    this.player.setCircle(15);
+    // ─── Jugador: guardián elegido (sprite del catálogo) ───
+    const chosen = this.guardianElegido();
+    this.player = this.physics.add.sprite(440, 260, 'guard_' + chosen.id);
+    this.player.setCircle(16);
     this.player.setCollideWorldBounds(true);
     this.physics.world.setBounds(0, 0, 880, 520);
+    this.aplicarGuardian(chosen);
     this.startedAt = this.time.now;
     this.startHorda(1);
+  }
+
+  private guardianElegido(): GuardianConfig {
+    let id = GUARDIAN_POR_DEFECTO;
+    try {
+      const stored = (typeof localStorage !== 'undefined' ? localStorage.getItem('guardianes-personaje') : null);
+      if (stored) id = stored;
+    } catch { /* ignore */ }
+    return GUARDIANES.find((g) => g.id === id) ?? GUARDIANES[0];
+  }
+
+  private aplicarGuardian(g: GuardianConfig): void {
+    this.guardian = g;
+    this.attackMode = g.ataque;
+    this.danoActual = g.danoBase;
+    this.saludMax = 100 + g.vidaExtra;
+    this.salud = this.saludMax;
+    this.vel = 240 + g.velocidadExtra;
+    this.fireInterval = g.intervaloAtaque;
+    this.bulletSpeedMult = g.id === 'rambo' ? 1.35 : 1;
+    if (g.id === 'pistola') this.bulletSize = Math.ceil(this.bulletSize * 1.5); // Plomo de Otro Mundo
+    this.healOnKill = g.id === 'scythe' ? 4 : 0;
+    this.explosionCadaCuatro = g.id === 'hacha';
+    this.emitHud?.();
   }
 
   /** Redibuja el piso según la franja de hordas vigente (transición de bioma). */
@@ -391,6 +436,28 @@ export class CombateScene extends Phaser.Scene {
       ctx.beginPath(); ctx.arc(c, c, 5, 0, Math.PI * 2); ctx.fill();
     });
 
+    // ─── Arco de tajo (sable / hacha / guadaña) ───
+    make('slash_arc', 150, (ctx, s) => {
+      const c = s / 2;
+      ctx.translate(c, c);
+      const g = ctx.createRadialGradient(0, 0, 12, 0, 0, c - 3);
+      g.addColorStop(0, 'rgba(255,236,120,0)');
+      g.addColorStop(0.55, '#ffe473');
+      g.addColorStop(0.92, '#ff9e1a');
+      g.addColorStop(1, 'rgba(255,158,26,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, c - 3, -1.1, 1.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, c - 14, -0.95, 0.95);
+      ctx.stroke();
+    });
+
     // ─── Impacto/flash ───
     make('impact_flash', 32, (ctx, s) => {
       const c = s / 2;
@@ -492,12 +559,15 @@ export class CombateScene extends Phaser.Scene {
       if (e.active) this.physics.moveTo(e, this.player.x, this.player.y, 90 + this.hordaActual * 10);
     }
 
-    // Disparo automático al cursor
+    // Disparo/tajo automático
     this.fireTimer += deltaMs;
-    if (this.fireTimer > this.fireInterval && this.enemies.length) {
-      this.fireTimer = 0;
-      this.spawnBullet();
-      this.muzzleFlash();
+    if (this.fireTimer > this.fireInterval) {
+      if (this.attackMode === 'rango') {
+        if (this.enemies.length) { this.fireTimer = 0; this.spawnBullet(); this.muzzleFlash(); }
+      } else {
+        this.fireTimer = 0;
+        this.spawnSlash();
+      }
     }
 
     // Limpieza de balas
@@ -580,11 +650,55 @@ export class CombateScene extends Phaser.Scene {
     }
     const dirX = dx / len;
     const dirY = dy / len;
-    const speed = 560;
+    const speed = 560 * this.bulletSpeedMult;
     bullet.setVelocity(dirX * speed, dirY * speed);
     bullet.setDepth(25);
     bullet.body!.setCircle(this.bulletSize);
     this.bullets.push(bullet);
+  }
+
+  private spawnSlash(): void {
+    const p = this.player!;
+    const baseAng = Math.atan2(this.aimY - p.y, this.aimX - p.x);
+    this.contadorAtaque++;
+    this.criticoCounter++;
+    const critico = this.criticoRango > 0 && this.criticoCounter % 3 === 0;
+    const danoMult = critico ? 2 + this.criticoRango : 1;
+    const dano = this.danoActual * danoMult;
+
+    // Arco visual del tajo
+    const impacto = this.add.image(p.x, p.y, 'slash_arc').setDepth(30).setRotation(baseAng).setAlpha(0.9);
+    this.tweens.add({ targets: impacto, scale: 1.25, alpha: 0, duration: 190, onComplete: () => impacto.destroy() });
+
+    // Aplicar daño a enemigos dentro del arco
+    const alcance = 140;
+    for (const e of this.enemies) {
+      if (!e.active) continue;
+      const distancia = Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y);
+      if (distancia > alcance) continue;
+      const ang = Math.atan2(e.y - p.y, e.x - p.x);
+      let diff = ang - baseAng;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      if (Math.abs(diff) > 1.05) continue;
+      this.hitEnemy(e, dano);
+    }
+
+    // Pasiva de Natalia: cada 4º tajo → estallido que daña y empuja
+    if (this.explosionCadaCuatro && this.contadorAtaque % 4 === 0) {
+      this.cameras.main.shake(120, 0.003);
+      const alcanceEstallido = 230;
+      for (const e of [...this.enemies]) {
+        if (!e.active) continue;
+        const distancia = Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y);
+        if (distancia > alcanceEstallido) continue;
+        this.hitEnemy(e, 5);
+        this.physics.moveTo(e, e.x + (e.x - p.x), e.y + (e.y - p.y), 380);
+      }
+      const ring = this.add.image(p.x, p.y, 'impact_flash').setDepth(29).setBlendMode(Phaser.BlendModes.ADD).setScale(2.2).setAlpha(0.9);
+      this.tweens.add({ targets: ring, scale: 4.6, alpha: 0, duration: 280, onComplete: () => ring.destroy() });
+      this.floatingText('¡SISMO!', p.x, p.y - 34, '#ffd700', 16);
+    }
   }
 
   private spawnEnemy(): void {
@@ -648,6 +762,8 @@ export class CombateScene extends Phaser.Scene {
       this.enemies = this.enemies.filter((x) => x !== e);
       this.xp += 5;
       this.kills += 1;
+      // Pasiva de la Herencia de la Guadaña: cada kill cura
+      if (this.healOnKill > 0) this.salud = Math.min(this.saludMax, this.salud + this.healOnKill);
       this.cameras.main.shake(90, 0.0025);
       this.emitHud?.();
     }

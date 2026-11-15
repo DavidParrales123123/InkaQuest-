@@ -7,6 +7,7 @@ import Phaser from 'phaser';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { CombateScene, MEJORAS, MEJORAS_EXTRA } from './combate-scene';
+import { GUARDIANES } from './guardians-catalog';
 
 /** Juego completo de supervivencia por hordas con mejoras entre hordas y progreso persistido. */
 @Component({
@@ -15,13 +16,54 @@ import { CombateScene, MEJORAS, MEJORAS_EXTRA } from './combate-scene';
   imports: [RouterLink, PageHeaderComponent, NgClass],
   template: `
     <section class="space-y-4">
-      <app-page-header [titulo]="'Nivel ' + numero() + ' — Guardianes del Conocimiento'" descripcion="Sobrevive 9 hordas (≈5 min), recibe mejoras y responde chequeos académicos entre hordas." [acciones]="true">
-        <div acciones class="flex flex-wrap items-center gap-2">
-          @if (enPausa()) { <button type="button" class="btn btn-primary btn-sm" (click)="reanudar()">Reanudar</button> }
-          @else if (fase() === 'jugando') { <button type="button" class="btn btn-outline btn-sm" (click)="pausar()">Pausa</button> }
-          <a routerLink="/estudiante/guardianes" class="btn btn-outline btn-sm">Abandonar nivel</a>
-        </div>
+      <app-page-header
+        [titulo]="elegido() ? ('Nivel ' + numero() + ' — Guardianes del Conocimiento') : 'Guardianes — Elige tu guardián'"
+        [descripcion]="elegido()
+          ? 'Sobrevive 9 hordas (≈5 min), recibe mejoras y responde chequeos académicos entre hordas.'
+          : 'Arma crítica, pasiva única: tu guardián define cómo peleas. Sin magias, sólo tijeras, acero y plomo.'"
+        [acciones]="true">
+        @if (elegido()) {
+          <div acciones class="flex flex-wrap items-center gap-2">
+            @if (enPausa()) { <button type="button" class="btn btn-primary btn-sm" (click)="reanudar()">Reanudar</button> }
+            @else if (fase() === 'jugando') { <button type="button" class="btn btn-outline btn-sm" (click)="pausar()">Pausa</button> }
+            <a routerLink="/estudiante/guardianes" class="btn btn-outline btn-sm">Abandonar nivel</a>
+          </div>
+        }
       </app-page-header>
+
+      @if (!elegido()) {
+        <!-- ═══ SELECCIÓN DE GUARDIÁN ═══ -->
+        <div class="rounded-2xl border-2 border-gold-500/60 bg-gradient-to-br from-marine-900 via-marine-800 to-marine-900 p-4 shadow-[0_0_60px_-15px_rgba(242,165,65,0.45)]">
+          <div class="mb-4 text-center">
+            <span class="inline-flex w-fit items-center gap-2 rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-[0.65rem] font-extrabold uppercase tracking-[0.2em] text-gold-400">Guardianes del Conocimiento · Roster</span>
+            <h2 class="mt-3 font-display text-3xl font-extrabold leading-none text-white drop-shadow-[0_4px_0_rgba(0,0,0,0.5)]">¿QUIÉN PROTEGE<br/><span class="text-gold-400">LA LECCIÓN?</span></h2>
+            <p class="mt-2 text-sm text-marine-300">Cada guardián pelea distinto: sus estadísticas y su pasiva definen tu estilo.</p>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            @for (g of guardianesDisponibles; track g.id) {
+              <button type="button" class="group flex flex-col items-center gap-2 rounded-2xl border-2 border-surface-200 bg-gradient-to-b from-marine-800 to-marine-900 p-3 text-center transition-all duration-200 hover:-translate-y-2 hover:border-gold-400 hover:shadow-[0_0_30px_-8px_rgba(242,165,65,0.5)]" (click)="elegirGuardian(g.id)">
+                <div class="relative grid h-36 w-full place-items-center overflow-hidden rounded-xl border border-gold-500/20 bg-black/40">
+                  <img [src]="g.sprite" [alt]="g.nombre" class="max-h-[8.5rem] max-w-full object-contain drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)] transition-transform duration-200 group-hover:scale-110" />
+                  <span class="absolute right-2 top-2 rounded-full px-2 py-0.5 text-[0.58rem] font-extrabold uppercase tracking-widest" [class.bg-gold-500]="g.rareza === 'comun'" [class.text-marine-900]="g.rareza === 'comun'" [class.bg-brand-500]="g.rareza === 'heroe'" [class.text-white]="g.rareza === 'heroe'" [class.bg-rose-500]="g.rareza === 'leyenda'" [class.text-white]="g.rareza === 'leyenda'">{{ g.rareza === 'comun' ? 'Común' : g.rareza === 'heroe' ? 'Héroe' : 'Leyenda' }}</span>
+                </div>
+                <div>
+                  <p class="font-display text-base font-extrabold leading-none text-white">{{ g.nombre }}</p>
+                  <p class="text-[0.65rem] font-bold uppercase tracking-widest text-gold-400">{{ g.titulo }}</p>
+                </div>
+                <p class="text-[0.68rem] leading-snug text-marine-300">{{ g.descripcion }}</p>
+                <span class="inline-flex w-fit items-center gap-1 rounded-full border border-marine-600 bg-marine-900/60 px-2 py-0.5 text-[0.58rem] font-extrabold uppercase tracking-widest" [class.text-brand-300]="g.ataque === 'rango'" [class.text-rose-300]="g.ataque === 'haz'">{{ g.ataque === 'rango' ? '◎ Rango · Gatillo' : '× Haz · Cuerpo a cuerpo' }}</span>
+                <div class="grid w-full grid-cols-3 gap-1 text-[0.62rem] font-bold uppercase tracking-wider">
+                  <span class="rounded border border-rose-900/50 bg-rose-950/40 p-1 text-rose-200">DMG {{ g.danoBase }}</span>
+                  <span class="rounded border border-emerald-900/50 bg-emerald-950/40 p-1 text-emerald-200">VID {{ 100 + g.vidaExtra }}</span>
+                  <span class="rounded border border-sky-900/50 bg-sky-950/40 p-1 text-sky-200">VEL {{ 240 + g.velocidadExtra }}</span>
+                </div>
+                <p class="text-[0.68rem] font-bold text-gold-300">{{ g.pasivaNombre }}</p>
+                <p class="text-[0.62rem] leading-snug text-marine-200">{{ g.pasivaDescripcion }}</p>
+              </button>
+            }
+          </div>
+        </div>
+      } @else {
 
       <div class="grid gap-4 lg:grid-cols-12">
         <div class="lg:col-span-4 order-2 lg:order-1 space-y-4">
@@ -70,6 +112,17 @@ import { CombateScene, MEJORAS, MEJORAS_EXTRA } from './combate-scene';
                 <p class="font-display text-3xl font-extrabold leading-none text-white tabular-nums">{{ tiempoFormateado() }}</p>
               </div>
             </div>
+            <!-- Guardián elegido -->
+            @if (guardianActual()) {
+              <div class="relative mt-3 flex items-center gap-3 rounded-xl border border-gold-500/30 bg-black/40 p-2">
+                <img [src]="guardianActual()!.sprite" [alt]="guardianActual()!.nombre" class="size-14 object-contain" />
+                <div class="min-w-0 flex-1">
+                  <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-gold-400">{{ guardianActual()!.titulo }}</p>
+                  <p class="truncate text-xs font-extrabold text-white">{{ guardianActual()!.nombre }} · {{ guardianActual()!.pasivaNombre }}</p>
+                  <button type="button" class="mt-0.5 text-[0.6rem] font-bold uppercase tracking-widest text-marine-300 underline underline-offset-2 hover:text-marine-100" (click)="elegirGuardian('__cancel__')">Cambiar guardián</button>
+                </div>
+              </div>
+            }
             <!-- Progreso de hordas: 9 nueves -->
             <div class="relative mt-3 flex items-center justify-between gap-1 px-1">
               @for (i of [1,2,3,4,5,6,7,8,9]; track i) {
@@ -214,6 +267,7 @@ import { CombateScene, MEJORAS, MEJORAS_EXTRA } from './combate-scene';
           }
         </div>
       </div>
+      }
     </section>
   `,
 })
@@ -237,6 +291,9 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected readonly elegirMejora = signal(false);
   protected readonly candidatosMejora = signal<readonly { id: string; nombre: string; descripcion: string; rareza: string; rango: number; maxRango: number }[]>([]);
   protected readonly mostrarIntro = signal(true);
+  protected readonly elegido = signal<string | null>(null);
+  protected readonly guardianesDisponibles = GUARDIANES;
+  protected readonly guardianActual = computed(() => GUARDIANES.find((g) => g.id === this.elegido()) ?? null);
   protected readonly preguntaActual = signal<{ preguntaId: string; enunciado: string; opciones: string[]; tema: string; dificultad: string } | null>(null);
   protected readonly respuestaElegida = signal<string | null>(null);
   protected readonly respuestaResultado = signal<{ esCorrecta: boolean; correcta?: string; explicacion?: string; xp: number; monedas: number } | null>(null);
@@ -262,6 +319,30 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     const n = Number(this.route.snapshot.paramMap.get('numero')) || 1;
     this.numero.set(n);
     this.esEvaluacion.set([6, 12, 18].includes(n));
+    // ¿Ya había un guardián elegido antes?
+    try {
+      const prev = typeof localStorage !== 'undefined' ? localStorage.getItem('guardianes-personaje') : null;
+      if (prev) this.elegido.set(prev);
+    } catch { /* ignore */ }
+    queueMicrotask(() => this.arrancar());
+  }
+
+  protected elegirGuardian(id: string): void {
+    if (id === '__cancel__') {
+      // Cambiar de guardián: destruir partida y volver al roster
+      if (this.game) { this.game.destroy(true); this.game = null; }
+      if (this.hudTimer) clearInterval(this.hudTimer);
+      this.elegido.set(null);
+      this.fase.set('intro');
+      try { localStorage.removeItem('guardianes-personaje'); } catch { /* ignore */ }
+      return;
+    }
+    try { localStorage.setItem('guardianes-personaje', id); } catch { /* ignore */ }
+    if (this.game) { this.game.destroy(true); this.game = null; }
+    if (this.hudTimer) clearInterval(this.hudTimer);
+    this.elegido.set(id);
+    this.mostrarIntro.set(true);
+    this.fase.set('intro');
     queueMicrotask(() => this.arrancar());
   }
 
@@ -407,6 +488,8 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   }
 
   private async arrancar(): Promise<void> {
+    // Si aún no eligió guardián, mostrar selección en su lugar
+    if (!this.elegido()) return;
     const nivelId = await this.resolverNivelId(this.numero());
     this.nivelId = nivelId;
     this.preguntaExcluidas = [];
