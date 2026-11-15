@@ -1,7 +1,9 @@
 // @ts-nocheck
 import { Injectable, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
 import { AuthService } from './auth.service';
+import { ApiClientService } from './api-client.service';
 import { SupabaseService } from './supabase.service';
 
 /** Curso al que pertenece el videojuego: Principios de Algoritmos. */
@@ -9,22 +11,31 @@ export const CURSO_PRINCIPIOS_ALGORITMOS = 'ab8e59ef-ab9f-40eb-8f31-790ac7edba4a
 
 export type EstadoAcceso = 'cargando' | 'permitido' | 'denegado';
 
+interface AccesoGuardianesBackend {
+  estudiante: boolean;
+  docente: boolean;
+  administrador: boolean;
+}
+
 /**
  * Controla quién puede VER y ACCEDER al videojuego Guardianes del Conocimiento.
  *
- * Reglas de acceso:
- *   - Estudiante: debe tener matrícula activa (o completada) en Principios de
- *     Algoritmos. Quien no esté inscrito, ni ve el enlace ni puede abrir la ruta.
- *   - Docente: debe estar asignado como docente ACTIVO del curso (tabla docente_curso).
- *   - Administrador: no se restringe (gestiona la plataforma).
+ * Autoridad principal: Spring (`GET /api/v1/gamificacion/guardianes/acceso`,
+ * validado con el mismo JWT JWKS que el resto de la plataforma).
+ * Fallback: consulta directa a Supabase con RLS.
  *
- * Fail-closed: ante un error de red el juego queda oculto. El RPC del servidor
- * sigue siendo la última línea de defensa.
+ *   - Estudiante: matrícula `activa` (o `completada`) en Principios de Algoritmos.
+ *   - Docente:    `docente_curso` activo en el curso.
+ *   - Admin:      siempre.
+ *
+ * Fail-closed: ante error el juego queda oculto. El RPC del servidor sigue
+ * siendo la última línea de defensa.
  */
 @Injectable({ providedIn: 'root' })
 export class GuardianesAccesoService {
   private readonly supabase = inject(SupabaseService);
   private readonly auth = inject(AuthService);
+  private readonly api = inject(ApiClientService);
 
   readonly accesoEstudiante = signal<EstadoAcceso>('cargando');
   readonly accesoDocente = signal<EstadoAcceso>('cargando');
@@ -33,7 +44,7 @@ export class GuardianesAccesoService {
   /** La inscripción puede ocurrir durante la sesión (pago): expira en 2 minutos. */
   private static readonly TTL_MS = 2 * 60 * 1000;
 
-  /** Resuelve acceso estudiante (matriculo en el curso). */
+  /** Resuelve acceso estudiante (matriculado en el curso). */
   tieneAccesoEstudiante(): Promise<boolean> { return this.verificar().then(([est]) => est); }
 
   /** Resuelve acceso docente (asignado activo del curso). */
@@ -49,8 +60,8 @@ export class GuardianesAccesoService {
   }
 
   private async cargar(): Promise<[boolean, boolean]> {
-    // 1) Esperar a que la sesión inicial termine de resolver (evita la carrera
-    //    con _usuario === null durante el arranque de la app).
+    // 1) Esperar a que la sesión inicial termine de resolver (misma carrera
+    //    que evita authGuard en las rutas).
     const inicio = Date.now();
     while (this.auth.cargando() && Date.now() - inicio < 10000) {
       await new Promise<void>((r) => setTimeout(r, 100));
@@ -62,6 +73,24 @@ export class GuardianesAccesoService {
       this.cargadoEn = Date.now();
       return [false, false];
     }
+
+    // 2) Autoridad Spring (JWT de la plataforma, validado en JWKS).
+    try {
+      const res = await firstValueFrom(
+        this.api.get<AccesoGuardianesBackend>('/gamificacion/guardianes/acceso'),
+      );
+      const admin = !!res?.administrador;
+      const est = admin || !!res?.estudiante;
+      const doc = admin || !!res?.docente;
+      this.accesoEstudiante.set(est ? 'permitido' : 'denegado');
+      this.accesoDocente.set(doc ? 'permitido' : 'denegado');
+      this.cargadoEn = Date.now();
+      return [est, doc];
+    } catch (e) {
+      console.warn('[guardianes] Spring falló; intento fallback Supabase:', e);
+    }
+
+    // 3) Fallback a Supabase con RLS (propio de la plataforma).
     try {
       const sb = this.supabase.client;
       const [{ data: matr, error: matrErr }, { data: doc, error: docErr }] = await Promise.all([
@@ -87,7 +116,7 @@ export class GuardianesAccesoService {
       this.cargadoEn = Date.now();
       return [est, docAsignado];
     } catch (e) {
-      console.error('[guardianes] acceso:', e);
+      console.error('[guardianes] acceso (fallback):', e);
       this.accesoEstudiante.set('denegado');
       this.accesoDocente.set('denegado');
       this.cargadoEn = Date.now();
