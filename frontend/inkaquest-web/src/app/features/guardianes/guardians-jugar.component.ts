@@ -38,6 +38,9 @@ import { GUARDIANES } from './guardians-catalog';
               <button type="button" class="group flex flex-col items-center gap-2 rounded-2xl border-2 border-surface-200 bg-gradient-to-b from-marine-800 to-marine-900 p-4 text-center transition-all duration-200 hover:-translate-y-2 hover:border-gold-400 hover:shadow-[0_0_30px_-8px_rgba(242,165,65,0.5)]" (click)="elegirGuardian(g.id)">
                 <div class="relative grid h-36 w-full place-items-center overflow-hidden rounded-xl border border-gold-500/20 bg-black/40">
                   <img [src]="g.sprite" [alt]="g.nombre" class="max-h-[8.5rem] max-w-full object-contain drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)] transition-transform duration-200 group-hover:scale-110" />
+                  @if (g.id === ultimoUsado()) {
+                    <span class="absolute left-2 top-2 rounded-full border border-gold-400/70 bg-gold-500 px-2 py-0.5 text-[0.55rem] font-extrabold uppercase tracking-widest text-marine-900 shadow-[0_2px_6px_rgba(0,0,0,0.45)]">Último</span>
+                  }
                   <span class="absolute right-2 top-2 rounded-full px-2 py-0.5 text-[0.58rem] font-extrabold uppercase tracking-widest" [class.bg-gold-500]="g.rareza === 'comun'" [class.text-marine-900]="g.rareza === 'comun'" [class.bg-brand-500]="g.rareza === 'heroe'" [class.text-white]="g.rareza === 'heroe'" [class.bg-rose-500]="g.rareza === 'leyenda'" [class.text-white]="g.rareza === 'leyenda'">{{ g.rareza === 'comun' ? 'Común' : g.rareza === 'heroe' ? 'Héroe' : 'Leyenda' }}</span>
                 </div>
                 <div>
@@ -301,6 +304,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected readonly monedasGanadas = signal(0);
   protected readonly mensajeResultado = signal('');
   protected readonly elegirMejora = signal(false);
+  protected readonly ultimoUsado = signal<string | null>(null);
   protected readonly candidatosMejora = signal<readonly { id: string; nombre: string; descripcion: string; rareza: string; rango: number; maxRango: number }[]>([]);
   protected readonly mostrarIntro = signal(true);
   protected readonly elegido = signal<string | null>(null);
@@ -331,10 +335,11 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     const n = Number(this.route.snapshot.paramMap.get('numero')) || 1;
     this.numero.set(n);
     this.esEvaluacion.set([6, 12, 18].includes(n));
-    // ¿Ya había un guardián elegido antes?
+    // No auto-elegir: el jugador siempre pasa por el roster y elige su guardián.
+    // Guardamos el último elegido solo para mostrar la insignia "Último".
     try {
       const prev = typeof localStorage !== 'undefined' ? localStorage.getItem('guardianes-personaje') : null;
-      if (prev) this.elegido.set(prev);
+      if (prev) this.ultimoUsado.set(prev);
     } catch { /* ignore */ }
     queueMicrotask(() => this.arrancar());
   }
@@ -345,6 +350,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
       if (this.game) { this.game.destroy(true); this.game = null; }
       if (this.hudTimer) clearInterval(this.hudTimer);
       this.elegido.set(null);
+      this.ultimoUsado.set(null);
       this.fase.set('intro');
       try { localStorage.removeItem('guardianes-personaje'); } catch { /* ignore */ }
       return;
