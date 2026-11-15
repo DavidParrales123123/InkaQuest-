@@ -102,6 +102,10 @@ interface Particula {
 
 /** Escena Phaser en vivo: arena top-down de supervivencia por hordas. */
 export class CombateScene extends Phaser.Scene {
+  /** Dimensiones del arena del juego. */
+  static readonly ARENA_W = 1280;
+  static readonly ARENA_H = 720;
+
   player?: Phaser.Physics.Arcade.Image;
   salud = 100;
   saludMax = 100;
@@ -109,7 +113,7 @@ export class CombateScene extends Phaser.Scene {
   kills = 0;
   danoActual = 1;
   fireInterval = 260;
-  bulletSize = 4;
+  bulletSize = 6;
   resistencia = 0;
   vel = 240;
   criticoRango = 0;
@@ -141,7 +145,7 @@ export class CombateScene extends Phaser.Scene {
   private bossLabel?: Phaser.GameObjects.Text;
   private avisoHorda?: Phaser.GameObjects.Text;
   private pisoGfx?: Phaser.GameObjects.Graphics;
-  private aimX = 440;
+  private aimX: number = 640;
   private aimY = 160;
   private playerShadow?: Phaser.GameObjects.Image;
   private mirarIzquierda = false;
@@ -207,7 +211,7 @@ export class CombateScene extends Phaser.Scene {
     // ─── Capas de ambiente ───
     this.particulasGfx = this.add.graphics();
     this.bossHpGfx = this.add.graphics().setDepth(40);
-    this.bossLabel = this.add.text(440, 34, 'REY CARMESÍ', {
+    this.bossLabel = this.add.text(CombateScene.ARENA_W / 2, 34, 'REY CARMESÍ', {
       fontSize: '10px',
       fontFamily: 'Inter, system-ui, sans-serif',
       color: '#ffd700',
@@ -216,11 +220,12 @@ export class CombateScene extends Phaser.Scene {
 
     // ─── Jugador: guardián elegido (sprite del catálogo, normalizado a 72×72) ───
     const chosen = this.guardianElegido();
-    this.player = this.physics.add.sprite(440, 260, 'guard_' + chosen.id);
-    this.player.setCircle(16);
-    this.player.setScale(0.85);
+    this.player = this.physics.add.sprite(CombateScene.ARENA_W / 2, CombateScene.ARENA_H / 2, 'guard_' + chosen.id);
+    this.player.setCircle(19);
+    this.player.setScale(1.15);
     this.player.setCollideWorldBounds(true);
-    this.physics.world.setBounds(0, 0, 880, 520);
+    this.player.setBounce(0);
+    this.physics.world.setBounds(0, 0, CombateScene.ARENA_W, CombateScene.ARENA_H);
     this.aplicarGuardian(chosen);
     // Sombra suave bajo el personaje para que no "flote" sobre el arena
     this.playerShadow = this.add.image(this.player.x, this.player.y + 10, 'player_shadow').setScale(1.3, 0.6).setAlpha(0.55).setDepth(4);
@@ -318,19 +323,19 @@ export class CombateScene extends Phaser.Scene {
     g.clear();
     // Base
     g.fillStyle(p.piso, 1);
-    g.fillRect(0, 0, 880, 520);
+    g.fillRect(0, 0, CombateScene.ARENA_W, CombateScene.ARENA_H);
     // Estrellas/elementos lejanos
     for (let i = 0; i < 200; i++) {
       const alpha = 0.25 + Math.random() * 0.5;
       g.fillStyle(p.estrellas, alpha);
       const size = Math.random() < 0.88 ? 2 : 3;
-      g.fillRect(Math.random() * 880, Math.random() * 520, size, size);
+      g.fillRect(Math.random() * CombateScene.ARENA_W, Math.random() * CombateScene.ARENA_H, size, size);
     }
     // Grietas/cuarcitas procedurales
     g.lineStyle(2, p.grietas, 1);
     for (let i = 0; i < 14; i++) {
-      const x = Math.random() * 880;
-      const y = Math.random() * 520;
+      const x = Math.random() * CombateScene.ARENA_W;
+      const y = Math.random() * CombateScene.ARENA_H;
       g.beginPath();
       g.moveTo(x, y);
       g.lineTo(x + 30 + Math.random() * 70, y + (Math.random() - 0.5) * 40);
@@ -339,9 +344,9 @@ export class CombateScene extends Phaser.Scene {
     }
     // Orillas brillantes (biomas con energía)
     g.lineStyle(6, p.filo, 0.8);
-    g.strokeRect(3, 3, 874, 514);
+    g.strokeRect(3, 3, CombateScene.ARENA_W - 6, CombateScene.ARENA_H - 6);
     g.lineStyle(2, p.acento, 0.9);
-    g.strokeRect(10, 10, 860, 500);
+    g.strokeRect(10, 10, CombateScene.ARENA_W - 20, CombateScene.ARENA_H - 20);
   }
 
   private createTextures(): void {
@@ -508,7 +513,7 @@ export class CombateScene extends Phaser.Scene {
       ctx.fill();
       ctx.stroke();
       // cuerpo-saco púrpura/rojo
-      radial(ctx, c, c + 3, 6, c - 3, '#c1133a', '#550a1e');
+      radial(ctx, c, c + 3, 6, c - 3, '#c1133a', '#740a1e');
       ctx.beginPath();
       ctx.ellipse(c, c + 4, c - 6, c - 2, 0, 0, Math.PI * 2);
       ctx.fill();
@@ -612,7 +617,7 @@ export class CombateScene extends Phaser.Scene {
     const esJefe = horda === 9 || (this.evaluacionMode && (horda === 3 || horda === 6));
     const texto = esJefe ? '⚠ JEFE ⚠' : `HORDA ${horda}`;
     const sub = esJefe ? paletaPara(horda).nombre : paletaPara(horda).nombre;
-    this.avisoHorda = this.add.text(440, 150, texto, {
+    this.avisoHorda = this.add.text(CombateScene.ARENA_W / 2, 150, texto, {
       fontSize: esJefe ? '64px' : '44px',
       fontFamily: 'Inter, system-ui, sans-serif',
       fontStyle: 'bold',
@@ -621,7 +626,7 @@ export class CombateScene extends Phaser.Scene {
       strokeThickness: 8,
       align: 'center',
     }).setOrigin(0.5).setDepth(50).setAlpha(0);
-    const subT = this.add.text(440, 210, sub.toUpperCase(), {
+    const subT = this.add.text(CombateScene.ARENA_W / 2, 210, sub.toUpperCase(), {
       fontSize: '15px',
       fontFamily: 'Inter, system-ui, sans-serif',
       color: '#ffffff',
@@ -745,10 +750,10 @@ export class CombateScene extends Phaser.Scene {
     }
 
     // Limpieza de balas
-    this.bullets = this.bullets.filter((b) => b.active && b.x >= -30 && b.x <= 910 && b.y >= -30 && b.y <= 550);
+    this.bullets = this.bullets.filter((b) => b.active && b.x >= -30 && b.x <= CombateScene.ARENA_W + 30 && b.y >= -30 && b.y <= CombateScene.ARENA_H + 30);
 
     // Colisiones balas ↔ enemigos
-    const radioImpacto = this.bulletSize + 8;
+    const radioImpacto = this.bulletSize + 12;
     for (const b of this.bullets) {
       if (!b.active) continue;
       for (const e of this.enemies) {
@@ -861,8 +866,8 @@ export class CombateScene extends Phaser.Scene {
 
   private spawnEnemy(): void {
     const side = Math.floor(Math.random() * 4);
-    const x = side === 0 ? 0 : side === 1 ? 880 : Math.random() * 880;
-    const y = side === 2 ? 0 : side === 3 ? 520 : Math.random() * 520;
+    const x = side === 0 ? 0 : side === 1 ? CombateScene.ARENA_W : Math.random() * CombateScene.ARENA_W;
+    const y = side === 2 ? 0 : side === 3 ? CombateScene.ARENA_H : Math.random() * CombateScene.ARENA_H;
     const esHordaJefe = this.hordaActual === 9 || (this.evaluacionMode && (this.hordaActual === 3 || this.hordaActual === 6));
     this.spawnBossCounter++;
     if (esHordaJefe && this.spawnBossCounter % 4 === 1) {
@@ -870,7 +875,8 @@ export class CombateScene extends Phaser.Scene {
       const boss = this.physics.add.sprite(x, y, 'boss');
       (boss as unknown as { hp: number; hpMax: number }).hp = hpJefe;
       (boss as unknown as { hp: number; hpMax: number }).hpMax = hpJefe;
-      boss.setCircle(30);
+      boss.setCircle(40);
+      boss.setScale(1.55);
       boss.setDepth(20);
       this.enemies.push(boss);
       return;
@@ -878,7 +884,8 @@ export class CombateScene extends Phaser.Scene {
     if (esHordaJefe) {
       const e = this.physics.add.sprite(x, y, 'enemy_gold');
       (e as unknown as { hp: number }).hp = 4;
-      e.setCircle(13);
+      e.setCircle(18);
+      e.setScale(1.4);
       e.setDepth(20);
       this.enemies.push(e);
       return;
@@ -887,7 +894,8 @@ export class CombateScene extends Phaser.Scene {
     const keys = ['enemy_red', 'enemy_orange', 'enemy_gold'];
     const e = this.physics.add.sprite(x, y, keys[tier]);
     (e as unknown as { hp: number }).hp = tier === 0 ? 1 : tier === 1 ? 2 : 3;
-    e.setCircle(13);
+    e.setCircle(18);
+    e.setScale(1.35);
     e.setDepth(20);
     this.enemies.push(e);
   }
@@ -983,8 +991,8 @@ export class CombateScene extends Phaser.Scene {
     const max = target.hpMax ?? target.hp;
     if (max <= 0) { this.bossLabel?.setVisible(false); return; }
     const ratio = Math.max(0, Math.min(1, target.hp / max));
-    const w = 480;
-    const x = 440 - w / 2;
+    const w = 600;
+    const x = CombateScene.ARENA_W / 2 - w / 2;
     const y = 14;
     g.fillStyle(0x120710, 0.85);
     g.fillRect(x - 6, y - 6, w + 12, 22);

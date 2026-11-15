@@ -15,7 +15,9 @@ import { GUARDIANES } from './guardians-catalog';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, PageHeaderComponent, NgClass],
   template: `
-    <section class="space-y-4">
+    <section class="relative space-y-4 rounded-[1.5rem] border border-gold-500/10 bg-gradient-to-b from-surface-50 via-white to-surface-100 p-4 md:p-6">
+      <!-- glow decorativo (Brotato-esque) -->
+      <div class="pointer-events-none absolute -top-20 left-1/2 size-72 -translate-x-1/2 rounded-full bg-gold-400/10 blur-3xl"></div>
       <app-page-header
         [titulo]="elegido() ? ('Nivel ' + numero() + ' — Guardianes del Conocimiento') : 'Guardianes — Elige tu guardián'"
         [descripcion]="elegido()
@@ -65,7 +67,7 @@ import { GUARDIANES } from './guardians-catalog';
         </div>
       } @else {
 
-      <div class="grid gap-4 lg:grid-cols-12">
+      <div class="grid gap-5 lg:grid-cols-12">
         <div class="lg:col-span-4 order-2 lg:order-1 space-y-4">
           <!-- ─── HUD estilo Brotato ─── -->
           <div class="relative overflow-hidden rounded-2xl border-2 border-gold-500/70 bg-gradient-to-br from-marine-900 via-marine-800 to-marine-900 p-4 shadow-[0_0_40px_-10px_rgba(242,165,65,0.35)]">
@@ -112,10 +114,28 @@ import { GUARDIANES } from './guardians-catalog';
                 <p class="font-display text-3xl font-extrabold leading-none text-white tabular-nums">{{ tiempoFormateado() }}</p>
               </div>
             </div>
+            <!-- PODER: stats del guardián en columnas grandes (Brotato-style) -->
+            <div class="relative mt-4">
+              <p class="text-[0.6rem] font-extrabold uppercase tracking-[0.2em] text-marine-500 border-b border-gold-500/15 pb-1">Poder</p>
+              <div class="mt-2 grid grid-cols-3 gap-1.5">
+                <div class="rounded-lg border border-rose-900/40 bg-rose-950/30 p-1.5 text-center">
+                  <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-rose-300">ATK</p>
+                  <p class="mt-0.5 font-display text-lg font-extrabold text-white">{{ guardianActual()?.danoBase ?? 0 }}</p>
+                </div>
+                <div class="rounded-lg border border-emerald-900/40 bg-emerald-950/30 p-1.5 text-center">
+                  <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-emerald-300">VID</p>
+                  <p class="mt-0.5 font-display text-lg font-extrabold text-white">{{ saludMax() }}</p>
+                </div>
+                <div class="rounded-lg border border-sky-900/40 bg-sky-950/30 p-1.5 text-center">
+                  <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-sky-300">VEL</p>
+                  <p class="mt-0.5 font-display text-lg font-extrabold text-white">{{ 240 + (guardianActual()?.velocidadExtra ?? 0) }}</p>
+                </div>
+              </div>
+            </div>
             <!-- Guardián elegido -->
             @if (guardianActual()) {
-              <div class="relative mt-3 flex items-center gap-3 rounded-xl border border-gold-500/30 bg-black/40 p-2">
-                <img [src]="guardianActual()!.sprite" [alt]="guardianActual()!.nombre" class="size-14 object-contain" />
+              <div class="relative mt-3 flex items-center gap-3 rounded-xl border border-gold-500/40 bg-gold-500/5 p-2 ring-1 ring-gold-500/25">
+                <img [src]="guardianActual()!.sprite" [alt]="guardianActual()!.nombre" class="size-16 object-contain drop-shadow-[0_2px_0_rgba(0,0,0,0.6)]" />
                 <div class="min-w-0 flex-1">
                   <p class="text-[0.6rem] font-extrabold uppercase tracking-widest text-gold-400">{{ guardianActual()!.titulo }}</p>
                   <p class="truncate text-xs font-extrabold text-white">{{ guardianActual()!.nombre }} · {{ guardianActual()!.pasivaNombre }}</p>
@@ -124,21 +144,31 @@ import { GUARDIANES } from './guardians-catalog';
               </div>
             }
             <!-- Progreso de hordas: 9 nueves -->
-            <div class="relative mt-3 flex items-center justify-between gap-1 px-1">
-              @for (i of [1,2,3,4,5,6,7,8,9]; track i) {
-                <span class="aspect-square rounded-full border text-center text-[0.55rem] font-extrabold leading-[1.4]"
-                      [class.border-gold-400]="i <= hordaActual()" [class.bg-gold-500]="i <= hordaActual()" [class.text-marine-900]="i <= hordaActual()"
-                      [class.border-marine-700]="i > hordaActual()" [class.bg-marine-900]="i > hordaActual()" [class.text-marine-600]="i > hordaActual()">{{ i }}</span>
-              }
+            <div class="relative mt-3">
+              <div class="flex items-center justify-between border-b border-gold-500/15 pb-1">
+                <p class="text-[0.6rem] font-extrabold uppercase tracking-[0.2em] text-marine-500">Progreso · 18 Paso</p>
+                <p class="text-[0.6rem] font-extrabold tabular-nums text-gold-400">Nivel {{ hordaActual() }} / 9</p>
+              </div>
+              <div class="mt-2 flex items-center justify-between gap-1">
+                @for (i of [1,2,3,4,5,6,7,8,9]; track i) {
+                  <span class="flex size-7 items-center justify-center rounded-md border text-[0.55rem] font-extrabold transition-all duration-200"
+                        [class.border-gold-400]="i <= hordaActual()" [class.bg-gold-500]="i <= hordaActual()" [class.text-marine-900]="i <= hordaActual()" [class.shadow-[0_0_10px_rgba(242,165,65,0.5)]]="i <= hordaActual()"
+                        [class.border-marine-800]="i > hordaActual()" [class.bg-marine-900]="i > hordaActual()" [class.text-marine-700]="i > hordaActual()">{{ i }}</span>
+                }
+              </div>
             </div>
-            <div class="relative mt-3 rounded-lg border border-gold-500/15 bg-gold-500/5 p-2 text-[0.62rem] leading-snug text-marine-200">
-              <span class="font-bold text-gold-400">Apunta con el mouse</span> — el disparo sale hacia donde apuntas. La pantalla muestra sólo lo esencial: elimina, sobrevive, aprende.
+            <div class="relative mt-3 rounded-lg border border-gold-500/20 bg-gold-500/5 p-2.5 text-[0.7rem] leading-snug text-marine-100">
+              <div class="flex items-center gap-1.5">
+                <span class="grid size-5 place-items-center rounded border border-gold-500/40 bg-gold-500/15 text-[0.6rem] font-extrabold text-gold-400">?</span>
+                <span class="font-bold uppercase tracking-wider text-gold-400">Recordatorio</span>
+              </div>
+              <p class="mt-1">Apunta con el <strong>mouse</strong> — el disparo sale hacia donde apuntas. La pantalla solo muestra lo esencial: elimina, sobrevive, aprende.</p>
             </div>
           </div>
         </div>
 
         <div class="lg:col-span-8 order-1 lg:order-2 space-y-4">
-          <div id="juego-root" class="relative h-[62vh] min-h-[440px] w-full overflow-hidden rounded-2xl border-2 border-gold-500/40 bg-marine-900 shadow-[inset_0_0_80px_rgba(0,0,0,0.7),0_0_60px_-15px_rgba(242,165,65,0.25)]" aria-label="Área de juego. Combate top-down.">
+          <div id="juego-root" class="relative flex h-[82vh] min-h-[580px] w-full items-center justify-center overflow-hidden rounded-2xl border-4 border-gold-500/60 bg-marine-900 shadow-[inset_0_0_120px_rgba(0,0,0,0.75),0_0_80px_-15px_rgba(242,165,65,0.35)] [&_canvas]:max-h-full [&_canvas]:max-w-full [&_canvas]:[image-rendering:pixelated]" aria-label="Área de juego. Combate top-down.">
             <!-- Vignette cinematográfico del arena -->
             <div class="pointer-events-none absolute inset-0 z-[5]" style="background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.45) 100%)"></div>
             <!-- Overlay de bienvenida con controles (sólo al inicio) -->
@@ -513,7 +543,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
 
       this.game = new Phaser.Game({
         type: Phaser.AUTO, parent: host,
-        width: host.clientWidth || 880, height: host.clientHeight || 520,
+        width: CombateScene.ARENA_W, height: CombateScene.ARENA_H,
         backgroundColor: '#0f1a33',
         physics: { default: 'arcade', arcade: { gravity: { y: 0, x: 0 }, debug: false } },
         scene: [CombateScene],
