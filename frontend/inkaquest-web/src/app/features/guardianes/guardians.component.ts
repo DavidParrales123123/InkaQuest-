@@ -52,18 +52,18 @@ interface NivelItem {
               Campaña · Principios de Algoritmos
             </span>
 
-            <h1 class="mt-4 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">
+            <h1 class="mt-4 text-4xl font-extrabold leading-[1.06] tracking-tight text-white sm:text-5xl">
               Survive. Aprende.<br/>
               <span class="bg-gradient-to-r from-gold-300 via-gold-400 to-amber-500 bg-clip-text text-transparent">Protege el algoritmo.</span>
             </h1>
 
-            <p class="mt-4 max-w-xl text-sm leading-relaxed text-marine-100/90 sm:text-[0.95rem]">
+            <p class="mt-4 max-w-xl text-sm leading-relaxed text-marine-100 sm:text-[0.95rem]">
               Supervivencia por hordas exclusiva del curso Principios de Algoritmos. Fundamentos, condicionales y repetitivas:
               cada oleada que superes refuerza lo que estás aprendiendo en clase.
             </p>
 
             <!-- CTA — botones uniformes -->
-            <div class="mt-6 flex flex-wrap items-center gap-3">
+            <div class="mt-7 flex flex-wrap items-center gap-3">
               <a class="btn btn-gold btn-lg shadow-[0_6px_0_#b45309] hover:translate-y-[1px] hover:shadow-[0_4px_0_#b45309]" [routerLink]="['/estudiante/guardianes/nivel', primerDisponible() ?? 1]">
                 <svg viewBox="0 0 24 24" class="size-5" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.52.85l10.2-6.5a1 1 0 0 0 0-1.7L9.52 4.65A1 1 0 0 0 8 5.5z"/></svg>
                 Empezar partida · Nivel {{ primerDisponible() }}
@@ -75,20 +75,20 @@ interface NivelItem {
             </div>
 
             <!-- Meta chips -->
-            <dl class="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[0.72rem] font-bold uppercase tracking-wider text-marine-200/80">
+            <dl class="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[0.72rem] font-extrabold uppercase tracking-[0.14em] text-marine-100/90">
               <div class="flex items-center gap-2"><span class="size-1.5 rounded-full bg-gold-400"></span>18 niveles</div>
               <div class="flex items-center gap-2"><span class="size-1.5 rounded-full bg-brand-400"></span>162 hordas</div>
               <div class="flex items-center gap-2"><span class="size-1.5 rounded-full bg-emerald-400"></span>4 guardianes</div>
-              <div class="flex items-center gap-2"><span class="size-1.5 rounded-full bg-violet-400"></span>Checkeo académico</div>
+              <div class="flex items-center gap-2"><span class="size-1.5 rounded-full bg-violet-400"></span>Chequeo académico</div>
             </dl>
           </div>
 
           <!-- Columna derecha: escuadrón -->
           <div class="lg:col-span-5">
-            <div class="flex h-full flex-col rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm sm:p-5">
-              <div class="mb-3 flex items-center justify-between gap-2">
-                <h2 class="text-[0.7rem] font-extrabold uppercase tracking-[0.22em] text-marine-200/80">Tu escuadrón</h2>
-                <span class="rounded-full border border-brand-400/40 bg-brand-400/10 px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-brand-300">4 guardianes</span>
+            <div class="flex h-full flex-col rounded-2xl border border-white/15 bg-white/[0.06] p-4 backdrop-blur-sm sm:p-5">
+              <div class="mb-3 flex items-center justify-between gap-2 border-b border-white/10 pb-3">
+                <h2 class="text-[0.72rem] font-extrabold uppercase tracking-[0.22em] text-white">Tu escuadrón</h2>
+                <span class="rounded-full border border-gold-400/50 bg-gold-500/15 px-2.5 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-gold-300">4 guardianes</span>
               </div>
               <div class="grid flex-1 grid-cols-2 gap-2.5">
                 @for (g of guardianes; track g.id) {
@@ -138,14 +138,14 @@ interface NivelItem {
           <div class="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 class="text-lg font-extrabold text-marine-900">Campaña — 18 niveles</h2>
-              <p class="text-xs text-marine-500">Cada nivel corresponde a una lekctión del curso. Supera hordas, responde checkeos y completa la lección.</p>
+              <p class="text-xs text-marine-500">Cada nivel corresponde a una lección del curso. Supera hordas, responde chequeos y completa la lección.</p>
             </div>
             <div class="flex items-center gap-3">
               <div class="text-right">
                 <p class="text-xs font-extrabold uppercase tracking-wider text-marine-500">Progreso</p>
                 <p class="text-sm font-extrabold text-marine-800">{{ completados() }} / 18 completados</p>
               </div>
-              <div class="h-2.5 w-28 overflow-hidden rounded-full bg-surface-200 sm:w-36">
+              <div class="h-2.5 w-28 overflow-hidden rounded-full border border-surface-200 bg-surface-200 sm:w-36">
                 <div class="h-full rounded-full bg-gradient-to-r from-gold-400 to-amber-500 transition-all duration-500" [style.width.%]="progresoCampana()"></div>
               </div>
             </div>
@@ -195,16 +195,16 @@ interface NivelItem {
             <h3 class="text-sm font-extrabold uppercase tracking-[0.18em] text-marine-500">Cómo jugar</h3>
             <ol class="mt-3 space-y-2.5 text-sm text-marine-700">
               <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">1</span>Elige tu guardián y supera las hordas de la lección.</li>
-              <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">2</span>Acierta el checkeo académico entre oleadas para ganar XP y monedas.</li>
+              <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">2</span>Acierta el chequeo académico entre oleadas para ganar XP y monedas.</li>
               <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">3</span>Completa la lección en el aula para desbloquear el siguiente nivel.</li>
             </ol>
           </div>
 
           <!-- Curso -->
-          <div class="rounded-2xl border border-marine-800 bg-marine-950 p-4 text-white">
-            <p class="text-[0.62rem] font-extrabold uppercase tracking-[0.22em] text-marine-300">Curso vinculado</p>
+          <div class="rounded-2xl border border-marine-800 bg-marine-950 p-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <p class="text-[0.62rem] font-extrabold uppercase tracking-[0.22em] text-gold-400">Curso vinculado</p>
             <p class="mt-1 font-extrabold leading-snug">Principios de Algoritmos</p>
-            <p class="mt-0.5 text-xs text-marine-300">InkaQuest · Edición 2026</p>
+            <p class="mt-0.5 text-xs text-marine-200">InkaQuest · Edición 2026</p>
           </div>
         </aside>
       </div>
