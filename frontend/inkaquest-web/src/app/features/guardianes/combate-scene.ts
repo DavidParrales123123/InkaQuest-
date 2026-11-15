@@ -115,6 +115,8 @@ export class CombateScene extends Phaser.Scene {
   private pisoGfx?: Phaser.GameObjects.Graphics;
   private aimX = 440;
   private aimY = 160;
+  private playerShadow?: Phaser.GameObjects.Image;
+  private mirarIzquierda = false;
 
   // ─── Personaje/guardián elegido ───
   guardian?: GuardianConfig;
@@ -173,6 +175,8 @@ export class CombateScene extends Phaser.Scene {
     this.player.setCollideWorldBounds(true);
     this.physics.world.setBounds(0, 0, 880, 520);
     this.aplicarGuardian(chosen);
+    // Sombra suave bajo el personaje para que no "flote" sobre el arena
+    this.playerShadow = this.add.image(this.player.x, this.player.y + 10, 'player_shadow').setScale(1.3, 0.6).setAlpha(0.55).setDepth(4);
 
     // Animación de marcha de Rambo
     if ((this.anims as unknown as { exists: (k: string) => boolean }).exists('rambo_walk')) {
@@ -441,6 +445,15 @@ export class CombateScene extends Phaser.Scene {
     });
 
     // ─── Proyectiles: energía pura ───
+    make('player_shadow', 80, (ctx, s) => {
+      const c = s / 2;
+      const g = ctx.createRadialGradient(c, c, 2, c, c, c - 2);
+      g.addColorStop(0, 'rgba(0,0,0,0.55)');
+      g.addColorStop(0.7, 'rgba(0,0,0,0.18)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, s, s);
+    });
     make('bullet_white', 14, (ctx, s) => {
       const c = s / 2;
       radial(ctx, c, c, 1, c, '#ffffff', 'rgba(255,255,255,0)');
@@ -549,6 +562,16 @@ export class CombateScene extends Phaser.Scene {
     if (isDown(KEY_W) || isDown(UP)) vy = -this.vel;
     else if (isDown(KEY_S) || isDown(DOWN)) vy = this.vel;
     this.player.setVelocity(vx, vy);
+
+    // ─── Mirada lateral: el personaje mira hacia donde apunta (flip-X) ───
+    const mirarIzquierda = this.aimX < this.player.x;
+    if (mirarIzquierda !== this.mirarIzquierda) {
+      this.mirarIzquierda = mirarIzquierda;
+      (this.player as unknown as Phaser.GameObjects.Image).setFlipX(mirarIzquierda);
+    }
+    if (this.playerShadow) {
+      this.playerShadow.setPosition(this.player.x, this.player.y + 10);
+    }
 
     // Animación de movimiento:
     //  - Rambo reproduce su ciclo de 6 frames mientras se mueve.
