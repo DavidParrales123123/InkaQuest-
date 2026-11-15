@@ -878,6 +878,7 @@ export class CombateScene extends Phaser.Scene {
       boss.setCircle(40);
       boss.setScale(1.55);
       boss.setDepth(20);
+      boss.setCollideWorldBounds(true, 0, 0, false);
       this.enemies.push(boss);
       return;
     }
@@ -887,6 +888,7 @@ export class CombateScene extends Phaser.Scene {
       e.setCircle(18);
       e.setScale(1.4);
       e.setDepth(20);
+      e.setCollideWorldBounds(true, 0, 0, false);
       this.enemies.push(e);
       return;
     }
@@ -897,6 +899,7 @@ export class CombateScene extends Phaser.Scene {
     e.setCircle(18);
     e.setScale(1.35);
     e.setDepth(20);
+    e.setCollideWorldBounds(true, 0, 0, false);
     this.enemies.push(e);
   }
 
