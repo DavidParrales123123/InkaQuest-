@@ -641,7 +641,19 @@ export class CombateScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number): void {
-    if (!this.player || this.pickingUpgrade || this.gameEnded) return;
+    if (!this.player || this.pickingUpgrade || this.gameEnded) {
+      // Overlays (mejora / chequeo académico): congelar al jugador y a los
+      // enemigos en su sitio — nada debe desplazarse hasta las paredes.
+      if (this.player?.active && this.player.body) {
+        this.player.setVelocity(0, 0);
+        (this.player as unknown as Phaser.Physics.Arcade.Sprite).anims?.stop();
+        this.player.setRotation(0);
+      }
+      for (const e of this.enemies) {
+        if (e?.active && e.body) e.setVelocity(0, 0);
+      }
+      return;
+    }
 
     const ptr = this.input.activePointer;
     if (ptr) {
@@ -1041,6 +1053,9 @@ export class CombateScene extends Phaser.Scene {
       return;
     }
     this.startHorda(this.hordaActual + 1);
+    // Defensivo: al retomar, los cuerpos arrancan en reposo
+    if (this.player?.active && this.player.body) this.player.setVelocity(0, 0);
+    for (const e of this.enemies) if (e?.active && e.body) e.setVelocity(0, 0);
     this.pickingUpgrade = false;
   }
 

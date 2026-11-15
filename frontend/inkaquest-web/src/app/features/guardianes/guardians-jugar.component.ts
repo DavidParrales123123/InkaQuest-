@@ -215,30 +215,36 @@ import { GUARDIANES } from './guardians-catalog';
                 }
                 <!-- Overlay de chequeo académico entre hordas -->
                 @if (preguntaActual(); as p) {
-                  <div class="absolute inset-0 z-30 flex items-center justify-center bg-marine-900/80 p-3 backdrop-blur-sm">
-                    <div class="w-full max-w-xl space-y-3 rounded-2xl border border-brand-400/50 bg-gradient-to-br from-marine-800 to-marine-950 p-4 text-white">
+                  <div class="absolute inset-0 z-30 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm">
+                    <div class="w-full max-w-xl space-y-3 rounded-2xl border-2 border-gold-500/50 bg-gradient-to-br from-marine-900 via-marine-950 to-black p-5 text-white shadow-[0_24px_60px_-15px_rgba(0,0,0,0.85)]">
                       <div class="flex items-start justify-between gap-3">
                         <div>
-                          <p class="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-brand-400">Chequeo académico · Horda {{ hordaActual() }}</p>
-                          <h3 class="mt-1 text-base font-extrabold leading-snug">{{ p.enunciado }}</h3>
-                          @if (p.tema) { <p class="mt-1 text-[0.6rem] uppercase tracking-widest text-marine-400">{{ p.tema }} · {{ p.dificultad }}</p> }
+                          <span class="inline-flex items-center gap-1.5 rounded-full border border-gold-500/50 bg-gold-500/15 px-3 py-1 text-[0.65rem] font-extrabold uppercase tracking-[0.2em] text-gold-300">
+                            <svg viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="M6 10v5c0 1.1 2.7 2.5 6 2.5s6-1.4 6-2.5v-5"/></svg>
+                            Chequeo académico · Horda {{ hordaActual() }}
+                          </span>
+                          <h3 class="mt-2 text-lg font-extrabold leading-snug tracking-tight text-white">{{ p.enunciado }}</h3>
+                          @if (p.tema) { <p class="mt-1 text-[0.62rem] font-bold uppercase tracking-[0.18em] text-marine-300">{{ p.tema }} · {{ p.dificultad }}</p> }
                         </div>
-                        @if (!respuestaResultado()) { <button type="button" class="shrink-0 text-[0.6rem] font-bold uppercase tracking-widest text-marine-400 underline hover:text-marine-200" (click)="omitirChequeo()">Omitir</button> }
+                        @if (!respuestaResultado()) { <button type="button" class="shrink-0 text-[0.62rem] font-bold uppercase tracking-widest text-marine-300 underline underline-offset-2 transition-colors hover:text-white" (click)="omitirChequeo()">Omitir</button> }
                       </div>
                       <div class="grid gap-2">
-                        @for (op of p.opciones; track op) {
-                          <button type="button" [ngClass]="claseOpcion(op)" (click)="elegirOpcion(op)">{{ op }}</button>
+                        @for (op of p.opciones; track op; let i = $index) {
+                          <button type="button" [ngClass]="claseOpcion(op)" (click)="elegirOpcion(op)">
+                            <span class="mr-2 inline-grid size-6 shrink-0 place-items-center rounded-md border border-white/15 bg-white/5 text-[0.7rem] font-extrabold text-gold-300">{{ ['A','B','C','D'][i] }}</span>
+                            {{ op }}
+                          </button>
                         }
                       </div>
                       @if (respuestaResultado(); as r) {
-                        <div class="rounded-xl border border-emerald-400/40 bg-emerald-400/10 p-3 text-sm">
-                          <p class="font-extrabold text-emerald-300">{{ r.esCorrecta ? '¡Correcto! +' + r.xp + ' XP' : 'Respuesta incorrecta' }}</p>
-                          @if (!r.esCorrecta && r.correcta) { <p class="mt-1 text-marine-100">Respuesta: <strong>{{ r.correcta }}</strong></p> }
-                          @if (r.explicacion) { <p class="mt-1 text-[0.75rem] text-marine-200">{{ r.explicacion }}</p> }
+                        <div class="rounded-xl border p-3 text-sm" [ngClass]="r.esCorrecta ? 'border-emerald-400/40 bg-emerald-400/10' : 'border-rose-400/40 bg-rose-400/10'">
+                          <p class="font-extrabold" [ngClass]="r.esCorrecta ? 'text-emerald-300' : 'text-rose-300'">{{ r.esCorrecta ? '¡Correcto! +' + r.xp + ' XP · +' + r.monedas + ' monedas' : 'Respuesta incorrecta' }}</p>
+                          @if (!r.esCorrecta && r.correcta) { <p class="mt-1 text-marine-100">Respuesta correcta: <strong class="text-emerald-300">{{ r.correcta }}</strong></p> }
+                          @if (r.explicacion) { <p class="mt-1 text-[0.8rem] leading-snug text-marine-200">{{ r.explicacion }}</p> }
                         </div>
                         <button type="button" class="btn btn-gold w-full justify-center" (click)="continuarTrasChequeo()">Continuar →</button>
                       } @else {
-                        <button type="button" class="btn btn-primary w-full justify-center disabled:opacity-40" [disabled]="!respuestaElegida()" (click)="confirmarRespuesta()">Comprobar respuesta</button>
+                        <button type="button" class="btn btn-gold w-full justify-center text-marine-900 disabled:opacity-40" [disabled]="!respuestaElegida()" (click)="confirmarRespuesta()">Comprobar respuesta</button>
                       }
                     </div>
                   </div>
@@ -480,17 +486,17 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   }
 
   protected claseOpcion(op: string): string {
-    const base = 'rounded-xl border px-3 py-2 text-left text-sm transition ';
+    const base = 'flex items-center rounded-xl border px-3 py-2.5 text-left text-sm font-semibold leading-snug transition ';
     const r = this.respuestaResultado();
     const sel = this.respuestaElegida();
     if (!r) {
       return base + (sel === op
-        ? 'border-brand-400 bg-brand-400/15 text-white'
-        : 'border-gold-400/25 bg-marine-900/80 text-marine-100 hover:border-brand-400 hover:text-white');
+        ? 'border-gold-400/80 bg-gold-500/15 text-gold-200 shadow-[0_0_0_1px_#f2a54166]'
+        : 'border-white/10 bg-white/[0.04] text-marine-100 hover:border-gold-400/50 hover:bg-white/[0.07] hover:text-white');
     }
     if (op === r.correcta) return base + 'border-emerald-400/60 bg-emerald-400/15 text-emerald-200';
     if (sel === op) return base + 'border-rose-400/60 bg-rose-400/15 text-rose-200';
-    return base + 'border-gold-400/10 bg-marine-900/60 text-marine-500';
+    return base + 'border-white/5 bg-white/[0.02] text-marine-500';
   }
 
   private limpiar(): void {
