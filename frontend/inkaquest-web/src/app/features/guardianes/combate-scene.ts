@@ -184,6 +184,8 @@ export class CombateScene extends Phaser.Scene {
       this.load.image('sasuke_atk_' + i, `assets/guardianes/walk/sasuke_atk_${i}.png`);
       this.load.image('natalia_walk_' + i, `assets/guardianes/walk/natalia_walk_${i}.png`);
       this.load.image('natalia_atk_' + i, `assets/guardianes/walk/natalia_atk_${i}.png`);
+      this.load.image('scythe_walk_' + i, `assets/guardianes/walk/scythe_walk_${i}.png`);
+      this.load.image('scythe_atk_' + i, `assets/guardianes/walk/scythe_atk_${i}.png`);
     }
   }
 
@@ -253,6 +255,22 @@ export class CombateScene extends Phaser.Scene {
       anims.create({
         key: 'natalia_atk',
         frames: [0, 1].map((i) => ({ key: 'natalia_atk_' + i })),
+        frameRate: 10,
+        repeat: 0,
+      });
+    }
+    if (this.textures.exists('scythe_walk_0') && !anims.exists('scythe_walk')) {
+      anims.create({
+        key: 'scythe_walk',
+        frames: [0, 1, 2].map((i) => ({ key: 'scythe_walk_' + i })),
+        frameRate: 8,
+        repeat: -1,
+      });
+    }
+    if (this.textures.exists('scythe_atk_0') && !anims.exists('scythe_atk')) {
+      anims.create({
+        key: 'scythe_atk',
+        frames: [0, 1].map((i) => ({ key: 'scythe_atk_' + i })),
         frameRate: 10,
         repeat: 0,
       });
@@ -650,6 +668,7 @@ export class CombateScene extends Phaser.Scene {
     const esRambo = this.guardian?.id === 'rambo';
     const esSasuke = this.guardian?.id === 'sasuke';
     const esNatalia = this.guardian?.id === 'natalia';
+    const esScythe = this.guardian?.id === 'scythe';
     if (moving && playerSprite.anims) {
       if (esSasuke && ahora >= this.sasukeAttackUntil) {
         playerSprite.anims.play('sasuke_walk', true);
@@ -657,7 +676,9 @@ export class CombateScene extends Phaser.Scene {
         playerSprite.anims.play('rambo_walk', true);
       } else if (esNatalia && ahora >= this.sasukeAttackUntil) {
         playerSprite.anims.play('natalia_walk', true);
-      } else if (!esSasuke && !esNatalia) {
+      } else if (esScythe && ahora >= this.sasukeAttackUntil) {
+        playerSprite.anims.play('scythe_walk', true);
+      } else if (!esSasuke && !esNatalia && !esScythe) {
         const pulso = Math.sin(ahora / 140);
         const base = 0.85;
         const ataque = this.attackPulse > 0 ? 1 + Math.sin(this.attackPulse * Math.PI) * 0.22 : 1;
@@ -665,7 +686,7 @@ export class CombateScene extends Phaser.Scene {
         this.player.setRotation(Math.sin(ahora / 200) * 0.035);
       }
     } else if (playerSprite.anims) {
-      if ((esSasuke && ahora >= this.sasukeAttackUntil) || esNatalia || esRambo) {
+      if ((esSasuke && ahora >= this.sasukeAttackUntil) || esNatalia || esScythe || esRambo) {
         playerSprite.anims.stop();
       }
       this.player.setRotation(0);
@@ -710,9 +731,9 @@ export class CombateScene extends Phaser.Scene {
         this.fireTimer = 0;
         this.attackPulse = 1;
         this.spawnSlash();
-        // Sasuke y Natalia: animación de corte activo (no loop) por un instante
-        if ((this.guardian?.id === 'sasuke' || this.guardian?.id === 'natalia') && playerSprite.anims) {
-          const key = this.guardian?.id === 'sasuke' ? 'sasuke_atk' : 'natalia_atk';
+        // Sasuke, Natalia y Scythe: animación de corte activo (no loop) por un instante
+        if ((this.guardian?.id === 'sasuke' || this.guardian?.id === 'natalia' || this.guardian?.id === 'scythe') && playerSprite.anims) {
+          const key = this.guardian?.id === 'sasuke' ? 'sasuke_atk' : this.guardian?.id === 'natalia' ? 'natalia_atk' : 'scythe_atk';
           playerSprite.anims.play(key, true);
           this.sasukeAttackUntil = this.time.now + 260;
         }
