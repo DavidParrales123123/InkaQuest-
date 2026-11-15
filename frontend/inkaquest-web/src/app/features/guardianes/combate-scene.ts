@@ -183,10 +183,18 @@ export class CombateScene extends Phaser.Scene {
       this.load.image('sasuke_walk_' + i, `assets/guardianes/walk/sasuke_walk_${i}.png`);
       this.load.image('sasuke_atk_' + i, `assets/guardianes/walk/sasuke_atk_${i}.png`);
       this.load.image('natalia_walk_' + i, `assets/guardianes/walk/natalia_walk_${i}.png`);
-      this.load.image('natalia_atk_' + i, `assets/guardianes/walk/natalia_atk_${i}.png`);
       this.load.image('scythe_walk_' + i, `assets/guardianes/walk/scythe_walk_${i}.png`);
-      this.load.image('scythe_atk_' + i, `assets/guardianes/walk/scythe_atk_${i}.png`);
     }
+    // natalia_atk y scythe_atk tienen 2 frames cada uno — no cargar un fantasma
+    this.load.image('natalia_atk_0', 'assets/guardianes/walk/natalia_atk_0.png');
+    this.load.image('natalia_atk_1', 'assets/guardianes/walk/natalia_atk_1.png');
+    this.load.image('scythe_atk_0', 'assets/guardianes/walk/scythe_atk_0.png');
+    this.load.image('scythe_atk_1', 'assets/guardianes/walk/scythe_atk_1.png');
+    // Si algo falla, lo mostramos en consola para depurar
+    this.load.once('loaderror', (file: { key?: string }) => {
+      // eslint-disable-next-line no-console
+      console.error('[guardianes] asset falló en carga:', file?.key);
+    }, this);
   }
 
   create(): void {
