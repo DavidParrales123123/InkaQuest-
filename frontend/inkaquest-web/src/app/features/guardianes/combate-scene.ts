@@ -723,6 +723,9 @@ export class CombateScene extends Phaser.Scene {
     // Animación de movimiento:
     //  - Rambo y Maga (rango): ciclo de walk de 6 frames.
     //  - Sasuke y La Herencia (haz): ciclo de walk de 3 frames.
+    // WTR: el walk SIEMPRE manda cuando te mueves — congelar la pose de
+    // ataque hacía que el personaje se deslizara sin animar los pies.
+    // El golpe sigue viéndose por el arco/destello del arma.
     const moving = vx !== 0 || vy !== 0;
     const ahora = this.time.now;
     const playerSprite = this.player as unknown as Phaser.Physics.Arcade.Sprite;
@@ -731,15 +734,8 @@ export class CombateScene extends Phaser.Scene {
     const esSasuke = this.guardian?.id === 'sasuke';
     const esScythe = this.guardian?.id === 'scythe';
     if (moving && playerSprite.anims) {
-      if (esSasuke && ahora >= this.attackLungeUntil) {
-        playerSprite.anims.play('sasuke_walk', true);
-      } else if (esMaga && ahora >= this.attackLungeUntil) {
-        playerSprite.anims.play('maga_walk', true);
-      } else if (esScythe && ahora >= this.attackLungeUntil) {
-        playerSprite.anims.play('scythe_walk', true);
-      } else if (esRambo) {
-        playerSprite.anims.play('rambo_walk', true);
-      }
+      const walkKey = esSasuke ? 'sasuke_walk' : esMaga ? 'maga_walk' : esScythe ? 'scythe_walk' : esRambo ? 'rambo_walk' : null;
+      if (walkKey) playerSprite.anims.play(walkKey, true);
     } else if (playerSprite.anims) {
       if (esMaga) {
         // Idle sutil: respiración + vaivén de la vara (manita)
