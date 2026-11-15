@@ -214,7 +214,7 @@ export class CombateScene extends Phaser.Scene {
     this.bulletSpeedMult = g.id === 'rambo' ? 1.35 : 1;
     if (g.id === 'pistola') this.bulletSize = Math.ceil(this.bulletSize * 1.5); // Plomo de Otro Mundo
     this.healOnKill = g.id === 'scythe' ? 4 : 0;
-    this.explosionCadaCuatro = g.id === 'hacha';
+    this.explosionCadaCuatro = g.id === 'natalia';
     this.emitHud?.();
   }
 

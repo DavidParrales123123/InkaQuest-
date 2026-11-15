@@ -56,6 +56,21 @@ export const GUARDIANES: readonly GuardianConfig[] = [
     rareza: 'heroe',
   },
   {
+    id: 'natalia',
+    nombre: 'Natalia',
+    titulo: 'Hacha Esmeralda',
+    descripcion: 'Matona del hacha. Daño brutal y ganancia dramática cada cuatro tajos.',
+    ataque: 'haz',
+    sprite: 'assets/guardianes/natalia.png',
+    danoBase: 4,
+    vidaExtra: 25,
+    velocidadExtra: 0,
+    intervaloAtaque: 340,
+    pasivaNombre: 'Golpe sísmico',
+    pasivaDescripcion: 'Cada 4º ataque: estallido que daña a todos los cercanos.',
+    rareza: 'heroe',
+  },
+  {
     id: 'scythe',
     nombre: 'La Herencia',
     titulo: 'Heredera de la Guadaña',
@@ -76,5 +91,5 @@ export const GUARDIAN_POR_DEFECTO = 'rambo';
 
 /** Etiqueta legible del tipo de ataque. */
 export function nombreArma(g: GuardianConfig): string {
-  return g.ataque === 'rango' ? 'Rango · Gatillo' : 'Haz · Corte cuerpo a cuerpo';
+  return g.ataque === 'rango' ? 'Rango · Rifle/Gatillo' : 'Haz · Cuerpo a cuerpo';
 }
