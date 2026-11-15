@@ -192,6 +192,10 @@ export class CombateScene extends Phaser.Scene {
     // Maga castillo: 2-frame IDLE posing (sin saltar)
     this.load.image('maga_atk_0', 'assets/guardianes/walk/maga_atk_0.png');
     this.load.image('maga_atk_1', 'assets/guardianes/walk/maga_atk_1.png');
+    // Maga idle sutil: respiración + vaivén de la vara/gema (manita)
+    for (let i = 0; i <= 2; i++) {
+      this.load.image('maga_idle_' + i, `assets/guardianes/walk/maga_idle_${i}.png`);
+    }
     this.load.image('scythe_atk_0', 'assets/guardianes/walk/scythe_atk_0.png');
     this.load.image('scythe_atk_1', 'assets/guardianes/walk/scythe_atk_1.png');
     // Si algo falla, lo mostramos en consola para depurar
@@ -270,6 +274,15 @@ export class CombateScene extends Phaser.Scene {
         frames: [0, 1].map((i) => ({ key: 'maga_atk_' + i })),
         frameRate: 11,
         repeat: 0,
+      });
+    }
+    if (this.textures.exists('maga_idle_0') && !anims.exists('maga_idle')) {
+      anims.create({
+        key: 'maga_idle',
+        // 0 → 1 → 2 (gema cargada) → 1: respiración y balanceo de la vara.
+        frames: [0, 1, 2, 1].map((i) => ({ key: 'maga_idle_' + i })),
+        frameRate: 3.5,
+        repeat: -1,
       });
     }
     if (this.textures.exists('scythe_walk_0') && !anims.exists('scythe_walk')) {
@@ -646,7 +659,13 @@ export class CombateScene extends Phaser.Scene {
       // enemigos en su sitio — nada debe desplazarse hasta las paredes.
       if (this.player?.active && this.player.body) {
         this.player.setVelocity(0, 0);
-        (this.player as unknown as Phaser.Physics.Arcade.Sprite).anims?.stop();
+        const ps = this.player as unknown as Phaser.Physics.Arcade.Sprite;
+        if (this.guardian?.id === 'maga' && ps.anims) {
+          // Quieta, pero "viva": respiración sutil en lugar de pose congelada
+          ps.anims.play('maga_idle', true);
+        } else {
+          ps.anims?.stop();
+        }
         this.player.setRotation(0);
       }
       for (const e of this.enemies) {
@@ -712,7 +731,10 @@ export class CombateScene extends Phaser.Scene {
         playerSprite.anims.play('rambo_walk', true);
       }
     } else if (playerSprite.anims) {
-      if ((esSasuke && ahora >= this.attackLungeUntil) || esMaga || esScythe || esRambo) {
+      if (esMaga) {
+        // Idle sutil: respiración + vaivén de la vara (manita)
+        playerSprite.anims.play('maga_idle', true);
+      } else if ((esSasuke && ahora >= this.attackLungeUntil) || esScythe || esRambo) {
         playerSprite.anims.stop();
       }
       this.player.setRotation(0);
