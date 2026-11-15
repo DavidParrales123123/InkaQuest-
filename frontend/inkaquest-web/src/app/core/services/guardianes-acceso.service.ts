@@ -49,6 +49,12 @@ export class GuardianesAccesoService {
   }
 
   private async cargar(): Promise<[boolean, boolean]> {
+    // 1) Esperar a que la sesión inicial termine de resolver (evita la carrera
+    //    con _usuario === null durante el arranque de la app).
+    const inicio = Date.now();
+    while (this.auth.cargando() && Date.now() - inicio < 10000) {
+      await new Promise<void>((r) => setTimeout(r, 100));
+    }
     const usuario = this.auth.usuario();
     if (!usuario) {
       this.accesoEstudiante.set('denegado');
