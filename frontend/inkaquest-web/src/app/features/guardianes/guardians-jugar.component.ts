@@ -74,9 +74,9 @@ import { GUARDIANES } from './guardians-catalog';
             </div>
             <div class="flex items-center gap-1.5">
               @if (enPausa()) { <button type="button" class="btn btn-gold btn-sm" (click)="reanudar()">Reanudar</button> }
-              @else if (fase() === 'jugando') { <button type="button" class="btn btn-outline-light btn-sm" (click)="pausar()">Pausa</button> }
-              <a routerLink="/estudiante/guardianes" class="grid size-9 place-items-center rounded-lg bg-white/5 text-marine-100 hover:bg-white/10" aria-label="Abandonar nivel">
-                <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              @else if (fase() === 'jugando') { <button type="button" class="btn btn-gold btn-sm" (click)="pausar()">Pausa</button> }
+              <a routerLink="/estudiante/guardianes" class="inline-flex size-9 items-center justify-center rounded-lg border border-danger-600/40 bg-danger-600/80 text-white shadow-[0_2px_0_#6d0017] hover:bg-danger-600" aria-label="Abandonar nivel">
+                <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
               </a>
             </div>
           </header>

@@ -189,9 +189,9 @@ export class CombateScene extends Phaser.Scene {
       this.load.image('sasuke_atk_' + i, `assets/guardianes/walk/sasuke_atk_${i}.png`);
       this.load.image('scythe_walk_' + i, `assets/guardianes/walk/scythe_walk_${i}.png`);
     }
-    for (let i = 0; i <= 3; i++) {
-      this.load.image('maga_atk_' + i, `assets/guardianes/walk/maga_atk_${i}.png`);
-    }
+    // Maga castillo: 2-frame IDLE posing (sin saltar)
+    this.load.image('maga_atk_0', 'assets/guardianes/walk/maga_atk_0.png');
+    this.load.image('maga_atk_1', 'assets/guardianes/walk/maga_atk_1.png');
     this.load.image('scythe_atk_0', 'assets/guardianes/walk/scythe_atk_0.png');
     this.load.image('scythe_atk_1', 'assets/guardianes/walk/scythe_atk_1.png');
     // Si algo falla, lo mostramos en consola para depurar
@@ -267,7 +267,7 @@ export class CombateScene extends Phaser.Scene {
     if (this.textures.exists('maga_atk_0') && !anims.exists('maga_atk')) {
       anims.create({
         key: 'maga_atk',
-        frames: [0, 1, 2, 3].map((i) => ({ key: 'maga_atk_' + i })),
+        frames: [0, 1].map((i) => ({ key: 'maga_atk_' + i })),
         frameRate: 11,
         repeat: 0,
       });
