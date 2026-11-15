@@ -81,6 +81,8 @@
 
 @layer base {
   html { scroll-behavior: smooth; }
+  /* Evita scroll horizontal accidental por desbordes de página completa */
+  html, body { overflow-x: clip; }
   body {
     @apply bg-[#f6f8f5] font-sans text-marine-700 antialiased;
     min-height: 100vh;

@@ -36,7 +36,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       </div>
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="filtrados().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>XP</th><th>Creado</th><th>Acciones</th></tr></thead>
             <tbody>
               @for (u of filtrados(); track u.id) {
@@ -79,7 +79,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
       <p class="text-xs text-marine-400">Suspender una cuenta bloquea su acceso (la confirmación es de doble clic). Los administradores y tu propia cuenta no se pueden modificar desde aquí. Cambios de rol, y otros cambios sensibles, pueden requerir validación adicional en backend/RLS.</p>

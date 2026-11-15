@@ -19,7 +19,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       </app-page-header>
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="certificados().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Código</th><th>Estado</th><th>Emitido</th><th>Expira</th><th>Verificado</th></tr></thead>
             <tbody>
               @for (c of certificados(); track c.id) {
@@ -32,7 +32,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
       <p class="text-xs text-marine-400">Listado sujeto a permisos/RLS. Asociación de titular/curso y acciones de emisión/revocación requieren integración adicional autorizada.</p>

@@ -90,7 +90,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
         (alReintentar)="cargar()"
       >
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead>
               <tr>
                 <th scope="col">Asunto</th>
@@ -111,7 +111,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
     </section>

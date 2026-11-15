@@ -55,7 +55,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="filtradas().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Estudiante</th><th>Curso</th><th>Estado</th><th>Progreso</th><th>XP ganado</th><th>Creado</th></tr></thead>
             <tbody>
               @for (m of filtradas(); track m.id) {
@@ -69,7 +69,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
       <p class="text-xs text-marine-400">Listado sujeto a permisos/RLS de administrador. Acciones de cambio de estado/activación deben pasar por backend autorizado.</p>

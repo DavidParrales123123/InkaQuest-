@@ -39,7 +39,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="eventos().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Evento</th><th>Inicio</th><th>Fin</th><th>Activo</th><th>Acciones</th></tr></thead>
             <tbody>
               @for (e of eventos(); track e.id) {
@@ -52,7 +52,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
     </section>

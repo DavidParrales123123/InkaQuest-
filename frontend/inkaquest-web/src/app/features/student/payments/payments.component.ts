@@ -71,7 +71,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
               <p class="mt-5 text-sm text-marine-500">No tienes pedidos registrados.</p>
             } @else {
               <div class="mt-5 table-wrap">
-                <table class="table">
+                <div class="overflow-x-auto"><table class="table">
                   <thead><tr><th>Número</th><th>Estado</th><th>Total</th><th>Fecha</th></tr></thead>
                   <tbody>
                     @for (p of pedidos(); track p.id) {
@@ -83,7 +83,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                       </tr>
                     }
                   </tbody>
-                </table>
+                </table></div>
               </div>
             }
           </div>
@@ -94,7 +94,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
               <p class="mt-5 text-sm text-marine-500">No hay transacciones.</p>
             } @else {
               <div class="mt-5 table-wrap">
-                <table class="table">
+                <div class="overflow-x-auto"><table class="table">
                   <thead><tr><th>Referencia</th><th>Estado</th><th>Monto</th><th>Fecha</th></tr></thead>
                   <tbody>
                     @for (t of transacciones(); track t.id) {
@@ -106,7 +106,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                       </tr>
                     }
                   </tbody>
-                </table>
+                </table></div>
               </div>
             }
           </div>

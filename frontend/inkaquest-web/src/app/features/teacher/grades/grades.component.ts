@@ -35,7 +35,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="calificaciones().length === 0" tituloVacio="Sin calificaciones visibles" descripcionVacia="Aún no hay calificaciones registradas o no tienes permisos. Califica desde Entregas." (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead>
               <tr><th>Fecha</th><th>Estudiante</th><th>Nota</th><th>Estado</th><th>Comentario</th></tr>
             </thead>
@@ -50,7 +50,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
 

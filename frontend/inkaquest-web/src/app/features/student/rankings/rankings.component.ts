@@ -34,7 +34,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
         (alReintentar)="cargarRanking()"
       >
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>#</th><th>Usuario</th><th>Puntos</th></tr></thead>
             <tbody>
               @for (r of ranking(); track r.id; let i = $index) {
@@ -47,7 +47,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
           <p class="mt-3 text-xs text-marine-400">Por privacidad/RLS no se exponen nombres de otros usuarios; solo se resalta tu propia posicion cuando aplica.</p>
         </div>
       </app-data-panel>

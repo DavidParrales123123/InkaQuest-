@@ -18,7 +18,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
       </app-page-header>
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="cupones().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Código</th><th>Tipo</th><th>Valor</th><th>Usos</th><th>Vigencia</th><th>Activo</th></tr></thead>
             <tbody>
               @for (c of cupones(); track c.id) {
@@ -32,7 +32,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
       <p class="text-xs text-marine-400">La creación/edición de cupones y su aplicación en checkout se gestionan mediante backend y reglas de negocio.</p>

@@ -16,7 +16,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       <app-page-header titulo="Soporte" descripcion="Tickets de soporte registrados en la plataforma." />
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="tickets().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Asunto</th><th>Categoría</th><th>Prioridad</th><th>Estado</th><th>Creado</th></tr></thead>
             <tbody>
               @for (t of tickets(); track t.id) {
@@ -29,7 +29,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
       <p class="text-xs text-marine-400">La asignación, respuestas internas y flujos avanzados de atención pueden requerir permisos/acciones adicionales de backend.</p>

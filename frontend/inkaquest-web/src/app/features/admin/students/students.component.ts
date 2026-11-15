@@ -52,7 +52,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="filtrados().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Nombre</th><th>Correo</th><th>Estado</th><th>XP / Nivel</th><th>Registro</th></tr></thead>
             <tbody>
               @for (u of filtrados(); track u.id) {
@@ -70,7 +70,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
       <p class="text-xs text-marine-400">Datos obtenidos según permisos de administrador y RLS. Matrículas/progreso agregados requieren consultas o endpoints adicionales.</p>

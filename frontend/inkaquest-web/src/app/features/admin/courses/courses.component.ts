@@ -72,7 +72,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="cursos().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Título</th><th>Slug</th><th>Estado</th><th>Precio</th><th>XP</th><th>Docentes asignados</th><th>Acciones</th></tr></thead>
             <tbody>
               @for (c of cursos(); track c.id) {
@@ -108,7 +108,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
       <p class="text-xs text-marine-400">La asignación de docentes a cursos se realiza desde <a routerLink="/admin/docentes" class="underline">Docentes</a> (se listan todos los docentes, incluso inactivos).</p>

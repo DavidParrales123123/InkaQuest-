@@ -70,7 +70,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
 
           @if (visibles().length > 0) {
             <div class="table-wrap rounded-xl border border-surface-200 overflow-hidden">
-              <table class="table">
+              <div class="overflow-x-auto"><table class="table">
                 <thead><tr><th>Curso</th><th>Estudiante</th><th>Correo</th><th>XP</th><th>Nivel</th></tr></thead>
                 <tbody>
                   @for (v of visibles(); track v.estudiante.id + ':' + v.curso.id) {
@@ -88,7 +88,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
                     </tr>
                   }
                 </tbody>
-              </table>
+              </table></div>
             </div>
           } @else {
             <p class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-sm text-marine-600">Ningún estudiante coincide con el filtro.</p>

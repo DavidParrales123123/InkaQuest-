@@ -96,14 +96,14 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
               <p class="mt-3 text-sm text-marine-500">No hay reglas de progresión configuradas.</p>
             } @else {
               <div class="mt-3 table-wrap">
-                <table class="table">
+                <div class="overflow-x-auto"><table class="table">
                   <thead><tr><th scope="col">Nombre</th><th scope="col">Tipo</th><th scope="col">XP requerido</th><th scope="col">Valor</th></tr></thead>
                   <tbody>
                     @for (r of reglas(); track r.id) {
                       <tr><td>{{ r.nombre }}</td><td>{{ r.tipo }}</td><td>{{ r.xp_requerido }}</td><td>{{ r.valor }}</td></tr>
                     }
                   </tbody>
-                </table>
+                </table></div>
               </div>
             }
             <p class="mt-3 text-xs text-marine-400">El XP y las recompensas los otorga el sistema, no este cliente. Fuente de verdad: PostgreSQL (RPC) y Spring Boot.</p>

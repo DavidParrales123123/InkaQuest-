@@ -97,7 +97,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
             <a routerLink="/estudiante/inventario" class="text-sm font-medium text-brand-700 hover:underline">Ver inventario</a>
           </div>
           <div class="table-wrap">
-            <table class="table">
+            <div class="overflow-x-auto"><table class="table">
               <thead><tr><th>Fecha</th><th>Cantidad</th><th>Monedas</th><th>XP</th></tr></thead>
               <tbody>
                 @for (c of compras(); track c.id) {
@@ -109,7 +109,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
                   </tr>
                 }
               </tbody>
-            </table>
+            </table></div>
           </div>
         </div>
       </app-data-panel>

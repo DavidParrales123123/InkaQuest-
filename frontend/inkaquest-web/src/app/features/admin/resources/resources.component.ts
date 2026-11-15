@@ -106,7 +106,7 @@ interface LeccionCtx { id: string; titulo: string; numero: number; moduloTitulo:
 
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="recursos().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Nombre</th><th>Tipo</th><th>Lección</th><th>Descargable</th><th>MIME</th><th>Acciones</th></tr></thead>
             <tbody>
               @for (r of recursos(); track r.id) {
@@ -120,7 +120,7 @@ interface LeccionCtx { id: string; titulo: string; numero: number; moduloTitulo:
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
     </section>

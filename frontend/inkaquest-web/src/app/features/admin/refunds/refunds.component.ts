@@ -16,7 +16,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       <app-page-header titulo="Reembolsos" descripcion="Solicitudes y estados de reembolso." />
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="reembolsos().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>ID</th><th>Usuario</th><th>Transacción</th><th>Monto</th><th>Estado</th><th>Fecha</th></tr></thead>
             <tbody>
               @for (r of reembolsos(); track r.id) {
@@ -30,7 +30,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
       <p class="text-xs text-marine-400">La aprobación/procesamiento de reembolsos se ejecuta en backend con la pasarela y reglas de negocio.</p>

@@ -17,7 +17,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
       </app-page-header>
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="evaluaciones().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Evaluación</th><th>Actividad</th><th>Duración</th><th>Intentos</th><th>Nota máx.</th></tr></thead>
             <tbody>
               @for (e of evaluaciones(); track e.id) {
@@ -30,7 +30,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
       <p class="text-xs text-marine-400">No se exponen soluciones/correcciones en el cliente. Configuración detallada requiere endpoints autorizados.</p>

@@ -17,7 +17,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
       </app-page-header>
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="lecciones().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Módulo</th><th>N°</th><th>Título</th><th>Tipo</th><th>Publicado</th><th>XP</th></tr></thead>
             <tbody>
               @for (l of lecciones(); track l.id) {
@@ -31,7 +31,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
     </section>

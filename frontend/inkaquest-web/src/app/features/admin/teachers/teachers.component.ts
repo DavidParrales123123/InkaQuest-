@@ -94,7 +94,7 @@ interface AsignacionView extends DocenteCurso {
         </div>
         <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="docentesFiltrados().length === 0" tituloVacio="Sin docentes" descripcionVacia="No se encontraron docentes con los filtros seleccionados." (alReintentar)="cargar()">
           <div contenido class="table-wrap">
-            <table class="table">
+            <div class="overflow-x-auto"><table class="table">
               <thead><tr><th>Docente</th><th>Correo</th><th>Estado cuenta</th><th>Registro</th><th>Cursos asignados</th><th>Acción</th></tr></thead>
               <tbody>
                 @for (d of docentesFiltrados(); track d.id) {
@@ -113,7 +113,7 @@ interface AsignacionView extends DocenteCurso {
                   </tr>
                 }
               </tbody>
-            </table>
+            </table></div>
           </div>
         </app-data-panel>
       </div>
@@ -123,7 +123,7 @@ interface AsignacionView extends DocenteCurso {
         <h2 class="text-lg font-semibold text-marine-800">Asignaciones docente-curso</h2>
         <app-data-panel [cargando]="cargando()" [error]="null" [vacio]="asignacionesView().length === 0" tituloVacio="Sin asignaciones" descripcionVacia="Aún no hay docentes asignados a cursos.">
           <div contenido class="table-wrap">
-            <table class="table">
+            <div class="overflow-x-auto"><table class="table">
               <thead><tr><th>Docente</th><th>Curso</th><th>Responsable</th><th>Estado</th><th>Asignado en</th><th>Acciones</th></tr></thead>
               <tbody>
                 @for (a of asignacionesView(); track a.id) {
@@ -147,7 +147,7 @@ interface AsignacionView extends DocenteCurso {
                   </tr>
                 }
               </tbody>
-            </table>
+            </table></div>
           </div>
         </app-data-panel>
         <p class="text-xs text-marine-500">Las asignaciones activas determinan qué cursos aparecen en "Mis cursos" del docente. Un docente inactivo puede tener cursos asignados, pero su acceso general a la plataforma depende de su estado de cuenta y políticas de autenticación/RLS.</p>

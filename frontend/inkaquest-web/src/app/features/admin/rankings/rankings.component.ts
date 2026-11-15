@@ -22,7 +22,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
           <div>
             <h2 class="mb-3 text-lg font-semibold text-marine-800">Temporadas</h2>
             <div class="table-wrap">
-              <table class="table">
+              <div class="overflow-x-auto"><table class="table">
                 <thead><tr><th>Nombre</th><th>Estado</th><th>Inicio</th><th>Fin</th></tr></thead>
                 <tbody>
                   @for (t of temporadas(); track t.id) {
@@ -34,13 +34,13 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                     </tr>
                   }
                 </tbody>
-              </table>
+              </table></div>
             </div>
           </div>
           <div>
             <h2 class="mb-3 text-lg font-semibold text-marine-800">Posiciones (top registros)</h2>
             <div class="table-wrap">
-              <table class="table">
+              <div class="overflow-x-auto"><table class="table">
                 <thead><tr><th>Temporada</th><th>Usuario</th><th>Puntos</th><th>Posición</th></tr></thead>
                 <tbody>
                   @for (r of rankings(); track r.id) {
@@ -52,7 +52,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                     </tr>
                   }
                 </tbody>
-              </table>
+              </table></div>
             </div>
           </div>
         </div>

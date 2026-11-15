@@ -155,9 +155,9 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
             @if (calificaciones().length === 0) {
               <p class="mt-2 text-sm text-marine-500">Aún no tienes calificaciones registradas.</p>
             } @else {
-              <div class="mt-3 table-wrap"><table class="table"><thead><tr><th>Nota</th><th>Máximo</th><th>Estado</th><th>Fecha</th><th>Comentario</th></tr></thead><tbody>
+              <div class="mt-3 table-wrap"><div class="overflow-x-auto"><table class="table"><thead><tr><th>Nota</th><th>Máximo</th><th>Estado</th><th>Fecha</th><th>Comentario</th></tr></thead><tbody>
                 @for (c of calificaciones(); track c.id) { <tr><td>{{ c.nota }}</td><td>{{ c.nota_maxima }}</td><td>{{ c.aprobado ? 'Aprobado' : 'Revisado' }}</td><td>{{ c.calificado_en | date: 'medium' }}</td><td class="text-sm text-marine-600">{{ c.comentario || '—' }}</td></tr> }
-              </tbody></table></div>
+              </tbody></table></div></div>
             }
           </div>
         </div>

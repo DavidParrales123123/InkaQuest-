@@ -96,7 +96,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="misiones().length === 0" tituloVacio="Sin misiones" descripcionVacia="Crea la primera misión con el formulario de arriba." (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Misión</th><th>Tipo</th><th>Objetivo</th><th>Recompensa</th><th>Activa</th><th>Acciones</th></tr></thead>
             <tbody>
               @for (m of misiones(); track m.id) {
@@ -113,13 +113,13 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
 
       <app-data-panel [cargando]="cargando()" [error]="null" [vacio]="insignias().length === 0" tituloVacio="Sin insignias" descripcionVacia="Crea insignias para asociarlas a misiones o entregarlas como recompensa.">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Insignia</th><th>Rareza</th><th>XP</th><th>Activa</th><th>Acciones</th></tr></thead>
             <tbody>
               @for (i of insignias(); track i.id) {
@@ -132,7 +132,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
     </section>

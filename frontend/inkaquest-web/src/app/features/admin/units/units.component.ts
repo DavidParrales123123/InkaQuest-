@@ -56,7 +56,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="unidadesFiltradas().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Curso</th><th>N°</th><th>Título</th><th>Publicado</th><th>XP</th><th>Acciones</th></tr></thead>
             <tbody>
               @for (u of unidadesFiltradas(); track u.id) {
@@ -72,7 +72,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
     </section>

@@ -59,7 +59,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
                 <p class="mt-2 text-sm text-marine-500">Sin matrículas/progreso visibles en este curso.</p>
               } @else {
                 <div class="mt-3 table-wrap rounded-xl border border-surface-200 overflow-hidden">
-                  <table class="table">
+                  <div class="overflow-x-auto"><table class="table">
                     <thead><tr><th>Estudiante</th><th>Estado</th><th>Progreso</th><th>Lecciones</th><th>Última actividad</th></tr></thead>
                     <tbody>
                       @for (f of filasCurso(curso.id); track f.matricula.id) {
@@ -84,7 +84,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
                         </tr>
                       }
                     </tbody>
-                  </table>
+                  </table></div>
                 </div>
               }
             </div>

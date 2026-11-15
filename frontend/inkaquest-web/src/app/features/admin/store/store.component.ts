@@ -54,7 +54,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="items().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Artículo</th><th>Código</th><th>Tipo</th><th>Precio (monedas/XP)</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>
               @for (i of items(); track i.id) {
@@ -69,7 +69,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
     </section>

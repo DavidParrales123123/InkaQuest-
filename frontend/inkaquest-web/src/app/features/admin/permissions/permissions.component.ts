@@ -17,7 +17,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
       </app-page-header>
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="permisos().length === 0" (alReintentar)="cargar()">
         <div contenido class="table-wrap">
-          <table class="table">
+          <div class="overflow-x-auto"><table class="table">
             <thead><tr><th>Código</th><th>Nombre</th><th>Módulo</th><th>Descripción</th></tr></thead>
             <tbody>
               @for (p of permisos(); track p.id) {
@@ -29,7 +29,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                 </tr>
               }
             </tbody>
-          </table>
+          </table></div>
         </div>
       </app-data-panel>
       <p class="text-xs text-marine-400">La creación/edición de permisos y asignación a roles debe gestionarse por backend o herramientas administrativas autorizadas.</p>
