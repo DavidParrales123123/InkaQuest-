@@ -29,6 +29,9 @@ export class GuardianesAccesoService {
   readonly accesoEstudiante = signal<EstadoAcceso>('cargando');
   readonly accesoDocente = signal<EstadoAcceso>('cargando');
   private verificacion: Promise<[boolean, boolean]> | null = null;
+  private cargadoEn = 0;
+  /** La inscripción puede ocurrir durante la sesión (pago): expira en 2 minutos. */
+  private static readonly TTL_MS = 2 * 60 * 1000;
 
   /** Resuelve acceso estudiante (matriculo en el curso). */
   tieneAccesoEstudiante(): Promise<boolean> { return this.verificar().then(([est]) => est); }
@@ -36,23 +39,21 @@ export class GuardianesAccesoService {
   /** Resuelve acceso docente (asignado activo del curso). */
   tieneAccesoDocente(): Promise<boolean> { return this.verificar().then(([, doc]) => doc); }
 
-  /** Carga (una sola vez por sesión) el acceso para roles estudiante y docente. */
+  /** Carga el acceso para roles estudiante y docente (con TTL de 2 minutos). */
   async verificar(): Promise<[boolean, boolean]> {
-    if (this.verificacion) return this.verificacion;
+    if (this.verificacion && Date.now() - this.cargadoEn < GuardianesAccesoService.TTL_MS) {
+      return this.verificacion;
+    }
     this.verificacion = this.cargar();
     return this.verificacion;
   }
 
   private async cargar(): Promise<[boolean, boolean]> {
-    const estOk = this.accesoEstudiante() === 'permitido';
-    const docOk = this.accesoDocente() === 'permitido';
-    if (this.accesoEstudiante() !== 'cargando' && this.accesoDocente() !== 'cargando') {
-      return [estOk, docOk];
-    }
     const usuario = this.auth.usuario();
     if (!usuario) {
       this.accesoEstudiante.set('denegado');
       this.accesoDocente.set('denegado');
+      this.cargadoEn = Date.now();
       return [false, false];
     }
     try {
@@ -77,11 +78,13 @@ export class GuardianesAccesoService {
       const docAsignado = (doc?.length ?? 0) > 0;
       this.accesoEstudiante.set(est ? 'permitido' : 'denegado');
       this.accesoDocente.set(docAsignado ? 'permitido' : 'denegado');
+      this.cargadoEn = Date.now();
       return [est, docAsignado];
     } catch (e) {
       console.error('[guardianes] acceso:', e);
       this.accesoEstudiante.set('denegado');
       this.accesoDocente.set('denegado');
+      this.cargadoEn = Date.now();
       return [false, false];
     }
   }
