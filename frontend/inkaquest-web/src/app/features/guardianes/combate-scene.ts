@@ -657,13 +657,13 @@ export class CombateScene extends Phaser.Scene {
     else if (isDown(KEY_D) || isDown(RIGHT)) vx = this.vel;
     if (isDown(KEY_W) || isDown(UP)) vy = -this.vel;
     else if (isDown(KEY_S) || isDown(DOWN)) vy = this.vel;
-    // Lunge: anulación breve del control de teclado durante el ataque
+    // Lunge: refuerzo del impulso (NO anula el teclado)
     const lungeEdad = this.attackLungeUntil - this.time.now;
     if (lungeEdad > 0) {
       const fwd = lungeEdad / 260;
-      const lungeSpeed = Math.sin(fwd * Math.PI) * this.vel * 1.45;
-      vx = Math.cos(this.attackLungeAngle) * lungeSpeed;
-      vy = Math.sin(this.attackLungeAngle) * lungeSpeed;
+      const lungeSpeed = Math.sin(fwd * Math.PI) * this.vel * 0.9;
+      vx += Math.cos(this.attackLungeAngle) * lungeSpeed;
+      vy += Math.sin(this.attackLungeAngle) * lungeSpeed;
     }
     this.player.setVelocity(vx, vy);
 
@@ -679,37 +679,22 @@ export class CombateScene extends Phaser.Scene {
 
     // Animación de movimiento:
     //  - Rambo y Sasuke reproducen su ciclo de frames mientras se mueven.
-    //  - Los demás: bob y tilt sutil + crecimiento de escala al atacar.
+    //  - Natalia y La Herencia: postura estática (bloque — sin walk cycle).
+    //  - El cuerpo a cuerpo dispara la animación de corte específica sin mover la postura.
     const moving = vx !== 0 || vy !== 0;
     const ahora = this.time.now;
     const playerSprite = this.player as unknown as Phaser.Physics.Arcade.Sprite;
     const esRambo = this.guardian?.id === 'rambo';
     const esSasuke = this.guardian?.id === 'sasuke';
-    const esNatalia = this.guardian?.id === 'natalia';
-    const esScythe = this.guardian?.id === 'scythe';
     if (moving && playerSprite.anims) {
       if (esSasuke && ahora >= this.sasukeAttackUntil) {
         playerSprite.anims.play('sasuke_walk', true);
       } else if (esRambo) {
         playerSprite.anims.play('rambo_walk', true);
-      } else if (esNatalia && ahora >= this.sasukeAttackUntil) {
-        playerSprite.anims.play('natalia_walk', true);
-      } else if (esScythe && ahora >= this.sasukeAttackUntil) {
-        // In-engine wobble: vertical bob + lateral lean + scaleX pulse (real walking motion)
-        const fase = (this.time.now / 220) % (Math.PI * 2);
-        const wobble = Math.sin(fase);
-        const pulse = 1 + Math.abs(Math.sin(fase)) * 0.09;
-        this.player.setScale(0.85 * pulse, 0.85 * (2.05 - pulse));
-        this.player.setRotation(wobble * 0.07);
-      } else if (!esSasuke && !esNatalia && !esScythe) {
-        const pulso = Math.sin(ahora / 140);
-        const base = 0.85;
-        const ataque = this.attackPulse > 0 ? 1 + Math.sin(this.attackPulse * Math.PI) * 0.22 : 1;
-        this.player.setScale(base * ataque, base * ataque * (1 + pulso * 0.04));
-        this.player.setRotation(Math.sin(ahora / 200) * 0.035);
       }
+      // esNatalia y esScythe: postura estática — no se reproduce ninguna animación de caminar.
     } else if (playerSprite.anims) {
-      if ((esSasuke && ahora >= this.sasukeAttackUntil) || esNatalia || esScythe || esRambo) {
+      if ((esSasuke && ahora >= this.sasukeAttackUntil) || esRambo) {
         playerSprite.anims.stop();
       }
       this.player.setRotation(0);
