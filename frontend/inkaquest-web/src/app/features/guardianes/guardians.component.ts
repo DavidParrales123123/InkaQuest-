@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgClass } from '@angular/common';
 
@@ -7,7 +7,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { CourseService } from '../../core/services/course.service';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { CURSO_PRINCIPIOS_ALGORITMOS } from '../../core/services/guardianes-acceso.service';
-import { GUARDIANES, type GuardianeRareza } from './guardians-catalog';
+import { GUARDIANES, NIVEL_DESBLOQUEO, type GuardianeRareza } from './guardians-catalog';
 
 interface NivelItem {
   numero: number;
@@ -91,11 +91,18 @@ interface NivelItem {
                 <span class="rounded-full border border-gold-400/50 bg-gold-500/15 px-2.5 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-gold-300">4 guardianes</span>
               </div>
               <div class="grid flex-1 grid-cols-2 gap-2.5">
-                @for (g of guardianes; track g.id) {
-                  <div class="group flex flex-col items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-marine-900/60 px-2 py-3 text-center transition-all duration-200 hover:border-gold-400/50 hover:bg-marine-800/70">
-                    <img [src]="g.sprite" [alt]="g.nombre" width="64" height="64" class="size-16 [image-rendering:pixelated] drop-shadow-[0_6px_10px_rgba(0,0,0,0.55)] transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110" loading="lazy" />
-                    <p class="text-[0.78rem] font-extrabold leading-tight text-white">{{ g.nombre }}</p>
-                    <span class="rounded-full px-2 py-0.5 text-[0.58rem] font-extrabold uppercase tracking-[0.16em]" [ngClass]="rarezaClass(g.rareza)">{{ rarezaLabel(g.rareza) }}</span>
+                @for (g of escuadronVista(); track g.id) {
+                  <div class="group relative flex flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-white/10 bg-marine-900/60 px-2 py-3 text-center transition-all duration-200" [ngClass]="g.desbloqueado ? 'hover:border-gold-400/50 hover:bg-marine-800/70' : ''">
+                    <img [src]="g.sprite" [alt]="g.nombre" width="64" height="64" class="size-16 [image-rendering:pixelated] drop-shadow-[0_6px_10px_rgba(0,0,0,0.55)] transition-transform duration-200" [ngClass]="g.desbloqueado ? 'group-hover:-translate-y-1 group-hover:scale-110' : 'grayscale opacity-40'" loading="lazy" />
+                    <p class="text-[0.78rem] font-extrabold leading-tight text-white" [class.opacity-50]="!g.desbloqueado">{{ g.nombre }}</p>
+                    @if (g.desbloqueado) {
+                      <span class="rounded-full px-2 py-0.5 text-[0.58rem] font-extrabold uppercase tracking-[0.16em]" [ngClass]="rarezaClass(g.rareza)">{{ rarezaLabel(g.rareza) }}</span>
+                    } @else {
+                      <span class="inline-flex items-center gap-1 rounded-full border border-gold-500/40 bg-gold-500/10 px-2 py-0.5 text-[0.58rem] font-extrabold uppercase tracking-[0.16em] text-gold-400">
+                        <svg viewBox="0 0 24 24" class="size-3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                        Nivel {{ NIVEL_DESBLOQUEO[g.id] }}
+                      </span>
+                    }
                   </div>
                 }
               </div>
@@ -226,7 +233,16 @@ export class GuardiansComponent implements OnInit, OnDestroy {
   protected readonly totalVictorias = signal(0);
   protected readonly xpTotal = signal(0);
   protected readonly precisionMedia = signal(0);
-  protected readonly guardianes = GUARDIANES;
+  protected readonly NIVEL_DESBLOQUEO = NIVEL_DESBLOQUEO;
+  /** Nivel máximo jugable (primer nivel pendiente o 18 si completó todo). */
+  protected readonly maxJugable = computed(() => {
+    const pen = this.niveles().find((n) => !n.completada);
+    return pen?.numero ?? 18;
+  });
+  /** Escuadrón con bloqueo aplicado: Rambo/Maga N1 · Sasuke N7 · La Herencia N15. */
+  protected readonly escuadronVista = computed(() =>
+    GUARDIANES.map((g) => ({ ...g, desbloqueado: this.maxJugable() >= (NIVEL_DESBLOQUEO[g.id] ?? 1) }))
+  );
 
   protected completados(): number {
     return this.niveles().filter((n) => n.completada).length;

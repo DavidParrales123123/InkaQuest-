@@ -87,6 +87,14 @@ export const GUARDIANES: readonly GuardianConfig[] = [
   },
 ];
 
+/** Nivel mínimo que el estudiante debe poder jugar para desbloquear cada guardián. */
+export const NIVEL_DESBLOQUEO: Record<string, number> = {
+  rambo: 1,
+  maga: 1,
+  sasuke: 7,
+  scythe: 15,
+};
+
 export const GUARDIAN_POR_DEFECTO = 'rambo';
 
 /** Etiqueta legible del tipo de ataque. */

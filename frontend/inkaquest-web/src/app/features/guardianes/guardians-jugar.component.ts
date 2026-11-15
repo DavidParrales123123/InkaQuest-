@@ -5,9 +5,10 @@ import { NgClass } from '@angular/common';
 import Phaser from 'phaser';
 
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { AuthService } from '../../core/services/auth.service';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { CombateScene, MEJORAS_EXTRA, mejoresPara } from './combate-scene';
-import { GUARDIANES } from './guardians-catalog';
+import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
 
 /** Juego completo de supervivencia por hordas con mejoras entre hordas y progreso persistido. */
 @Component({
@@ -32,30 +33,44 @@ import { GUARDIANES } from './guardians-catalog';
             <span class="inline-flex w-fit items-center gap-2 rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-[0.65rem] font-extrabold uppercase tracking-[0.2em] text-gold-400">Guardianes del Conocimiento · Roster</span>
             <h2 class="mt-3 font-display text-3xl font-extrabold leading-none text-white drop-shadow-[0_4px_0_rgba(0,0,0,0.5)]">¿QUIÉN PROTEGE<br/><span class="text-gold-400">LA LECCIÓN?</span></h2>
             <p class="mt-2 text-sm text-marine-300">Cada guardián pelea distinto: sus estadísticas y su pasiva definen tu estilo.</p>
+            <p class="mt-2 text-[0.62rem] font-extrabold uppercase tracking-[0.18em] text-marine-400">Nivel 1: <span class="text-gold-400">Rambo y Maga</span> · Nivel 7: <span class="text-brand-300">Sasuke</span> · Nivel 15: <span class="text-rose-300">La Herencia</span></p>
           </div>
           <div class="grid gap-4 grid-cols-2 xl:grid-cols-4 max-w-5xl mx-auto">
-            @for (g of guardianesDisponibles; track g.id) {
-              <button type="button" class="group flex flex-col items-center gap-2 rounded-2xl border-2 border-surface-200 bg-gradient-to-b from-marine-800 to-marine-900 p-4 text-center transition-all duration-200 hover:-translate-y-2 hover:border-gold-400 hover:shadow-[0_0_30px_-8px_rgba(242,165,65,0.5)]" (click)="elegirGuardian(g.id)">
-                <div class="relative grid h-36 w-full place-items-center overflow-hidden rounded-xl border border-gold-500/20 bg-black/40">
-                  <img [src]="g.sprite" [alt]="g.nombre" class="max-h-[8.5rem] max-w-full object-contain drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)] transition-transform duration-200 group-hover:scale-110" />
-                  @if (g.id === ultimoUsado()) {
+            @for (g of guardianesVista(); track g.id) {
+              <button type="button" class="group flex flex-col items-center gap-2 rounded-2xl border-2 p-4 text-center transition-all duration-200"
+                [ngClass]="g.desbloqueado
+                  ? 'border-surface-200 bg-gradient-to-b from-marine-800 to-marine-900 hover:-translate-y-2 hover:border-gold-400 hover:shadow-[0_0_30px_-8px_rgba(242,165,65,0.5)] cursor-pointer'
+                  : 'border-white/5 bg-marine-950/60 cursor-not-allowed'"
+                [disabled]="!g.desbloqueado"
+                [attr.aria-disabled]="!g.desbloqueado ? 'true' : null"
+                (click)="elegirGuardian(g.id)">
+                <div class="relative grid h-36 w-full place-items-center overflow-hidden rounded-xl border" [ngClass]="g.desbloqueado ? 'border-gold-500/20 bg-black/40' : 'border-white/5 bg-black/60'">
+                  <img [src]="g.sprite" [alt]="g.nombre" class="max-h-[8.5rem] max-w-full object-contain transition-all duration-200" [ngClass]="g.desbloqueado ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)] group-hover:scale-110' : 'grayscale opacity-45'" />
+                  @if (g.id === ultimoUsado() && g.desbloqueado) {
                     <span class="absolute left-2 top-2 rounded-full border border-gold-400/70 bg-gold-500 px-2 py-0.5 text-[0.55rem] font-extrabold uppercase tracking-widest text-marine-900 shadow-[0_2px_6px_rgba(0,0,0,0.45)]">Último</span>
+                  }
+                  @if (!g.desbloqueado) {
+                    <div class="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45">
+                      <svg viewBox="0 0 24 24" class="size-6 text-gold-400" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                      <p class="text-[0.72rem] font-extrabold uppercase tracking-[0.18em] text-gold-400">Nivel {{ nivelRequerido(g.id) }}</p>
+                      <p class="text-[0.55rem] font-bold uppercase tracking-wider text-marine-300">Se desbloquea</p>
+                    </div>
                   }
                   <span class="absolute right-2 top-2 rounded-full px-2 py-0.5 text-[0.58rem] font-extrabold uppercase tracking-widest" [class.bg-gold-500]="g.rareza === 'comun'" [class.text-marine-900]="g.rareza === 'comun'" [class.bg-brand-500]="g.rareza === 'heroe'" [class.text-white]="g.rareza === 'heroe'" [class.bg-rose-500]="g.rareza === 'leyenda'" [class.text-white]="g.rareza === 'leyenda'">{{ g.rareza === 'comun' ? 'Común' : g.rareza === 'heroe' ? 'Héroe' : 'Leyenda' }}</span>
                 </div>
-                <div>
+                <div [class.opacity-55]="!g.desbloqueado">
                   <p class="font-display text-base font-extrabold leading-none text-white">{{ g.nombre }}</p>
                   <p class="text-[0.65rem] font-bold uppercase tracking-widest text-gold-400">{{ g.titulo }}</p>
                 </div>
-                <p class="text-[0.68rem] leading-snug text-marine-300">{{ g.descripcion }}</p>
-                <span class="inline-flex w-fit items-center gap-1 rounded-full border border-marine-600 bg-marine-900/60 px-2 py-0.5 text-[0.58rem] font-extrabold uppercase tracking-widest" [class.text-brand-300]="g.ataque === 'rango'" [class.text-rose-300]="g.ataque === 'haz'">{{ g.ataque === 'rango' ? '◎ Rango · Gatillo' : '× Haz · Cuerpo a cuerpo' }}</span>
-                <div class="grid w-full grid-cols-3 gap-1 text-[0.62rem] font-bold uppercase tracking-wider">
+                <p class="text-[0.68rem] leading-snug text-marine-300" [class.opacity-60]="!g.desbloqueado">{{ g.descripcion }}</p>
+                <span class="inline-flex w-fit items-center gap-1 rounded-full border border-marine-600 bg-marine-900/60 px-2 py-0.5 text-[0.58rem] font-extrabold uppercase tracking-widest" [class.text-brand-300]="g.ataque === 'rango'" [class.text-rose-300]="g.ataque === 'haz'" [class.opacity-60]="!g.desbloqueado">{{ g.ataque === 'rango' ? '◎ Rango · Gatillo' : '× Haz · Cuerpo a cuerpo' }}</span>
+                <div class="grid w-full grid-cols-3 gap-1 text-[0.62rem] font-bold uppercase tracking-wider" [class.opacity-60]="!g.desbloqueado">
                   <span class="rounded border border-rose-900/50 bg-rose-950/40 p-1 text-rose-200">DMG {{ g.danoBase }}</span>
                   <span class="rounded border border-emerald-900/50 bg-emerald-950/40 p-1 text-emerald-200">VID {{ 100 + g.vidaExtra }}</span>
                   <span class="rounded border border-sky-900/50 bg-sky-950/40 p-1 text-sky-200">VEL {{ 240 + g.velocidadExtra }}</span>
                 </div>
-                <p class="text-[0.68rem] font-bold text-gold-300">{{ g.pasivaNombre }}</p>
-                <p class="text-[0.62rem] leading-snug text-marine-200">{{ g.pasivaDescripcion }}</p>
+                <p class="text-[0.68rem] font-bold text-gold-300" [class.opacity-60]="!g.desbloqueado">{{ g.pasivaNombre }}</p>
+                <p class="text-[0.62rem] leading-snug text-marine-200" [class.opacity-60]="!g.desbloqueado">{{ g.pasivaDescripcion }}</p>
               </button>
             }
           </div>
@@ -323,6 +338,7 @@ import { GUARDIANES } from './guardians-catalog';
 export class GuardiansJugarComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly supabase = inject(SupabaseService);
+  private readonly auth = inject(AuthService);
 
   protected readonly numero = signal(1);
   protected readonly fase = signal<'intro' | 'jugando' | 'victoria' | 'derrota'>('intro');
@@ -346,7 +362,13 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected readonly candidatosMejora = signal<readonly { id: string; nombre: string; descripcion: string; rareza: string; rango: number; maxRango: number }[]>([]);
   protected readonly mostrarIntro = signal(true);
   protected readonly elegido = signal<string | null>(null);
-  protected readonly guardianesDisponibles = GUARDIANES;
+  protected readonly guardianActual = computed(() => GUARDIANES.find((g) => g.id === this.elegido()) ?? null);
+  /** Nivel máximo que el estudiante puede jugar según su progreso (bloqueo progresivo). */
+  protected readonly nivelMaximoAlcanzado = signal(1);
+  /** Roster con estado de bloqueo aplicado: Rambo/Maga N1 · Sasuke N7 · La Herencia N15. */
+  protected readonly guardianesVista = computed(() =>
+    GUARDIANES.map((g) => ({ ...g, desbloqueado: this.nivelMaximoAlcanzado() >= (NIVEL_DESBLOQUEO[g.id] ?? 1) }))
+  );
   protected readonly guardianActual = computed(() => GUARDIANES.find((g) => g.id === this.elegido()) ?? null);
   protected readonly preguntaActual = signal<{ preguntaId: string; enunciado: string; opciones: string[]; tema: string; dificultad: string } | null>(null);
   protected readonly respuestaElegida = signal<string | null>(null);
@@ -379,10 +401,46 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
       const prev = typeof localStorage !== 'undefined' ? localStorage.getItem('guardianes-personaje') : null;
       if (prev) this.ultimoUsado.set(prev);
     } catch { /* ignore */ }
+    void this.cargarProgresoRoster();
     queueMicrotask(() => this.arrancar());
   }
 
+  /** Calcula hasta qué nivel puede jugar el estudiante (misma regla que campaña). */
+  private async cargarProgresoRoster(): Promise<void> {
+    try {
+      const user = this.auth.usuario();
+      if (!user) return;
+      const supabase = this.supabase.client;
+      const { data: campana } = await supabase.from('guardianes_campana').select('id').limit(1).maybeSingle();
+      const [{ data: progreso }, { data: nivelesDb }] = await Promise.all([
+        supabase.from('progreso_leccion').select('leccion_id,estado').eq('estudiante_id', user.id),
+        supabase
+          .from('guardianes_nivel')
+          .select('numero, leccion_id')
+          .eq('campana_id', campana?.id ?? '')
+          .order('numero'),
+      ]);
+      const completadas = new Set(
+        (progreso ?? []).filter((r: any) => r.estado === 'completado').map((r: any) => r.leccion_id),
+      );
+      let max = 1;
+      for (const n of nivelesDb ?? []) {
+        if (!completadas.has((n as any).leccion_id)) break;
+        max = (n as any).numero + 1;
+      }
+      this.nivelMaximoAlcanzado.set(Math.min(max, 18));
+    } catch (e) {
+      console.warn('[guardianes] progreso roster:', e);
+    }
+  }
+
+  protected nivelRequerido(id: string): number {
+    return NIVEL_DESBLOQUEO[id] ?? 1;
+  }
+
   protected elegirGuardian(id: string): void {
+    // Bloqueo defensivo: no se puede elegir un guardián aún bloqueado
+    if (this.nivelMaximoAlcanzado() < (NIVEL_DESBLOQUEO[id] ?? 1)) return;
     if (id === '__cancel__') {
       // Cambiar de guardián: destruir partida y volver al roster
       if (this.game) { this.game.destroy(true); this.game = null; }
