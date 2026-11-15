@@ -16,7 +16,7 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, PageHeaderComponent, NgClass],
   template: `
-    <section class="relative min-h-[100dvh] w-full overflow-hidden">
+    <section class="relative min-h-[100dvh] w-full overflow-x-hidden">
       <div aria-hidden="true" class="pointer-events-none absolute inset-0 -z-0 bg-[radial-gradient(1200px_circle_at_50%_-20%,rgba(242,165,65,0.08),transparent_60%)]"></div>
       @if (!elegido()) {
         <app-page-header
@@ -220,7 +220,36 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
             </aside>
             <!-- Canvas fills the rest -->
             <div class="relative flex min-w-0 flex-1 flex-col">
-              <div id="juego-root" class="relative flex flex-1 min-h-0 w-full items-center justify-center overflow-hidden bg-marine-900 [&_canvas]:max-h-full [&_canvas]:max-w-full" aria-label="Área de juego. Combate top-down.">
+              <div id="juego-root" class="relative flex flex-1 min-h-0 w-full touch-none select-none items-center justify-center overflow-hidden bg-marine-900 [&_canvas]:max-h-full [&_canvas]:max-w-full" aria-label="Área de juego. Combate top-down.">
+                <!-- Joystick táctil (mitad izquierda, solo táctil y en partida) -->
+                @if (esTouch() && fase() === 'jugando') {
+                  <div class="absolute inset-y-0 left-0 z-20 w-[58%] touch-none select-none"
+                       (pointerdown)="zonaPointerDown($event)"
+                       (pointermove)="zonaPointerMove($event)"
+                       (pointerup)="zonaPointerUp($event)"
+                       (pointercancel)="zonaPointerUp($event)"
+                       role="application" aria-label="Joystick táctil para moverte"></div>
+                }
+                @if (esTouch() && joy().vis) {
+                  <div class="pointer-events-none fixed z-30 size-24 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-gold-400/60 bg-gold-400/10 backdrop-blur-[2px]"
+                       [style.left.px]="joy().x" [style.top.px]="joy().y" aria-hidden="true">
+                    <div class="absolute left-1/2 top-1/2 size-11 -translate-x-1/2 -translate-y-1/2 rounded-full border border-gold-400/80 bg-gradient-to-br from-gold-400 to-amber-600 shadow-[0_2px_0_#5c3a07]"
+                         [style.transform]="'translate(calc(-50% + ' + joy().kx + 'px), calc(-50% + ' + joy().ky + 'px))'"></div>
+                  </div>
+                }
+                <!-- Aviso sutil en vertical (no bloquea el juego) -->
+                @if (esTouch() && esRetrato()) {
+                  <div class="pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-2 rounded-full border border-gold-500/40 bg-black/70 px-3 py-1.5 text-[0.58rem] font-extrabold uppercase tracking-[0.18em] text-gold-300 backdrop-blur-sm">
+                    <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="20" rx="2"/><path d="M12 6v2"/></svg>
+                    Gira el dispositivo
+                  </div>
+                }
+                <!-- Píldora de ayuda táctil -->
+                @if (esTouch() && fase() === 'jugando') {
+                  <div class="pointer-events-none absolute bottom-2 left-2 z-10 flex items-center gap-2 rounded-full border border-white/10 bg-black/55 px-3 py-1 text-[0.55rem] font-extrabold uppercase tracking-[0.18em] text-marine-200 backdrop-blur-sm">
+                    <span class="size-1.5 rounded-full bg-gold-400"></span>Joystick para moverte · disparo automático
+                  </div>
+                }
                 <!-- Overlay de bienvenida con controles (sólo al inicio) -->
                 @if (mostrarIntro()) {
                   <div class="absolute inset-0 z-20 flex items-center justify-center bg-marine-900/80 p-4 backdrop-blur-sm">
@@ -228,8 +257,13 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
                       <span class="inline-flex w-fit items-center gap-2 rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-[0.6rem] font-extrabold uppercase tracking-[0.18em] text-gold-400">Guardianes · Roster</span>
                       <h3 class="font-display text-2xl font-extrabold text-white leading-none">Protege la lección<br/><span class="text-gold-400">sobreviviendo las hordas</span></h3>
                       <ul class="space-y-1.5 rounded-xl border border-gold-500/20 bg-black/30 p-2 text-left text-xs text-marine-100">
-                        <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-gold-500/50 bg-gold-500/10 text-[0.6rem] font-extrabold text-gold-400">W</span><span><strong>WASD / Flechas</strong> — muévete</span></li>
-                        <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-brand-500/50 bg-brand-500/10 text-[0.6rem] font-extrabold text-brand-400">◎</span><span><strong>Mouse</strong> — apunta con el cursor</span></li>
+                        @if (esTouch()) {
+                          <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-gold-500/50 bg-gold-500/10 text-[0.6rem] font-extrabold text-gold-400">◉</span><span><strong>Joystick izquierdo</strong> — arrastra para moverte</span></li>
+                          <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-brand-500/50 bg-brand-500/10 text-[0.6rem] font-extrabold text-brand-400">◎</span><span><strong>Disparo automático</strong> — apunta solo al enemigo más cercano</span></li>
+                        } @else {
+                          <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-gold-500/50 bg-gold-500/10 text-[0.6rem] font-extrabold text-gold-400">W</span><span><strong>WASD / Flechas</strong> — muévete</span></li>
+                          <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-brand-500/50 bg-brand-500/10 text-[0.6rem] font-extrabold text-brand-400">◎</span><span><strong>Mouse</strong> — apunta con el cursor</span></li>
+                        }
                         <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-rose-500/50 bg-rose-500/10 text-[0.6rem] font-extrabold text-rose-400">×</span><span><strong>Elimina hordas</strong> y elige una mejora</span></li>
                         <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-sky-500/50 bg-sky-500/10 text-[0.6rem] font-extrabold text-sky-400">★</span><span><strong>Responde</strong> la pregunta y gana +15 XP</span></li>
                       </ul>
@@ -353,6 +387,78 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   private readonly supabase = inject(SupabaseService);
   private readonly auth = inject(AuthService);
 
+  /** Dispositivo táctil real (pointer coarse / maxTouchPoints>0). */
+  protected readonly esTouch = signal(false);
+  /** Retrato + táctil: sugerir girar el dispositivo (sin bloquear el juego). */
+  protected readonly esRetrato = signal(false);
+  /** Estado del joystick virtual: visibilidad + base + offset del knob. */
+  protected readonly joy = signal({ vis: false, x: 0, y: 0, kx: 0, ky: 0 });
+  private joyId: number | null = null;
+  private readonly joyBase = { x: 0, y: 0 };
+  private readonly joyVec = { x: 0, y: 0 };
+
+  private detectarTouch(): void {
+    try {
+      const mm = (q: string) => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(q).matches;
+      const tactil = mm('(pointer: coarse)') || mm('(any-pointer: coarse)') || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
+      this.esTouch.set(tactil);
+      this.esRetrato.set(tactil && mm('(orientation: portrait)'));
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        const mql = window.matchMedia('(orientation: portrait)');
+        mql.addEventListener?.('change', () => this.esRetrato.set(this.esTouch() && mql.matches));
+      }
+    } catch { /* ignore */ }
+  }
+
+  /** Pointer down en la mitad izquierda: crea el joystick en ese punto. */
+  protected zonaPointerDown(ev: PointerEvent): void {
+    if (this.joyId !== null) return;
+    const el = ev.currentTarget as HTMLElement;
+    el.setPointerCapture?.(ev.pointerId);
+    this.joyId = ev.pointerId;
+    this.joyBase.x = ev.clientX;
+    this.joyBase.y = ev.clientY;
+    this.joyVec.x = 0;
+    this.joyVec.y = 0;
+    this.joy.set({ vis: true, x: this.joyBase.x, y: this.joyBase.y, kx: 0, ky: 0 });
+    this.empujarMovimiento();
+  }
+
+  protected zonaPointerMove(ev: PointerEvent): void {
+    if (ev.pointerId !== this.joyId) return;
+    const dx = ev.clientX - this.joyBase.x;
+    const dy = ev.clientY - this.joyBase.y;
+    const len = Math.hypot(dx, dy);
+    const max = 56;
+    if (len > max) {
+      this.joyVec.x = dx / len;
+      this.joyVec.y = dy / len;
+    } else {
+      this.joyVec.x = dx / max;
+      this.joyVec.y = dy / max;
+    }
+    this.joy.set({ vis: true, x: this.joyBase.x, y: this.joyBase.y, kx: this.joyVec.x * max, ky: this.joyVec.y * max });
+    this.empujarMovimiento();
+  }
+
+  protected zonaPointerUp(ev: PointerEvent): void {
+    if (ev.pointerId !== this.joyId) return;
+    this.joyId = null;
+    this.joyVec.x = 0;
+    this.joyVec.y = 0;
+    this.joy.set({ vis: false, x: 0, y: 0, kx: 0, ky: 0 });
+    this.empujarMovimiento();
+  }
+
+  /** Pasa el vector analógico del joystick (-1..1) al motor del juego. */
+  private empujarMovimiento(): void {
+    const scene = this.game?.scene?.getScene('Combate') as any;
+    if (scene?.virtualMove) {
+      scene.virtualMove.x = this.joyVec.x;
+      scene.virtualMove.y = this.joyVec.y;
+    }
+  }
+
   /** Esc: en la elección vuelve a la campaña; en partida pausa/reanuda. */
   @HostListener('document:keydown.escape')
   protected onEscape(): void {
@@ -420,6 +526,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     const n = Number(this.route.snapshot.paramMap.get('numero')) || 1;
     this.numero.set(n);
     this.esEvaluacion.set([6, 12, 18].includes(n));
+    this.detectarTouch();
     // No auto-elegir: el jugador siempre pasa por el roster y elige su guardián.
     // Guardamos el último elegido solo para mostrar la insignia "Último".
     try {

@@ -126,6 +126,10 @@ export class CombateScene extends Phaser.Scene {
 
   hordaActual = 1;
   evaluacionMode = false;
+  /** Input virtual del joystick táctil (izq.): -1..1 por eje. El índice pone esto en marcha en móviles. */
+  public readonly virtualMove = { x: 0, y: 0 };
+  /** true en dispositivos táctiles: la mira auto-apunta al enemigo más cercano (el juego ya auto-dispara). */
+  private autoAim = false;
   private readonly totalHordas = 9;
   private startedAt = 0;
   private phaseMs = 0;
@@ -219,6 +223,11 @@ export class CombateScene extends Phaser.Scene {
 
   create(): void {
     this.createTextures();
+
+    // Detección táctil: la mira auto-apunta al enemigo más cercano (móvil/tablet)
+    if (typeof navigator !== 'undefined') {
+      this.autoAim = (navigator.maxTouchPoints ?? 0) > 0 || 'ontouchstart' in window;
+    }
 
     // ─── Arena — mapa InkaQuest (niveles 1–5) o paleta procedural ───
     const mapaSel = this.game.registry.get('mapaArena') as string | undefined;
@@ -690,22 +699,40 @@ export class CombateScene extends Phaser.Scene {
       return;
     }
 
-    const ptr = this.input.activePointer;
-    if (ptr) {
-      this.aimX = ptr.worldX ?? ptr.x;
-      this.aimY = ptr.worldY ?? ptr.y;
+    // ─── Aim: táctil auto-apunta al enemigo más cercano; mouse usa el cursor ───
+    if (this.autoAim) {
+      const cercanos = this.nearestEnemy();
+      if (cercanos) {
+        this.aimX = cercanos.x;
+        this.aimY = cercanos.y;
+      }
+    } else {
+      const ptr = this.input.activePointer;
+      if (ptr) {
+        this.aimX = ptr.worldX ?? ptr.x;
+        this.aimY = ptr.worldY ?? ptr.y;
+      }
     }
 
-    // Movimiento (WASD + flechas) — el mouse NO mueve al guardián
-    const kb = this.input.keyboard!;
-    const isDown = (code: number): boolean => kb.addKey(code).isDown;
-    const KEY_A = 65, KEY_W = 87, KEY_D = 68, KEY_S = 83;
-    const LEFT = 37, UP = 38, RIGHT = 39, DOWN = 40;
+    // ─── Movimiento: joystick táctil (si activo) o WASD/flechas ───
+    const vm = this.virtualMove;
+    const anchoVector = Math.hypot(vm.x, vm.y);
     let vx = 0, vy = 0;
-    if (isDown(KEY_A) || isDown(LEFT)) vx = -this.vel;
-    else if (isDown(KEY_D) || isDown(RIGHT)) vx = this.vel;
-    if (isDown(KEY_W) || isDown(UP)) vy = -this.vel;
-    else if (isDown(KEY_S) || isDown(DOWN)) vy = this.vel;
+    if (anchoVector > 0.08) {
+      // Analógico: dirección normalizada + intensidad proporcional al desplazamiento
+      const mag = Math.min(1, anchoVector);
+      vx = (vm.x / anchoVector) * this.vel * mag;
+      vy = (vm.y / anchoVector) * this.vel * mag;
+    } else {
+      const kb = this.input.keyboard!;
+      const isDown = (code: number): boolean => kb.addKey(code).isDown;
+      const KEY_A = 65, KEY_W = 87, KEY_D = 68, KEY_S = 83;
+      const LEFT = 37, UP = 38, RIGHT = 39, DOWN = 40;
+      if (isDown(KEY_A) || isDown(LEFT)) vx = -this.vel;
+      else if (isDown(KEY_D) || isDown(RIGHT)) vx = this.vel;
+      if (isDown(KEY_W) || isDown(UP)) vy = -this.vel;
+      else if (isDown(KEY_S) || isDown(DOWN)) vy = this.vel;
+    }
     this.player.setVelocity(vx, vy);
 
     // ─── Mirada lateral: en movimiento manda WASD; en reposo manda el cursor ───
