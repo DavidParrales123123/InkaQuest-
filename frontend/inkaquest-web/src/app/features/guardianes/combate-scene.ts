@@ -792,6 +792,7 @@ export class CombateScene extends Phaser.Scene {
         atkAnimUntil?: number;
         fireCdUntil?: number;
         dano?: number;
+        atkRange?: number;
       };
       const dist = Phaser.Math.Distance.Between(spr.x, spr.y, this.player.x, this.player.y);
       const seed = spr.spawnSeed ?? 0;
@@ -811,9 +812,10 @@ export class CombateScene extends Phaser.Scene {
           this.spawnAlienBullet(spr);
         }
       } else {
-        // Cuerpo a cuerpo: persigue y ataca cuando está en rango
+        // Cuerpo a cuerpo: persigue y ataca cuando está en rango de arma
         this.physics.moveTo(spr, this.player.x, this.player.y, 90 + this.hordaActual * 10);
-        if (dist < 54 && ahora >= (spr.atkCdUntil ?? 0)) {
+        const rango = spr.atkRange ?? 48;
+        if (dist < rango && ahora >= (spr.atkCdUntil ?? 0)) {
           const key = spr.texture.key;
           const cd = key === 'boss' ? 1050 : key === 'enemy_barbaro' || key === 'enemy_zombi' ? 850 : 700;
           spr.atkCdUntil = ahora + cd;
@@ -959,7 +961,7 @@ export class CombateScene extends Phaser.Scene {
     radio: number,
     escala: number,
     dano: number,
-    opciones: { tint?: number; gunner?: boolean } = {},
+    opciones: { tint?: number; gunner?: boolean; atkRange?: number } = {},
   ): void {
     const o = opciones as unknown as Record<string, unknown>;
     (e as unknown as { hp: number }).hp = hp;
@@ -970,6 +972,7 @@ export class CombateScene extends Phaser.Scene {
     o['atkCdUntil'] = 0;
     o['atkAnimUntil'] = 0;
     o['fireCdUntil'] = this.time.now + 900 + Math.random() * 1100;
+    o['atkRange'] = opciones.atkRange ?? 48;
     // Cuerpo levemente más grande que el sprite visible: el golpe se siente justo
     e.setCircle(radio + 3);
     o['hitRadius'] = radio + 8;
@@ -990,14 +993,14 @@ export class CombateScene extends Phaser.Scene {
     if (esHordaJefe && this.spawnBossCounter % 4 === 1) {
       const hpJefe = this.hordaActual >= 9 ? 14 : this.hordaActual >= 6 ? 9 : 6;
       const boss = this.physics.add.sprite(x, y, 'boss');
-      this.initEnemy(boss, hpJefe, 40, 1.55, 18);
+      this.initEnemy(boss, hpJefe, 40, 1.55, 18, { atkRange: 64 });
       return;
     }
     // ─── Élites dorados que acompañan al jefe ───
     if (esHordaJefe) {
       const pool = ['enemy_zombi', 'enemy_barbaro', 'enemy_vampiro'] as const;
       const e = this.physics.add.sprite(x, y, pool[Math.floor(Math.random() * pool.length)]);
-      this.initEnemy(e, 5, 18, 1.4, 12, { tint: 0xffd24d });
+      this.initEnemy(e, 5, 18, 1.4, 12, { tint: 0xffd24d, atkRange: 50 });
       return;
     }
     // ─── Pistolero alienígena (desde horda 4, máx. 2 activos) ───
@@ -1012,8 +1015,9 @@ export class CombateScene extends Phaser.Scene {
     const pool = tier === 0 ? ['enemy_red'] : tier === 1 ? ['enemy_orange', 'enemy_vampiro'] : ['enemy_barbaro', 'enemy_zombi', 'enemy_vampiro'];
     const key = pool[Math.floor(Math.random() * pool.length)];
     const hp = tier === 0 ? 1 : tier === 1 ? 2 : 3;
+    const alcance = tier === 0 ? 44 : tier === 1 ? 46 : 50;
     const e = this.physics.add.sprite(x, y, key);
-    this.initEnemy(e, hp, 18, 1.35, tier === 0 ? 6 : tier === 1 ? 8 : 12);
+    this.initEnemy(e, hp, 18, 1.35, tier === 0 ? 6 : tier === 1 ? 8 : 12, { atkRange: alcance });
   }
 
   /** Daño al jugador con resistencia aplicada. */
