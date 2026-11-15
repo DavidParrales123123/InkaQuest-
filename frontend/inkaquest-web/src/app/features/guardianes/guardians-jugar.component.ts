@@ -233,7 +233,14 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
                         <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-rose-500/50 bg-rose-500/10 text-[0.6rem] font-extrabold text-rose-400">×</span><span><strong>Elimina hordas</strong> y elige una mejora</span></li>
                         <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-sky-500/50 bg-sky-500/10 text-[0.6rem] font-extrabold text-sky-400">★</span><span><strong>Responde</strong> la pregunta y gana +15 XP</span></li>
                       </ul>
-                      <button type="button" class="btn btn-gold w-full justify-center !py-3 text-base !font-extrabold" (click)="comenzarPartida()">¡Entendido, jugar!</button>
+                      @if (juegoListo()) {
+                        <button type="button" class="btn btn-gold w-full justify-center !py-3 text-base !font-extrabold" (click)="comenzarPartida()">¡Entendido, jugar!</button>
+                      } @else {
+                        <div class="flex w-full items-center justify-center gap-3 rounded-xl border border-gold-500/30 bg-gold-500/5 px-4 py-3 text-sm font-bold text-gold-300" role="status" aria-live="polite">
+                          <span class="size-4 animate-spin rounded-full border-2 border-gold-400/30 border-t-gold-400"></span>
+                          Cargando la arena…
+                        </div>
+                      }
                     </div>
                   </div>
                 }
@@ -378,6 +385,8 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   private mejoraPendiente: { id: string; nombre: string } | null = null;
   protected readonly candidatosMejora = signal<readonly { id: string; nombre: string; descripcion: string; rareza: string; rango: number; maxRango: number }[]>([]);
   protected readonly mostrarIntro = signal(true);
+  /** true cuando Phaser disparó 'ready' — el juego está listo para reanudar. */
+  protected readonly juegoListo = signal(false);
   protected readonly elegido = signal<string | null>(null);
   protected readonly guardianActual = computed(() => GUARDIANES.find((g) => g.id === this.elegido()) ?? null);
   /** Nivel máximo que el estudiante puede jugar según su progreso (bloqueo progresivo). */
@@ -472,6 +481,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     if (this.hudTimer) clearInterval(this.hudTimer);
     this.elegido.set(id);
     this.mostrarIntro.set(true);
+    this.juegoListo.set(false);
     this.fase.set('intro');
     queueMicrotask(() => this.arrancar());
   }
@@ -479,7 +489,10 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void { this.limpiar(); }
 
   protected comenzarPartida(): void {
+    // El juego aún no está listo: no ocultamos el intro ni reanudamos un juego inexistente
+    if (!this.juegoListo()) return;
     this.mostrarIntro.set(false);
+    this.enPausa.set(false);
     this.game?.resume();
   }
 
@@ -491,6 +504,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     this.fase.set('intro'); this.xpGanado.set(0); this.monedasGanadas.set(0); this.mensajeResultado.set(''); this.intentoId = null; this.elegirMejora.set(false);
     this.preguntaActual.set(null); this.respuestaElegida.set(null); this.respuestaResultado.set(null); this.preguntaExcluidas = [];
     this.mostrarIntro.set(true);
+    this.juegoListo.set(false);
     if (this.game) { this.game.destroy(true); this.game = null; }
     if (this.hudTimer) clearInterval(this.hudTimer);
     queueMicrotask(() => this.arrancar());
@@ -701,6 +715,8 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
         const nivelIdLocal = nivelId;
         // Arrancar pausado: el estudiante decide cuando empieza
         this.game?.pause();
+        // El botón "¡Entendido, jugar!" solo aparece cuando Phaser confirma ready
+        this.juegoListo.set(true);
         if (scene && nivelIdLocal) {
           scene.evaluacionMode = this.esEvaluacion();
           scene.emitHud = () => this.crearTickHud(scene);
