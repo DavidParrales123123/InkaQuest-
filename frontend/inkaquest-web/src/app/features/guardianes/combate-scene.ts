@@ -6,27 +6,47 @@ export interface MejoraInfo {
   readonly nombre: string;
   readonly descripcion: string;
   readonly rareza: 'comun' | 'academic' | 'legendario';
+  readonly maxRango: number;
   readonly aplica: (scene: CombateScene) => void;
 }
 
-/** Mejoras posibles entre hordas. Se ofrecen 3 al azar; el estudiante elige una. */
+/**
+ * Mejoras posibles entre hordas. Cada una es apilable por rangos: al elegirla
+ * sube su nivel y el efecto se acumula (Espada Algorítmica I → II → III…).
+ * Ofrecidas 3 al azar por horda ⇒ 9 hordas × 3 = 27 tarjetas por nivel.
+ */
 export const MEJORAS: MejoraInfo[] = [
-  { id: 'dano', nombre: 'Espada Algorítmica', rareza: 'comun', descripcion: '+1 daño por bala',
+  { id: 'dano', nombre: 'Espada Algorítmica', rareza: 'comun', maxRango: 5,
+    descripcion: '+1 daño por bala (apilable)',
     aplica: (s) => { s.danoActual += 1; } },
-  { id: 'vida', nombre: 'Escudo Lógico', rareza: 'comun', descripcion: '+25 salud máxima (cura 25)',
+  { id: 'vida', nombre: 'Escudo Lógico', rareza: 'comun', maxRango: 4,
+    descripcion: '+25 vida máxima y cura 25 (apilable)',
     aplica: (s) => { s.saludMax += 25; s.salud = Math.min(s.saludMax, s.salud + 25); } },
-  { id: 'velocidad', nombre: 'Botas GPX', rareza: 'comun', descripcion: '+25% velocidad de movimiento',
-    aplica: (s) => { s.vel = Math.floor(s.vel * 1.25); } },
-  { id: 'cadencia', nombre: 'Cañón Aritmético', rareza: 'comun', descripcion: 'Disparo 25% más rápido',
-    aplica: (s) => { s.fireInterval = Math.max(90, Math.floor(s.fireInterval * 0.75)); } },
-  { id: 'radio', nombre: 'Área Extendida', rareza: 'academic', descripcion: '+50% radio de impacto de las balas',
-    aplica: (s) => { s.bulletSize = Math.ceil(s.bulletSize * 1.5); } },
-  { id: 'escudo', nombre: 'Escudo Predictivo', rareza: 'academic', descripcion: 'Recibir daño 30% reducido',
-    aplica: (s) => { s.resistencia = Math.min(0.9, s.resistencia + 0.3); } },
-  { id: 'critico', nombre: 'Rayo Crítico', rareza: 'academic', descripcion: 'Cada 3er disparo hace daño crítico (×3)',
-    aplica: (s) => { s.tieneCritico = true; } },
-  { id: 'regen', nombre: 'Código Médico', rareza: 'legendario', descripcion: 'Regenera 1 vida cada 2 segundos',
-    aplica: (s) => { s.regenera = true; } },
+  { id: 'velocidad', nombre: 'Botas GPX', rareza: 'comun', maxRango: 4,
+    descripcion: '+20% velocidad de movimiento (apilable)',
+    aplica: (s) => { s.vel = Math.floor(s.vel * 1.2); } },
+  { id: 'cadencia', nombre: 'Cañón Aritmético', rareza: 'comun', maxRango: 4,
+    descripcion: 'Disparo 20% más rápido (apilable)',
+    aplica: (s) => { s.fireInterval = Math.max(90, Math.floor(s.fireInterval * 0.8)); } },
+  { id: 'radio', nombre: 'Área Extendida', rareza: 'academic', maxRango: 3,
+    descripcion: '+35% radio de impacto de las balas (apilable)',
+    aplica: (s) => { s.bulletSize = Math.ceil(s.bulletSize * 1.35); } },
+  { id: 'escudo', nombre: 'Escudo Predictivo', rareza: 'academic', maxRango: 3,
+    descripcion: '+22% resistencia al daño (apilable, máx 85%)',
+    aplica: (s) => { s.resistencia = Math.min(0.85, s.resistencia + 0.22); } },
+  { id: 'critico', nombre: 'Rayo Crítico', rareza: 'academic', maxRango: 3,
+    descripcion: 'Cada 3er disparo es crítico (×3 → ×4 → ×5)',
+    aplica: (s) => { s.criticoRango += 1; } },
+  { id: 'regen', nombre: 'Código Médico', rareza: 'legendario', maxRango: 3,
+    descripcion: 'Regenera +1 vida cada 2s por rango (1→2→3)',
+    aplica: (s) => { s.regeneraRango += 1; } },
+];
+
+/** Extensión de reserva cuando el pool alcance su rango máximo (nunca faltan tarjetas). */
+export const MEJORAS_EXTRA: MejoraInfo[] = [
+  { id: 'vitalidad', nombre: 'Vitamina Vital', rareza: 'comun', maxRango: 99,
+    descripcion: '+40 vida al instante',
+    aplica: (s) => { s.salud = Math.min(s.saludMax, s.salud + 40); } },
 ];
 
 /** Escena Phaser en vivo: arena top-down de supervivencia por hordas. */
@@ -42,10 +62,10 @@ export class CombateScene extends Phaser.Scene {
   bulletSize = 4;
   resistencia = 0;
   vel = 240;
-  tieneCritico = false;
-  regenera = false;
-
+  criticoRango = 0;
+  regeneraRango = 0;
   private criticoCounter = 0;
+  private ranks: Record<string, number> = {};
   private emitHud?: () => void;
   private emitDestroy?: (victoria: boolean, matados: number, tiempo: number) => void;
   private emitUpgradePick?: () => void;
@@ -134,12 +154,12 @@ export class CombateScene extends Phaser.Scene {
     else if (isDown(KEY_S) || isDown(DOWN)) vy = this.vel;
     this.player.setVelocity(vx, vy);
 
-    // Regeneración pasiva (mejora "Código Médico")
-    if (this.regenera) {
+    // Regeneración pasiva (mejora "Código Médico", +regeneraRango vida/2s)
+    if (this.regeneraRango > 0) {
       this.regenTick += deltaMs;
       if (this.regenTick > 2000) {
         this.regenTick = 0;
-        this.salud = Math.min(this.saludMax, this.salud + 1);
+        this.salud = Math.min(this.saludMax, this.salud + this.regeneraRango);
         this.emitHud?.();
       }
     }
@@ -180,9 +200,8 @@ export class CombateScene extends Phaser.Scene {
       for (const e of this.enemies) {
         if (!e.active) continue;
         if (Phaser.Math.Distance.BetweenPoints(b, e) < radioImpacto) {
-          const critico = b.texture.key === 'bullet_critical';
-          const dano = critico ? this.danoActual * 3 : this.danoActual;
-          this.hitEnemy(e, dano);
+          const danoMult = (b as unknown as { danoMult?: number }).danoMult ?? 1;
+          this.hitEnemy(e, this.danoActual * danoMult);
           b.destroy();
           break;
         }
@@ -219,8 +238,9 @@ export class CombateScene extends Phaser.Scene {
     const nearest = this.nearestEnemy();
     if (!nearest || !this.player) return;
     this.criticoCounter++;
-    const critico = this.tieneCritico && this.criticoCounter % 3 === 0;
+    const critico = this.criticoRango > 0 && this.criticoCounter % 3 === 0;
     const bullet = this.physics.add.sprite(this.player.x, this.player.y, critico ? 'bullet_critical' : 'bullet_white');
+    (bullet as unknown as { danoMult: number }).danoMult = critico ? 2 + this.criticoRango : 1;
     const dx = nearest.x - this.player.x;
     const dy = nearest.y - this.player.y;
     const len = Math.hypot(dx, dy) || 1;
@@ -274,24 +294,32 @@ export class CombateScene extends Phaser.Scene {
     }
   }
 
-  /** Llamado externamente por el componente Angular tras el pick de mejora. */
-  applyUpgrade(id: string): void {
-    const mejora = MEJORAS.find((m) => m.id === id);
-    if (mejora) mejora.aplica(this);
+  /** Nivel actual alcanzado de una mejora (0 si no se ha tomado). */
+  getRango(id: string): number {
+    return this.ranks[id] ?? 0;
   }
 
-  /** Angular bridge: arrancar la siguiente horda tras elegir mejora. */
+  /** Llamado externamente por el componente Angular tras el pick de mejora. */
+  applyUpgrade(id: string): void {
+    const mejora = [...MEJORAS, ...MEJORAS_EXTRA].find((m) => m.id === id);
+    if (!mejora) return;
+    this.ranks[id] = this.getRango(id) + 1;
+    mejora.aplica(this);
+  }
+
+  /** Angular bridge: arrancar la siguiente horda tras elegir mejora; en la horda 9 dispara la victoria. */
   comenzarSiguienteHorda(): void {
+    if (this.hordaActual >= this.totalHordas) {
+      this.finalizar(true);
+      return;
+    }
     this.startHorda(this.hordaActual + 1);
     this.pickingUpgrade = false;
   }
 
   private marcarHordaCompletada(): void {
-    if (this.hordaActual >= this.totalHordas) {
-      this.finalizar(true);
-      return;
-    }
-    // Pausa la simulación y pide al componente Angular que muestre el overlay de mejoras
+    // Todas las hordas (incluida la 9) ofrecen 3 mejoras ⇒ 9 × 3 = 27 tarjetas por nivel.
+    // En la horda 9, la elección actúa como ceremonia final antes de la victoria.
     this.pickingUpgrade = true;
     this.emitUpgradePick?.();
   }

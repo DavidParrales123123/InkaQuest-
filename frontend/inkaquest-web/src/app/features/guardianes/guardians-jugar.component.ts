@@ -5,7 +5,7 @@ import Phaser from 'phaser';
 
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { SupabaseService } from '../../core/services/supabase.service';
-import { CombateScene, MEJORAS } from './combate-scene';
+import { CombateScene, MEJORAS, MEJORAS_EXTRA } from './combate-scene';
 
 /** Juego completo de supervivencia por hordas con mejoras entre hordas y progreso persistido. */
 @Component({
@@ -52,8 +52,8 @@ import { CombateScene, MEJORAS } from './combate-scene';
                 <div class="w-full max-w-2xl space-y-3 rounded-2xl border border-gold-400/40 bg-gradient-to-br from-marine-900 to-marine-800 p-4 text-white">
                   <div>
                     <p class="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-gold-400">Selecciona una mejora</p>
-                    <h3 class="text-lg font-extrabold">¡Horda {{ hordaActual() }} superada!</h3>
-                    <p class="text-xs text-marine-200">Elige un beneficio académico antes de la próxima horda.</p>
+                    <h3 class="text-lg font-extrabold">¡Horda {{ hordaActual() }} de 9 superada!</h3>
+                    <p class="text-xs text-marine-200">{{ hordaActual() >= 9 ? 'Ceremonia final: elige tu última mejora y vencerás el nivel.' : 'Elige un beneficio académico antes de la próxima horda.' }}</p>
                   </div>
                   <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     @for (m of candidatosMejora(); track m.id) {
@@ -61,8 +61,12 @@ import { CombateScene, MEJORAS } from './combate-scene';
                         <div class="space-y-1">
                           <p class="text-sm font-bold text-gold-400">{{ m.nombre }}</p>
                           <p class="text-[0.7rem] text-marine-200">{{ m.descripcion }}</p>
+                          <p class="text-[0.65rem] font-bold uppercase tracking-widest text-brand-300">{{ m.rango > 0 ? 'Mejora a Nv. ' + (m.rango + 1) : 'Nueva adquisición' }}</p>
                         </div>
-                        <span class="text-[0.65rem] font-extrabold uppercase tracking-widest" [class.text-gold-400]="m.rareza === 'academic'" [class.text-white]="m.rareza === 'comun'" [class.text-rose-400]="m.rareza === 'legendario'">{{ m.rareza === 'comun' ? 'COMÚN' : m.rareza === 'academic' ? 'ACADÉMICA' : 'LEGENDARIA' }}</span>
+                        <div class="flex w-full items-center justify-between gap-2">
+                          <span class="text-[0.65rem] font-extrabold uppercase tracking-widest" [class.text-gold-400]="m.rareza === 'academic'" [class.text-white]="m.rareza === 'comun'" [class.text-rose-400]="m.rareza === 'legendario'">{{ m.rareza === 'comun' ? 'COMÚN' : m.rareza === 'academic' ? 'ACADÉMICA' : 'LEGENDARIA' }}</span>
+                          <span class="text-[0.65rem] font-bold text-marine-300">{{ m.rango }}/{{ m.maxRango }}</span>
+                        </div>
                       </button>
                     }
                   </div>
@@ -105,7 +109,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected readonly monedasGanadas = signal(0);
   protected readonly mensajeResultado = signal('');
   protected readonly elegirMejora = signal(false);
-  protected readonly candidatosMejora = signal<readonly { id: string; nombre: string; descripcion: string; rareza: string }[]>([]);
+  protected readonly candidatosMejora = signal<readonly { id: string; nombre: string; descripcion: string; rareza: string; rango: number; maxRango: number }[]>([]);
 
   protected readonly saludPct = computed(() => Math.max(0, Math.min(100, (this.salud() / this.saludMax()) * 100)));
   protected readonly xpPct = computed(() => Math.min(100, (this.xp() % 200) / 2));
@@ -208,12 +212,26 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   private abrirMenuMejoras(): void {
     // La escena ya queda congelada con pickingUpgrade; aquí sólo mostramos el overlay
     this.elegirMejora.set(true);
-    this.hordaActual.set((this.game?.scene?.getScene('Combate') as any)?.hordaActual ?? 1);
+    const scene = this.game?.scene?.getScene('Combate') as any;
+    this.hordaActual.set(scene?.hordaActual ?? 1);
 
-    const pool = [...MEJORAS];
-    const picks: typeof pool = [];
-    while (picks.length < 3 && pool.length) { picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]); }
-    this.candidatosMejora.set(picks.map((m) => ({ id: m.id, nombre: m.nombre, descripcion: m.descripcion, rareza: m.rareza })));
+    // Pool reutilizable por rangos: sólo ofrece lo que aún no está al máximo,
+    // con Vitamina Vital como reserva ilimitada si todo está maxeado.
+    const rango = (id: string): number => scene?.getRango?.(id) ?? 0;
+    const disponibles = [...MEJORAS, ...MEJORAS_EXTRA].filter((m) => rango(m.id) < m.maxRango);
+    const picks: typeof disponibles = [];
+    const pool = [...disponibles];
+    while (picks.length < 3 && pool.length) {
+      picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    }
+    this.candidatosMejora.set(picks.map((m) => ({
+      id: m.id,
+      nombre: m.nombre,
+      descripcion: m.descripcion,
+      rareza: m.rareza,
+      rango: rango(m.id),
+      maxRango: m.maxRango,
+    })));
   }
 
   private async persistirIntento(nivelId: string, victoria: boolean, matados: number, tiempoSeg: number): Promise<void> {
