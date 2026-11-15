@@ -41,7 +41,7 @@ interface NivelItem {
             <p class="max-w-2xl text-sm text-marine-100">Campaña de supervivencia por hordas exclusiva del curso Principios de Algoritmos. Mientras aprendes fundamentos, estructuras condicionales y estructuras repetitivas, tu personaje sobrevive a las oleadas.</p>
             <div class="flex flex-wrap gap-3 pt-3">
               <a class="btn btn-gold" [routerLink]="['/estudiante/guardianes/nivel', primerDisponible() ?? 1]">Empezar partida</a>
-              <a class="btn btn-outline-light" href="#campana">Ver campaña</a>
+              <button type="button" class="btn btn-outline-light" (click)="irACampana()">Ver campaña</button>
             </div>
           </div>
           <div class="flex flex-col items-end gap-2">
@@ -67,7 +67,7 @@ interface NivelItem {
           </div>
         </aside>
 
-        <div id="campana" class="card card-body lg:col-span-8">
+        <div id="campana" class="card card-body lg:col-span-8 rounded-2xl border transition-all duration-300" [class.ring-2]="flashCampana()" [class.ring-gold-400]="flashCampana()" [class.shadow-xl]="flashCampana()">
           <h2 class="text-base font-bold text-marine-800">Campaña — 18 niveles</h2>
           <p class="text-xs text-marine-500">Cada nivel corresponde a una lekction del curso.</p>
           <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -107,6 +107,7 @@ export class GuardiansComponent implements OnInit, OnDestroy {
   protected readonly niveles = signal<NivelItem[]>([]);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+  protected readonly flashCampana = signal(false);
   protected readonly siguienteNumero = signal(1);
   protected readonly siguienteTitulo = signal('');
   protected readonly totalIntentos = signal(0);
@@ -116,6 +117,15 @@ export class GuardiansComponent implements OnInit, OnDestroy {
 
   protected primerDisponible(): number {
     return this.niveles().find((n) => !n.bloqueada)?.numero ?? 1;
+  }
+
+  protected irACampana(): void {
+    const el = typeof document !== 'undefined' ? document.getElementById('campana') : null;
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    this.flashCampana.set(true);
+    setTimeout(() => this.flashCampana.set(false), 1500);
   }
 
   ngOnInit(): void { void this.cargar(); }
