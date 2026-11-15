@@ -128,6 +128,7 @@ export class CombateScene extends Phaser.Scene {
   private explosionCadaCuatro = false;
   private attackPulse = 0;
   private ramboAnimActiva = false;
+  private sasukeAttackUntil = 0;
 
   constructor() {
     super({ key: 'Combate' });
@@ -144,9 +145,13 @@ export class CombateScene extends Phaser.Scene {
     for (const g of GUARDIANES) {
       this.load.image('guard_' + g.id, g.sprite);
     }
-    // Frames del ciclo de marcha de Rambo (walk animation)
+    // Frames del ciclo de marcha de Guardianes
     for (let i = 0; i <= 5; i++) {
       this.load.image('rambo_walk_' + i, `assets/guardianes/walk/rambo_walk_${i}.png`);
+    }
+    for (let i = 0; i <= 2; i++) {
+      this.load.image('sasuke_walk_' + i, `assets/guardianes/walk/sasuke_walk_${i}.png`);
+      this.load.image('sasuke_atk_' + i, `assets/guardianes/walk/sasuke_atk_${i}.png`);
     }
   }
 
@@ -178,15 +183,30 @@ export class CombateScene extends Phaser.Scene {
     // Sombra suave bajo el personaje para que no "flote" sobre el arena
     this.playerShadow = this.add.image(this.player.x, this.player.y + 10, 'player_shadow').setScale(1.3, 0.6).setAlpha(0.55).setDepth(4);
 
-    // Animación de marcha de Rambo
-    if ((this.anims as unknown as { exists: (k: string) => boolean }).exists('rambo_walk')) {
-      // ya creada
-    } else if (this.textures.exists('rambo_walk_0')) {
-      this.anims.create({
+    // Animaciones de marcha y ataque extraídas de los sprite sheets
+    const anims = this.anims as unknown as { create: (cfg: unknown) => void; exists: (k: string) => boolean };
+    if (this.textures.exists('rambo_walk_0') && !anims.exists('rambo_walk')) {
+      anims.create({
         key: 'rambo_walk',
         frames: [0, 1, 2, 3, 4, 5].map((i) => ({ key: 'rambo_walk_' + i })),
         frameRate: 9,
         repeat: -1,
+      });
+    }
+    if (this.textures.exists('sasuke_walk_0') && !anims.exists('sasuke_walk')) {
+      anims.create({
+        key: 'sasuke_walk',
+        frames: [0, 1, 2].map((i) => ({ key: 'sasuke_walk_' + i })),
+        frameRate: 8,
+        repeat: -1,
+      });
+    }
+    if (this.textures.exists('sasuke_atk_0') && !anims.exists('sasuke_atk')) {
+      anims.create({
+        key: 'sasuke_atk',
+        frames: [0, 1, 2].map((i) => ({ key: 'sasuke_atk_' + i })),
+        frameRate: 12,
+        repeat: 0,
       });
     }
 
@@ -574,24 +594,32 @@ export class CombateScene extends Phaser.Scene {
     }
 
     // Animación de movimiento:
-    //  - Rambo reproduce su ciclo de 6 frames mientras se mueve.
+    //  - Rambo y Sasuke reproducen su ciclo de frames mientras se mueven.
     //  - Los demás: bob y tilt sutil + crecimiento de escala al atacar.
     const moving = vx !== 0 || vy !== 0;
+    const ahora = this.time.now;
     const playerSprite = this.player as unknown as Phaser.Physics.Arcade.Sprite;
-    if (this.guardian?.id === 'rambo' && playerSprite.anims) {
-      if (moving && !this.ramboAnimActiva) {
+    const esRambo = this.guardian?.id === 'rambo';
+    const esSasuke = this.guardian?.id === 'sasuke';
+    if (moving && playerSprite.anims) {
+      if (esSasuke && ahora >= this.sasukeAttackUntil) {
+        playerSprite.anims.play('sasuke_walk', true);
+      } else if (esRambo) {
         playerSprite.anims.play('rambo_walk', true);
-        this.ramboAnimActiva = true;
-      } else if (!moving && this.ramboAnimActiva) {
-        playerSprite.anims.stop();
-        this.ramboAnimActiva = false;
+      } else if (!esSasuke) {
+        const pulso = Math.sin(ahora / 140);
+        const base = 0.85;
+        const ataque = this.attackPulse > 0 ? 1 + Math.sin(this.attackPulse * Math.PI) * 0.22 : 1;
+        this.player.setScale(base * ataque, base * ataque * (1 + pulso * 0.04));
+        this.player.setRotation(Math.sin(ahora / 200) * 0.035);
       }
-    } else if (this.player) {
-      const pulso = Math.sin(this.time.now / 140);
-      const base = 0.85;
-      const ataque = this.attackPulse > 0 ? 1 + Math.sin(this.attackPulse * Math.PI) * 0.22 : 1;
-      this.player.setScale(base * ataque, base * ataque * (1 + (moving ? pulso * 0.03 : 0)));
-      this.player.setRotation(moving ? Math.sin(this.time.now / 200) * 0.035 : 0);
+    } else if (playerSprite.anims) {
+      if (esSasuke && ahora >= this.sasukeAttackUntil) {
+        playerSprite.anims.stop();
+      } else if (esRambo) {
+        playerSprite.anims.stop();
+      }
+      this.player.setRotation(0);
     }
     if (this.attackPulse > 0) this.attackPulse = Math.max(0, this.attackPulse - deltaMs / 170);
 
@@ -633,6 +661,11 @@ export class CombateScene extends Phaser.Scene {
         this.fireTimer = 0;
         this.attackPulse = 1;
         this.spawnSlash();
+        // Sasuke: animación de corte activo (no loop) por un instante
+        if (this.guardian?.id === 'sasuke' && (this.player as unknown as Phaser.Physics.Arcade.Sprite).anims) {
+          (this.player as unknown as Phaser.Physics.Arcade.Sprite).anims.play('sasuke_atk', true);
+          this.sasukeAttackUntil = this.time.now + 260;
+        }
       }
     }
 
