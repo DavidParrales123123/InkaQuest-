@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { NgClass } from '@angular/common';
 import Phaser from 'phaser';
 
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -11,10 +12,10 @@ import { CombateScene, MEJORAS, MEJORAS_EXTRA } from './combate-scene';
 @Component({
   selector: 'app-guardians-jugar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, PageHeaderComponent],
+  imports: [RouterLink, PageHeaderComponent, NgClass],
   template: `
     <section class="space-y-4">
-      <app-page-header [titulo]="'Nivel ' + numero() + ' — Guardianes del Conocimiento'" descripcion="Sobrevive 9 hordas (≈5 min), recibe mejoras entre hordas y desbloquea la siguiente lekcción del curso." [acciones]="true">
+      <app-page-header [titulo]="'Nivel ' + numero() + ' — Guardianes del Conocimiento'" descripcion="Sobrevive 9 hordas (≈5 min), recibe mejoras y responde chequeos académicos entre hordas." [acciones]="true">
         <div acciones class="flex flex-wrap items-center gap-2">
           @if (enPausa()) { <button type="button" class="btn btn-primary btn-sm" (click)="reanudar()">Reanudar</button> }
           @else if (fase() === 'jugando') { <button type="button" class="btn btn-outline btn-sm" (click)="pausar()">Pausa</button> }
@@ -73,6 +74,38 @@ import { CombateScene, MEJORAS, MEJORAS_EXTRA } from './combate-scene';
                 </div>
               </div>
             }
+            <!-- Overlay de chequeo académico entre hordas -->
+            @if (preguntaActual(); as p) {
+              <div class="absolute inset-0 z-10 flex items-center justify-center bg-marine-900/80 p-3 backdrop-blur-sm">
+                <div class="w-full max-w-xl space-y-3 rounded-2xl border border-brand-400/40 bg-gradient-to-br from-marine-900 to-marine-800 p-4 text-white">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-brand-400">Chequeo académico · Horda {{ hordaActual() }}</p>
+                      <h3 class="mt-1 text-base font-extrabold leading-snug">{{ p.enunciado }}</h3>
+                      @if (p.tema) { <p class="mt-1 text-[0.65rem] uppercase tracking-widest text-marine-400">{{ p.tema }} · {{ p.dificultad }}</p> }
+                    </div>
+                    @if (!respuestaResultado()) {
+                      <button type="button" class="shrink-0 text-[0.65rem] font-bold uppercase tracking-widest text-marine-400 underline underline-offset-2 hover:text-marine-200" (click)="omitirChequeo()">Omitir</button>
+                    }
+                  </div>
+                  <div class="grid gap-2">
+                    @for (op of p.opciones; track op) {
+                      <button type="button" [ngClass]="claseOpcion(op)" (click)="elegirOpcion(op)">{{ op }}</button>
+                    }
+                  </div>
+                  @if (respuestaResultado(); as r) {
+                    <div class="rounded-xl border p-3 text-sm" [class.border-emerald-400/40]="r.esCorrecta" [class.bg-emerald-400/10]="r.esCorrecta" [class.border-rose-400/40]="!r.esCorrecta" [class.bg-rose-400/10]="!r.esCorrecta">
+                      <p class="font-extrabold" [class.text-emerald-300]="r.esCorrecta" [class.text-rose-300]="!r.esCorrecta">{{ r.esCorrecta ? '¡Correcto! +' + r.xp + ' XP · +' + r.monedas + ' monedas' : 'Respuesta incorrecta' }}</p>
+                      @if (!r.esCorrecta && r.correcta) { <p class="mt-1 text-marine-100">Respuesta correcta: <strong>{{ r.correcta }}</strong></p> }
+                      @if (r.explicacion) { <p class="mt-1 text-[0.75rem] text-marine-200">{{ r.explicacion }}</p> }
+                    </div>
+                    <button type="button" class="btn btn-gold w-full justify-center" (click)="continuarTrasChequeo()">Continuar →</button>
+                  } @else {
+                    <button type="button" class="btn btn-primary w-full justify-center disabled:opacity-40" [disabled]="!respuestaElegida()" (click)="confirmarRespuesta()">Comprobar respuesta</button>
+                  }
+                </div>
+              </div>
+            }
           </div>
           @if (fase() === 'victoria' || fase() === 'derrota') {
             <div class="rounded-2xl border border-gold-500/40 bg-marine-900 p-6 text-center">
@@ -110,6 +143,12 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected readonly mensajeResultado = signal('');
   protected readonly elegirMejora = signal(false);
   protected readonly candidatosMejora = signal<readonly { id: string; nombre: string; descripcion: string; rareza: string; rango: number; maxRango: number }[]>([]);
+  protected readonly preguntaActual = signal<{ preguntaId: string; enunciado: string; opciones: string[]; tema: string; dificultad: string } | null>(null);
+  protected readonly respuestaElegida = signal<string | null>(null);
+  protected readonly respuestaResultado = signal<{ esCorrecta: boolean; correcta?: string; explicacion?: string; xp: number; monedas: number } | null>(null);
+  private preguntaExcluidas: string[] = [];
+  private nivelId: string | null = null;
+  private preguntaDesde = 0;
 
   protected readonly saludPct = computed(() => Math.max(0, Math.min(100, (this.salud() / this.saludMax()) * 100)));
   protected readonly xpPct = computed(() => Math.min(100, (this.xp() % 200) / 2));
@@ -139,6 +178,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected reiniciar(): void {
     this.salud.set(100); this.saludMax.set(100); this.xp.set(0); this.enemigosVivos.set(0); this.tiempo.set(0); this.hordaActual.set(1);
     this.fase.set('intro'); this.xpGanado.set(0); this.monedasGanadas.set(0); this.mensajeResultado.set(''); this.intentoId = null; this.elegirMejora.set(false);
+    this.preguntaActual.set(null); this.respuestaElegida.set(null); this.respuestaResultado.set(null); this.preguntaExcluidas = [];
     if (this.game) { this.game.destroy(true); this.game = null; }
     if (this.hudTimer) clearInterval(this.hudTimer);
     queueMicrotask(() => this.arrancar());
@@ -148,10 +188,109 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     const scene = this.game?.scene?.getScene('Combate') as any;
     if (scene) {
       scene.applyUpgrade(m.id);
-      scene.comenzarSiguienteHorda?.();
     }
     this.elegirMejora.set(false);
-    this.hordaActual.set((this.game?.scene?.getScene('Combate') as any)?.hordaActual ?? 1);
+    // Tras la mejora: chequeo académico de la lección antes de la siguiente horda
+    void this.iniciarChequeo();
+  }
+
+  private iniciarSiguienteHorda(): void {
+    const scene = this.game?.scene?.getScene('Combate') as any;
+    scene?.comenzarSiguienteHorda?.();
+    this.hordaActual.set(scene?.hordaActual ?? 1);
+  }
+
+  private async iniciarChequeo(): Promise<void> {
+    const nivelId = this.nivelId;
+    if (!nivelId || !this.intentoId) { this.iniciarSiguienteHorda(); return; }
+    const sb = this.supabase.client;
+    try {
+      const { data, error } = await sb.rpc('guardianes_pregunta_aleatoria', {
+        p_nivel_id: nivelId,
+        p_excluir: this.preguntaExcluidas,
+      });
+      if (error) throw error;
+      const row = (Array.isArray(data) ? data[0] : null) as any;
+      if (!row) { this.iniciarSiguienteHorda(); return; }
+      const opciones = Array.isArray(row.opciones) ? row.opciones.map(String) : [];
+      if (opciones.length < 2) { this.iniciarSiguienteHorda(); return; }
+      this.preguntaExcluidas.push(row.pregunta_id);
+      this.preguntaActual.set({
+        preguntaId: row.pregunta_id,
+        enunciado: String(row.enunciado ?? ''),
+        opciones,
+        tema: String(row.tema ?? ''),
+        dificultad: String(row.dificultad ?? ''),
+      });
+      this.respuestaElegida.set(null);
+      this.respuestaResultado.set(null);
+      this.preguntaDesde = Date.now();
+    } catch (e) {
+      console.warn('[guardianes] chequeo:', e);
+      this.iniciarSiguienteHorda();
+    }
+  }
+
+  protected elegirOpcion(opcion: string): void {
+    if (this.respuestaResultado()) return; // ya está calificada
+    this.respuestaElegida.set(opcion);
+  }
+
+  protected async confirmarRespuesta(): Promise<void> {
+    const pregunta = this.preguntaActual();
+    const sel = this.respuestaElegida();
+    if (!pregunta || !sel || this.respuestaResultado()) return;
+    const sb = this.supabase.client;
+    try {
+      const { data, error } = await sb.rpc('guardianes_responder_pregunta', {
+        p_intento_id: this.intentoId,
+        p_pregunta_id: pregunta.preguntaId,
+        p_respuesta: sel,
+        p_duracion_ms: Date.now() - this.preguntaDesde,
+      });
+      if (error) throw error;
+      const res = (data ?? {}) as any;
+      this.respuestaResultado.set({
+        esCorrecta: Boolean(res.es_correcta),
+        correcta: res.correcta ?? undefined,
+        explicacion: res.explicacion ?? undefined,
+        xp: res.xp ?? 0,
+        monedas: res.monedas ?? 0,
+      });
+      if (res.es_correcta) {
+        const scene = this.game?.scene?.getScene('Combate') as any;
+        if (scene) scene.xp = (scene.xp ?? 0) + (res.xp ?? 0);
+        this.xp.set(scene?.xp ?? this.xp());
+      }
+    } catch (e) {
+      console.warn('[guardianes] responder chequeo:', e);
+      this.respuestaResultado.set({ esCorrecta: false, explicacion: 'No se pudo calificar. Revisa tu conexión.', xp: 0, monedas: 0 });
+    }
+  }
+
+  protected omitirChequeo(): void {
+    this.preguntaActual.set(null);
+    this.respuestaElegida.set(null);
+    this.respuestaResultado.set(null);
+    this.iniciarSiguienteHorda();
+  }
+
+  protected continuarTrasChequeo(): void {
+    this.omitirChequeo();
+  }
+
+  protected claseOpcion(op: string): string {
+    const base = 'rounded-xl border px-3 py-2 text-left text-sm transition ';
+    const r = this.respuestaResultado();
+    const sel = this.respuestaElegida();
+    if (!r) {
+      return base + (sel === op
+        ? 'border-brand-400 bg-brand-400/15 text-white'
+        : 'border-gold-400/25 bg-marine-900/80 text-marine-100 hover:border-brand-400 hover:text-white');
+    }
+    if (op === r.correcta) return base + 'border-emerald-400/60 bg-emerald-400/15 text-emerald-200';
+    if (sel === op) return base + 'border-rose-400/60 bg-rose-400/15 text-rose-200';
+    return base + 'border-gold-400/10 bg-marine-900/60 text-marine-500';
   }
 
   private limpiar(): void {
@@ -168,6 +307,11 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
 
   private async arrancar(): Promise<void> {
     const nivelId = await this.resolverNivelId(this.numero());
+    this.nivelId = nivelId;
+    this.preguntaExcluidas = [];
+    this.preguntaActual.set(null);
+    this.respuestaResultado.set(null);
+    this.respuestaElegida.set(null);
     const sb = this.supabase.client;
 
     // Iniciar intento
