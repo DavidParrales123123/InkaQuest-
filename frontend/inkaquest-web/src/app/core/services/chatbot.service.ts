@@ -4,12 +4,22 @@ import { firstValueFrom } from 'rxjs';
 
 import { ApiClientService } from './api-client.service';
 
+/** Adjunto a enviar junto al mensaje (ya subido al bucket privado 'chat'). */
+export interface ChatbotAdjunto {
+  ruta: string;
+  url: string;
+  mime: string;
+  nombre: string;
+  tamano: number;
+}
+
 /** Mensaje de conversación del chatbot (UI/contrato preparado). */
 export interface ChatbotMensaje {
   id?: string;
   rol: 'usuario' | 'asistente' | 'sistema';
   contenido: string;
   creado_en?: string;
+  datos?: Record<string, unknown>;
 }
 
 /** Conversación del chatbot (UI/contrato preparado). */
@@ -49,12 +59,16 @@ export class ChatbotService {
     return await firstValueFrom(this.api.post<ChatbotConversacion>('/chatbot/conversaciones', { titulo }));
   }
 
-  /** Envía un mensaje y recibe la respuesta del asistente (backend requerido). */
-  async enviarMensaje(conversacionId: string | null, contenido: string): Promise<{ conversacion: ChatbotConversacion; mensaje: ChatbotMensaje; respuesta: ChatbotMensaje }> {
+  /** Envía un mensaje (texto y/o adjuntos) y recibe la respuesta del asistente. */
+  async enviarMensaje(
+    conversacionId: string | null,
+    contenido: string,
+    attachments: ChatbotAdjunto[] = [],
+  ): Promise<{ conversacion: ChatbotConversacion; mensaje: ChatbotMensaje; respuesta: ChatbotMensaje }> {
     return await firstValueFrom(
       this.api.post<{ conversacion: ChatbotConversacion; mensaje: ChatbotMensaje; respuesta: ChatbotMensaje }>(
         '/chatbot/mensajes',
-        { conversacionId, contenido },
+        { conversacionId, contenido, attachments },
       ),
     );
   }

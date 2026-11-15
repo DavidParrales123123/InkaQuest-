@@ -2,24 +2,33 @@
 import { ChangeDetectionStrategy, Component, ElementRef, ViewChild, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { ChatbotService } from '../../../core/services/chatbot.service';
+import { ChatbotService, type ChatbotAdjunto } from '../../../core/services/chatbot.service';
+import { StorageService } from '../../../core/services/storage.service';
 
 interface MensajeUI {
   id: string;
   rol: 'usuario' | 'asistente';
   contenido: string;
   hora: string;
+  adjuntos?: { nombre: string; mime: string; preview?: string }[];
+}
+
+interface AdjuntoLocal extends ChatbotAdjunto {
+  preview?: string; // thumbnail (data URL) para imágenes
 }
 
 let nextId = 0;
+const TIPOS_ACEPTADOS = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/pdf', 'text/plain', 'text/markdown', 'text/csv'];
+const EXTENSIONES_OK = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.pdf', '.txt', '.md', '.csv'];
 
 /**
  * Widget flotante del Asistente InkaQuest (global, panel de cualquier rol).
  *
- * <p>FAB dorado bottom-right; abre un panel estilo chat. Las consultas y el
- * historial se ejecutan en el backend (sin claves en el navegador) usando el
- * pipeline existente de /api/v1/chatbot. Si el asistente no está configurado
- * en el backend, muestra un mensaje claro y no rompe la UI.</p>
+ * <p>Botón flotante dorado bottom-right; panel chat fluido. Soporta:
+ *  - Texto con Enter (Shift+Enter nueva línea)
+ *  - Adjuntos: imágenes (visión), PDF (texto extraído), txt/md/csv — hasta 3 por mensaje
+ *  - IA con búsqueda web (modelo OpenAI search-preview en el backend) y citación de fuentes
+ *  - Historial validado por usuario (servidor) + persistencia del contexto</p>
  */
 @Component({
   selector: 'app-chatbot-widget',
@@ -42,7 +51,7 @@ let nextId = 0;
     <!-- Panel -->
     @if (abierto()) {
       <div class="fixed bottom-[5.25rem] right-3 z-40 flex w-[calc(100vw-1.5rem)] max-w-md flex-col overflow-hidden rounded-2xl border border-gold-500/40 bg-marine-950 text-white shadow-[0_30px_70px_-20px_rgba(0,0,0,0.8)] sm:bottom-24 sm:right-6"
-           style="height: min(34rem, 72vh)"
+           style="height: min(36rem, 78vh)"
            role="dialog" aria-label="Asistente InkaQuest">
         <!-- Header -->
         <div class="flex items-center gap-3 border-b border-gold-500/20 bg-gradient-to-r from-marine-900 via-marine-950 to-black px-4 py-3">
@@ -51,7 +60,7 @@ let nextId = 0;
           </span>
           <div class="min-w-0 flex-1">
             <p class="text-[0.8rem] font-extrabold uppercase tracking-[0.18em] text-gold-400">Asistente InkaQuest</p>
-            <p class="text-[0.62rem] font-semibold uppercase tracking-widest text-marine-300">IA con búsqueda web</p>
+            <p class="text-[0.62rem] font-semibold uppercase tracking-widest text-marine-300">IA + búsqueda web + archivos</p>
           </div>
           <button type="button" class="grid size-8 shrink-0 place-items-center rounded-lg text-marine-300 transition-colors hover:bg-white/5 hover:text-white" (click)="nuevaConversacion()" aria-label="Nueva conversación" title="Nueva conversación">
             <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -67,18 +76,33 @@ let nextId = 0;
             <div class="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[0.78rem] leading-snug text-marine-100">
               <p class="font-bold text-white">¿En qué puedo ayudarte?</p>
               <ul class="space-y-1.5 text-marine-200">
-                <li class="flex gap-1.5"><span class="text-gold-400">•</span>Dudas de programación, algoritmos, estructuras de datos y cursos de la plataforma.</li>
-                <li class="flex gap-1.5"><span class="text-gold-400">•</span>Respuestas actuales gracias a búsqueda web (citando fuentes).</li>
-                <li class="flex gap-1.5"><span class="text-gold-400">•</span>Orientación sobre la plataforma y el videojuego Guardianes.</li>
+                <li class="flex gap-1.5"><span class="text-gold-400">•</span>Dudas de programación, algoritmos y cursos de la plataforma.</li>
+                <li class="flex gap-1.5"><span class="text-gold-400">•</span>Peeega capturas (imagen) y te explico el error/código.</li>
+                <li class="flex gap-1.5"><span class="text-gold-400">•</span>Sube un PDF o .txt y te lo resumo o explico.</li>
+                <li class="flex gap-1.5"><span class="text-gold-400">•</span>Respuestas actuales con búsqueda web (citando fuentes).</li>
               </ul>
             </div>
           } @else {
             @for (m of mensajes(); track m.id) {
               <div class="flex" [class.justify-end]="m.rol === 'usuario'">
-                <div class="max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[0.82rem] leading-relaxed"
+                <div class="max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[0.82rem] leading-relaxed"
                      [class]="m.rol === 'usuario'
                        ? 'rounded-br-md bg-gold-500 text-marine-900 font-semibold'
                        : 'rounded-bl-md border border-white/10 bg-white/[0.05] text-marine-50'">
+                  @if (m.adjuntos?.length) {
+                    <div class="mb-2 flex flex-wrap gap-2">
+                      @for (a of m.adjuntos; track a.nombre) {
+                        @if (a.preview) {
+                          <img [src]="a.preview" [alt]="a.nombre" class="max-h-40 rounded-lg border border-black/20 object-cover" />
+                        } @else {
+                          <span class="inline-flex items-center gap-1.5 rounded-lg border border-black/20 bg-black/10 px-2 py-1 text-[0.68rem] font-bold text-marine-900">
+                            <svg viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                            {{ a.nombre }}
+                          </span>
+                        }
+                      }
+                    </div>
+                  }
                   <p class="whitespace-pre-wrap">{{ m.contenido }}</p>
                   <p class="mt-1 text-[0.58rem] uppercase tracking-widest" [class.text-marine-800]="m.rol === 'usuario'" [class.text-marine-500]="m.rol !== 'usuario'">{{ m.hora }}</p>
                 </div>
@@ -88,7 +112,7 @@ let nextId = 0;
           @if (enviando()) {
             <div class="flex">
               <div class="flex items-center gap-2 rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-[0.8rem] text-marine-200">
-                <span class="size-2 animate-ping rounded-full bg-gold-400"></span>El asistente está escribiendo…
+                <span class="size-2 animate-ping rounded-full bg-gold-400"></span>El asistente está pensando…
               </div>
             </div>
           }
@@ -97,21 +121,44 @@ let nextId = 0;
           }
         </div>
 
+        <!-- Adjuntos en cola -->
+        @if (adjuntos().length) {
+          <div class="flex flex-wrap items-center gap-2 border-t border-white/10 bg-black/30 px-3 py-2">
+            @for (a of adjuntos(); track a.ruta) {
+              <span class="flex items-center gap-1.5 rounded-lg border border-gold-500/30 bg-gold-500/5 py-1 pl-1 pr-2 text-[0.65rem] font-bold text-gold-300">
+                @if (a.preview) {
+                  <img [src]="a.preview" [alt]="a.nombre" class="size-7 rounded object-cover" />
+                } @else {
+                  <svg viewBox="0 0 24 24" class="size-4 shrink-0 text-gold-400" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                }
+                <span class="max-w-[9rem] truncate">{{ a.nombre }}</span>
+                <button type="button" class="grid size-5 shrink-0 place-items-center rounded hover:bg-white/10" (click)="quitarAdjunto(a.ruta)" aria-label="Quitar adjunto">
+                  <svg viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+              </span>
+            }
+          </div>
+        }
+
         <!-- Input -->
         <form class="border-t border-white/10 bg-marine-950/80 p-3" (submit)="enviar($event)">
           <label class="sr-only" for="asistente-input">Mensaje para el asistente</label>
-          <textarea id="asistente-input" name="mensaje" rows="2" maxlength="2000"
-            class="w-full resize-none rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-[0.85rem] text-white placeholder-marine-400 outline-none transition-colors focus:border-gold-400/60"
-            placeholder="Pregunta algo… (p. ej.: ¿qué es un for anidado?)"
-            [(ngModel)]="borrador" (keydown)="tecla($event)"></textarea>
-          <div class="mt-2 flex items-center justify-between gap-2">
-            <p class="text-[0.58rem] font-semibold uppercase tracking-widest text-marine-500">IA + búsqueda web · historial propio</p>
+          <div class="flex items-end gap-2">
+            <button type="button" class="grid size-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/5 text-marine-300 transition-all hover:border-gold-400/50 hover:text-gold-400 disabled:opacity-40"
+                    (click)="seleccionarArchivos()" [disabled]="enviando() || adjuntos().length >= 3" aria-label="Adjuntar archivo o imagen" title="Adjuntar (máx. 3)">
+              <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.4 11-9.7 9.7a6 6 0 0 1-8.5-8.5l10-10a4 4 0 0 1 5.7 5.7l-10 10a2 2 0 0 1-2.8-2.8l9.1-9.1"/></svg>
+            </button>
+            <textarea id="asistente-input" name="mensaje" rows="2" maxlength="4000"
+              class="w-full min-w-0 resize-none rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-[0.85rem] text-white placeholder-marine-400 outline-none transition-colors focus:border-gold-400/60"
+              placeholder="Pregunta algo… (pega una captura o adjunta un PDF)"
+              [(ngModel)]="borrador" (keydown)="tecla($event)"></textarea>
             <button type="submit" class="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-gold-500 px-4 py-2 text-[0.75rem] font-extrabold uppercase tracking-widest text-marine-900 transition-all hover:bg-gold-400 disabled:opacity-40"
-                    [disabled]="enviando() || !borrador.trim()">
+                    [disabled]="enviando() || (!borrador.trim() && !adjuntos().length)">
               <svg viewBox="0 0 24 24" class="size-4" fill="currentColor" aria-hidden="true"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
               Enviar
             </button>
           </div>
+          <input type="file" #fileInput multiple accept="image/*,application/pdf,.txt,.md,.csv" class="hidden" (change)="archivosSeleccionados($event)" />
         </form>
       </div>
     }
@@ -119,18 +166,20 @@ let nextId = 0;
 })
 export class ChatbotWidgetComponent {
   private readonly chatbot = inject(ChatbotService);
+  private readonly storage = inject(StorageService);
   @ViewChild('lista') private listaRef?: ElementRef<HTMLElement>;
+  @ViewChild('fileInput') private fileInput?: ElementRef<HTMLInputElement>;
 
   protected readonly abierto = signal(false);
   protected readonly enviando = signal(false);
   protected readonly mensajes = signal<MensajeUI[]>([]);
   protected readonly error = signal<string | null>(null);
+  protected readonly adjuntos = signal<AdjuntoLocal[]>([]);
   protected borrador = '';
   /** ID de la conversación persistida en backend (null hasta la primera respuesta). */
   private conversacionId: string | null = null;
 
   constructor() {
-    // Auto-scroll al fondo cuando cambian los mensajes o el estado de envío
     effect(() => {
       this.mensajes();
       this.enviando();
@@ -149,6 +198,7 @@ export class ChatbotWidgetComponent {
   protected nuevaConversacion(): void {
     this.conversacionId = null;
     this.mensajes.set([]);
+    this.adjuntos.set([]);
     this.error.set(null);
     this.borrador = '';
   }
@@ -160,19 +210,84 @@ export class ChatbotWidgetComponent {
     }
   }
 
+  protected seleccionarArchivos(): void {
+    this.fileInput?.nativeElement.click();
+  }
+
+  protected async archivosSeleccionados(ev: Event): Promise<void> {
+    const input = ev.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    for (const file of files) {
+      if (this.adjuntos().length >= 3) {
+        this.error.set('Máximo 3 adjuntos por mensaje.');
+        return;
+      }
+      if (!this.archivoAceptado(file)) {
+        this.error.set(`"${file.name}" no es un tipo permitido (imagen, PDF, txt/md/csv, máx. 10 MB).`);
+        continue;
+      }
+      try {
+        const up = await this.storage.subirChatAdjunto(file);
+        const url = await this.storage.obtenerUrlChat(up.ruta, 30 * 60);
+        let preview: string | undefined;
+        if (up.mime.startsWith('image/')) {
+          preview = await this.leerPreview(file);
+        }
+        this.adjuntos.update((a) => [...a, { ruta: up.ruta, url: url ?? '', mime: up.mime, nombre: up.nombre, tamano: up.tamano, preview }]);
+      } catch (e) {
+        this.error.set('No se pudo subir "' + file.name + '". Revisa tu conexión y el tamaño (< 25 MB).');
+      }
+    }
+  }
+
+  protected quitarAdjunto(ruta: string): void {
+    this.adjuntos.update((a) => a.filter((x) => x.ruta !== ruta));
+    // No borramos el objeto del bucket: puede quedar referenciado por el historial
+  }
+
+  private archivoAceptado(file: File): boolean {
+    const nombre = file.name.toLowerCase();
+    const extOk = EXTENSIONES_OK.some((ext) => nombre.endsWith(ext));
+    const mimeOk = TIPOS_ACEPTADOS.includes(file.type) || file.type.startsWith('image/');
+    const tamanoOk = file.size <= 10 * 1024 * 1024;
+    return (extOk || mimeOk) && tamanoOk;
+  }
+
+  private leerPreview(file: File): Promise<string | undefined> {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => resolve(undefined);
+      reader.readAsDataURL(file);
+    });
+  }
+
   protected async enviar(ev: Event): Promise<void> {
     ev.preventDefault();
     const contenido = this.borrador.trim();
-    if (!contenido || this.enviando()) return;
+    const adjuntosActuales = [...this.adjuntos()];
+    if (!contenido && adjuntosActuales.length === 0) return;
+    if (this.enviando()) return;
 
     this.error.set(null);
     this.enviando.set(true);
     const hora = new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-    this.mensajes.update((m) => [...m, { id: `u${++nextId}`, rol: 'usuario', contenido, hora }]);
+    this.mensajes.update((m) => [
+      ...m,
+      {
+        id: `u${++nextId}`,
+        rol: 'usuario',
+        contenido: contenido || '[adjunto]',
+        hora,
+        adjuntos: adjuntosActuales.map((a) => ({ nombre: a.nombre, mime: a.mime, preview: a.preview })),
+      },
+    ]);
     this.borrador = '';
+    this.adjuntos.set([]);
 
     try {
-      const res = await this.chatbot.enviarMensaje(this.conversacionId, contenido);
+      const res = await this.chatbot.enviarMensaje(this.conversacionId, contenido, adjuntosActuales.map((a) => ({ ruta: a.ruta, url: a.url, mime: a.mime, nombre: a.nombre, tamano: a.tamano })));
       if (res?.conversacion?.id) this.conversacionId = res.conversacion.id;
       const texto = res?.respuesta?.contenido ?? 'No recibí respuesta. Inténtalo de nuevo.';
       this.mensajes.update((m) => [
@@ -181,7 +296,7 @@ export class ChatbotWidgetComponent {
       ]);
     } catch (e) {
       this.error.set(
-        'El asistente no está disponible en este momento. El backend debe tener configurada la clave CHATBOT_API_KEY (ver .env.example) e internet en el servidor. Tu pregunta no se procesó.'
+        'El asistente no está disponible en este momento. El backend debe tener configurada la clave CHATBOT_API_KEY + internet en el servidor (ver .env.example). Tu pregunta no se procesó.'
       );
     } finally {
       this.enviando.set(false);

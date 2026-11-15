@@ -51,6 +51,13 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!-- PDFBox: extracción de texto de PDFs subidos al chatbot -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.2</version>
+        </dependency>
+
         <!-- Driver PostgreSQL (Supabase) -->
         <dependency>
             <groupId>org.postgresql</groupId>

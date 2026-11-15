@@ -18,4 +18,7 @@ public interface ChatbotMensajeRepository extends JpaRepository<ChatbotMensaje, 
 
     /** Historial ordenado cronologicamente de una conversacion. */
     List<ChatbotMensaje> findAllByConversacionId_IdOrderByCreadoEnAsc(UUID conversacionId);
+
+    /** Mensajes de este autor posteriores a «desde» (para tope diario anti-abuso). */
+    long countByAutorId_IdAndCreadoEnAfter(UUID autorId, java.time.Instant desde);
 }

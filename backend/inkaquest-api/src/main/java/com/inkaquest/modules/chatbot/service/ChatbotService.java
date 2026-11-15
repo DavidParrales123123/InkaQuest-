@@ -19,9 +19,15 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.io.IOException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -39,6 +45,11 @@ public class ChatbotService {
     private final String apiKey;
     private final String apiUrl;
     private final String modelo;
+    private final String visionModel;
+    private final long maxMensajesDiarios;
+
+    static final String SYSTEM_PROMPT =
+            "Eres el asistente educativo de InkaQuest. Responde en espanol, con claridad y adapta las explicaciones al aprendizaje de programacion. Usa la busqueda web para datos actuales o inciertos y cita las fuentes (URLs) cuando sea posible. No afirmes haber ejecutado codigo ni acceder a datos que no se te hayan proporcionado. No compartas informacion privada de otros usuarios.";
 
     public ChatbotService(ChatbotConversacionRepository conversaciones,
                           ChatbotMensajeRepository mensajes,
@@ -47,7 +58,9 @@ public class ChatbotService {
                           RestClient.Builder builder,
                           @Value("${chatbot.api-key:}") String apiKey,
                           @Value("${chatbot.api-url:https://api.openai.com/v1/chat/completions}") String apiUrl,
-                          @Value("${chatbot.model:gpt-4o-mini}") String modelo) {
+                          @Value("${chatbot.model:gpt-4o-mini-search-preview}") String modelo,
+                          @Value("${chatbot.vision-model:gpt-4o-mini}") String visionModel,
+                          @Value("${chatbot.max-mensajes-diarios:60}") long maxMensajesDiarios) {
         this.conversaciones = conversaciones;
         this.mensajes = mensajes;
         this.perfiles = perfiles;
@@ -56,6 +69,8 @@ public class ChatbotService {
         this.apiKey = apiKey;
         this.apiUrl = apiUrl;
         this.modelo = modelo;
+        this.visionModel = visionModel;
+        this.maxMensajesDiarios = maxMensajesDiarios;
     }
 
     public List<ChatbotConversacionResponse> listar(UUID usuarioId) {
@@ -97,6 +112,21 @@ public class ChatbotService {
         if (apiKey == null || apiKey.isBlank()) {
             throw new ServiceUnavailableException("El asistente IA no esta configurado. Define CHATBOT_API_KEY en el backend.");
         }
+        String contenido = request.contenido() == null ? "" : request.contenido().trim();
+        List<AdjuntoRef> adjuntos = request.attachments() == null ? List.of() : request.attachments();
+        if (adjuntos.size() > 3) {
+            throw new BadRequestException("Máximo 3 adjuntos por mensaje.");
+        }
+        if (contenido.isEmpty() && adjuntos.isEmpty()) {
+            throw new BadRequestException("Escribe un mensaje o adjunta un archivo.");
+        }
+
+        // Tope diario anti-abuso (por usuario, ventana de 24 h)
+        Instant desde = Instant.now().minus(Duration.ofDays(1));
+        if (mensajes.countByAutorId_IdAndCreadoEnAfter(usuarioId, desde) >= maxMensajesDiarios) {
+            throw new BadRequestException("Límite diario alcanzado (" + maxMensajesDiarios + " mensajes en 24 h). Inténtalo mañana.");
+        }
+
         UUID conversacionId = request.conversacionId();
         if (conversacionId == null) {
             ChatbotConversacionResponse creada = crear(usuarioId, new CrearConversacionRequest(null));
@@ -104,6 +134,20 @@ public class ChatbotService {
         }
         final UUID id = conversacionId;
         ChatbotConversacion conversacion = rls.executeAs(usuarioId, () -> conversacionPropia(usuarioId, id));
+
+        // Persistir mensaje del usuario (contenido + metadatos de adjuntos)
+        Map<String, Object> datosAdjuntos = adjuntos.isEmpty()
+                ? Map.of()
+                : Map.of("adjuntos", adjuntos.stream()
+                        .map(a -> Map.<String, Object>of(
+                                "ruta", a.ruta() == null ? "" : a.ruta(),
+                                "mime", a.mime() == null ? "" : a.mime(),
+                                "nombre", a.nombre() == null ? "archivo" : a.nombre(),
+                                "tamano", a.tamano() == null ? 0 : a.tamano()))
+                        .toList());
+        final String contenidoGuardado = contenido.isEmpty() && !adjuntos.isEmpty()
+                ? "[adjunto: " + adjuntos.stream().map(a -> a.nombre() == null ? "archivo" : a.nombre()).reduce((a, b) -> a + ", " + b).orElse("archivo") + "]"
+                : contenido;
         ChatbotMensaje mensajeUsuario = rls.executeAs(usuarioId, () -> {
             Perfil perfil = perfil(usuarioId);
             ChatbotMensaje m = new ChatbotMensaje();
@@ -111,16 +155,24 @@ public class ChatbotService {
             m.setAutorId(perfil);
             m.setRol(RolChatbot.usuario);
             m.setOrigen(OrigenMensaje.usuario);
-            m.setContenido(request.contenido().trim());
+            m.setContenido(contenidoGuardado);
             m.setTokensEntrada(0);
             m.setTokensSalida(0);
-            m.setDatos(Map.of());
+            m.setDatos(datosAdjuntos);
             m.setEsPrivado(false);
             return mensajes.save(m);
         });
 
+        // Analizar adjuntos: extraer texto (PDF/txt) e imágenes en base64
+        AdjuntoAnalisis analisis = analizarAdjuntos(adjuntos);
+        boolean tieneImagen = !analisis.imagenes().isEmpty();
+        String modeloAUsar = tieneImagen ? visionModel : modelo;
+
+        // Construir mensajes para el proveedor (historial + turno actual)
+        List<Map<String, Object>> openaiMessages = construirContextoOpenAI(usuarioId, id, contenido, analisis);
+
         Instant inicio = Instant.now();
-        AiResult ai = consultarProveedor(usuarioId, id);
+        AiResult ai = consultarProveedor(openaiMessages, modeloAUsar);
         int latencia = (int) Math.min(Duration.between(inicio, Instant.now()).toMillis(), Integer.MAX_VALUE);
         ChatbotMensaje respuesta = rls.executeAs(usuarioId, () -> {
             ChatbotMensaje m = new ChatbotMensaje();
@@ -132,7 +184,7 @@ public class ChatbotService {
             m.setTokensEntrada(ai.tokensEntrada());
             m.setTokensSalida(ai.tokensSalida());
             m.setLatenciaMs(latencia);
-            m.setModelo(modelo);
+            m.setModelo(modeloAUsar);
             m.setDatos(Map.of());
             m.setEsPrivado(false);
             ChatbotMensaje guardado = mensajes.save(m);
@@ -146,20 +198,11 @@ public class ChatbotService {
                 ChatbotMensajeResponse.from(mensajeUsuario), ChatbotMensajeResponse.from(respuesta));
     }
 
-    private AiResult consultarProveedor(UUID usuarioId, UUID conversacionId) {
-        List<ChatbotMensaje> historial = rls.executeAs(usuarioId, () ->
-                mensajes.findAllByConversacionId_IdOrderByCreadoEnAsc(conversacionId));
-        List<Map<String, String>> contexto = new ArrayList<>();
-        contexto.add(Map.of("role", "system", "content",
-                "Eres el asistente educativo de InkaQuest. Responde en espanol, con claridad y adapta las explicaciones al aprendizaje de programacion. Usa la busqueda web para datos actuales o inciertos y cita las fuentes (URLs) cuando sea posible. No afirmes haber ejecutado codigo ni acceder a datos que no se te hayan proporcionado. No compartas informacion privada de otros usuarios."));
-        historial.stream().filter(m -> m.getRol() == RolChatbot.usuario || m.getRol() == RolChatbot.asistente)
-                .skip(Math.max(0, historial.size() - 20L)).forEach(m -> contexto.add(Map.of(
-                        "role", m.getRol() == RolChatbot.usuario ? "user" : "assistant", "content", m.getContenido())));
-        // El mensaje del usuario ya esta persistido en el historial.
+    private AiResult consultarProveedor(List<Map<String, Object>> mensajesIA, String modeloAUsar) {
         try {
             JsonNode respuesta = http.post().uri(apiUrl).contentType(MediaType.APPLICATION_JSON)
                     .header("Authorization", "Bearer " + apiKey)
-                    .body(Map.of("model", modelo, "messages", contexto, "temperature", 0.7, "max_tokens", 1000))
+                    .body(Map.of("model", modeloAUsar, "messages", mensajesIA, "temperature", 0.7, "max_tokens", 1400))
                     .retrieve().body(JsonNode.class);
             String texto = respuesta == null ? null : respuesta.path("choices").path(0).path("message").path("content").asText(null);
             if (texto == null || texto.isBlank()) throw new ServiceUnavailableException("El proveedor IA no devolvio una respuesta valida.");
@@ -168,6 +211,103 @@ public class ChatbotService {
         } catch (RestClientException ex) {
             throw new ServiceUnavailableException("No se pudo contactar al proveedor de inteligencia artificial.");
         }
+    }
+
+    /** Descarga bytes de una URL firmada (signed URL del bucket privado 'chat'). */
+    private byte[] httpGet(String url) throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .build();
+        HttpRequest req = HttpRequest.newBuilder(URI.create(url))
+                .GET()
+                .timeout(Duration.ofSeconds(30))
+                .build();
+        HttpResponse<byte[]> res = client.send(req, HttpResponse.BodyHandlers.ofByteArray());
+        if (res.statusCode() / 100 != 2) {
+            throw new IOException("HTTP " + res.statusCode());
+        }
+        if (res.body().length > 26 * 1024 * 1024) {
+            throw new IOException("Archivo demasiado grande");
+        }
+        return res.body();
+    }
+
+    /** Analiza los adjuntos: extrae texto (PDF/txt/md/csv) e imágenes (data URL base64). */
+    private AdjuntoAnalisis analizarAdjuntos(List<AdjuntoRef> adjuntos) {
+        List<String> imagenes = new ArrayList<>();
+        StringBuilder docs = new StringBuilder();
+        long presupuestoDocs = 14000; // chars máximos de texto extraído
+        for (AdjuntoRef a : adjuntos) {
+            if (a.url() == null || a.url().isBlank()) continue;
+            String mime = a.mime() == null ? "" : a.mime().toLowerCase();
+            String nombre = a.nombre() == null ? "archivo" : a.nombre();
+            String nombreLower = nombre.toLowerCase();
+            try {
+                byte[] bytes = httpGet(a.url());
+                if (mime.startsWith("image/") || nombreLower.matches(".*\\.(png|jpe?g|gif|webp)$")) {
+                    if (bytes.length > 6 * 1024 * 1024) continue; // límite modelo
+                    String mimeDetectado = mime.isBlank() ? "image/png" : mime;
+                    imagenes.add("data:" + mimeDetectado + ";base64," + Base64.getEncoder().encodeToString(bytes));
+                    if (imagenes.size() >= 2) { /* máximo 2 imágenes por mensaje */ }
+                } else if (mime.equals("application/pdf") || nombreLower.endsWith(".pdf")) {
+                    try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.Loader.loadPDF(bytes)) {
+                        String texto = new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
+                        if (texto != null && !texto.isBlank()) {
+                            String recorte = texto.length() > presupuestoDocs ? texto.substring(0, (int) presupuestoDocs) : texto;
+                            docs.append("### Archivo «").append(nombre).append("» (PDF)\n").append(recorte).append("\n\n");
+                            presupuestoDocs -= recorte.length();
+                        }
+                    }
+                } else if (mime.startsWith("text/") || nombreLower.matches(".*\\.(txt|md|csv|log|json)$")) {
+                    String texto = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+                    String recorte = texto.length() > presupuestoDocs ? texto.substring(0, (int) presupuestoDocs) : texto;
+                    docs.append("### Archivo «").append(nombre).append("»\n").append(recorte).append("\n\n");
+                    presupuestoDocs -= recorte.length();
+                }
+                // Otros binarios (docx/xlsx): se omiten del contexto; el modelo verá el nombre en el turno del usuario
+            } catch (Exception ex) {
+                docs.append("### Archivo «").append(nombre).append("»: no se pudo leer (omitido).\n\n");
+            }
+            if (presupuestoDocs <= 0) break;
+        }
+        return new AdjuntoAnalisis(imagenes, docs.toString());
+    }
+
+    /** Construye el array de mensajes estilo OpenAI (system + historial + turno actual con adjuntos). */
+    private List<Map<String, Object>> construirContextoOpenAI(UUID usuarioId, UUID conversacionId,
+                                                              String contenido, AdjuntoAnalisis analisis) {
+        List<Map<String, Object>> messages = new ArrayList<>();
+        messages.add(Map.of("role", "system", "content", SYSTEM_PROMPT));
+
+        List<ChatbotMensaje> historial = rls.executeAs(usuarioId, () ->
+                mensajes.findAllByConversacionId_IdOrderByCreadoEnAsc(conversacionId));
+        historial.stream()
+                .filter(m -> m.getRol() == RolChatbot.usuario || m.getRol() == RolChatbot.asistente)
+                .skip(Math.max(0, historial.size() - 18L))
+                .forEach(m -> messages.add(Map.of(
+                        "role", m.getRol() == RolChatbot.usuario ? "user" : "assistant",
+                        "content", m.getContenido())));
+
+        StringBuilder textoTurno = new StringBuilder();
+        if (!contenido.isEmpty()) textoTurno.append(contenido);
+        if (!analisis.documentos().isBlank()) {
+            if (textoTurno.length() > 0) textoTurno.append("\n\n");
+            textoTurno.append(analisis.documentos());
+        }
+        String textoFinal = textoTurno.toString();
+        if (analisis.imagenes().isEmpty()) {
+            messages.add(Map.of("role", "user", "content", textoFinal.isBlank() ? "Describe lo que ves." : textoFinal));
+        } else {
+            List<Map<String, Object>> parts = new ArrayList<>();
+            parts.add(Map.of("type", "text", "text", textoFinal.isBlank()
+                    ? "Analiza esta imagen y responde mi primera pregunta." : textoFinal));
+            for (String dataUrl : analisis.imagenes()) {
+                parts.add(Map.of("type", "image_url", "image_url", Map.of("url", dataUrl)));
+            }
+            messages.add(Map.of("role", "user", "content", parts));
+        }
+        return messages;
     }
 
     private Perfil perfil(UUID id) {
@@ -185,4 +325,6 @@ public class ChatbotService {
     }
 
     private record AiResult(String texto, int tokensEntrada, int tokensSalida) { }
+
+    private record AdjuntoAnalisis(List<String> imagenes, String documentos) { }
 }
