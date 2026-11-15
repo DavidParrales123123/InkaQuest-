@@ -492,6 +492,19 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     if (this.game) { this.game.destroy(true); this.game = null; }
   }
 
+  /** Espera hasta que Angular renderice #juego-root en el DOM (polling con timeout). */
+  private async waitForJuegoRoot(timeoutMs: number): Promise<HTMLElement | null> {
+    const start = performance.now();
+    while (performance.now() - start < timeoutMs) {
+      if (typeof document !== 'undefined') {
+        const el = document.getElementById('juego-root');
+        if (el) return el as HTMLElement;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    }
+    return null;
+  }
+
   private async resolverNivelId(numero: number): Promise<string | null> {
     const sb = this.supabase.client;
     const { data: cs } = await sb.from('guardianes_campana').select('id').limit(1).maybeSingle();
@@ -518,11 +531,17 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
       } catch (e) { console.warn('[guardianes] iniciar_intento:', e); }
     }
 
-    setTimeout(() => {
-      const el = typeof document !== 'undefined' ? document.querySelector('#juego-root') : null;
-      const host = (el as HTMLElement) || (typeof document !== 'undefined' ? document.getElementById('juego-root') : null);
-      if (!host) return;
+    // Esperar a que el componente renderice el @else y #juego-root exista en el DOM
+    const host = await this.waitForJuegoRoot(1500);
+    if (!host) {
+      console.error('[guardianes] no se pudo localizar #juego-root en el DOM');
+      this.fase.set('derrota');
+      this.mensajeResultado.set('No se pudo iniciar el juego. Refresca (Ctrl+Shift+R) e inténtalo de nuevo.');
+      return;
+    }
 
+    setTimeout(() => {
+      if (!host) return;
       this.game = new Phaser.Game({
         type: Phaser.AUTO, parent: host,
         width: CombateScene.ARENA_W, height: CombateScene.ARENA_H,
@@ -530,6 +549,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
         physics: { default: 'arcade', arcade: { gravity: { y: 0, x: 0 }, debug: false } },
         scene: [CombateScene],
       });
+
 
       this.game.events.once('ready', () => {
         const scene = this.game?.scene?.getScene('Combate') as any;
