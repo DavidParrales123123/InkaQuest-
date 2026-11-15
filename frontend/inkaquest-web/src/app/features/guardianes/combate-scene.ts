@@ -156,7 +156,6 @@ export class CombateScene extends Phaser.Scene {
   private explosionCadaCuatro = false;
   private attackPulse = 0;
   private ramboAnimActiva = false;
-  private sasukeAttackUntil = 0;
   private attackLungeAngle = 0;
   private attackLungeUntil = 0;
   meleeAlcance = 140;
@@ -686,15 +685,18 @@ export class CombateScene extends Phaser.Scene {
     const playerSprite = this.player as unknown as Phaser.Physics.Arcade.Sprite;
     const esRambo = this.guardian?.id === 'rambo';
     const esSasuke = this.guardian?.id === 'sasuke';
+    const esScythe = this.guardian?.id === 'scythe';
     if (moving && playerSprite.anims) {
-      if (esSasuke && ahora >= this.sasukeAttackUntil) {
+      if (esSasuke && ahora >= this.attackLungeUntil) {
         playerSprite.anims.play('sasuke_walk', true);
+      } else if (esScythe && ahora >= this.attackLungeUntil) {
+        playerSprite.anims.play('scythe_walk', true);
       } else if (esRambo) {
         playerSprite.anims.play('rambo_walk', true);
       }
-      // esNatalia y esScythe: postura estática — no se reproduce ninguna animación de caminar.
+      // esNatalia: postura estática (como se acordó).
     } else if (playerSprite.anims) {
-      if ((esSasuke && ahora >= this.sasukeAttackUntil) || esRambo) {
+      if ((esSasuke && ahora >= this.attackLungeUntil) || esScythe || esRambo) {
         playerSprite.anims.stop();
       }
       this.player.setRotation(0);
