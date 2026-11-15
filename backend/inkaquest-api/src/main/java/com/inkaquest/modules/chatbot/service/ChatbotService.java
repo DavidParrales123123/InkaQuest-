@@ -151,7 +151,7 @@ public class ChatbotService {
                 mensajes.findAllByConversacionId_IdOrderByCreadoEnAsc(conversacionId));
         List<Map<String, String>> contexto = new ArrayList<>();
         contexto.add(Map.of("role", "system", "content",
-                "Eres el asistente educativo de InkaQuest. Responde en espanol, con claridad y adapta las explicaciones al aprendizaje de programacion. No afirmes haber ejecutado codigo ni acceder a datos que no se te hayan proporcionado."));
+                "Eres el asistente educativo de InkaQuest. Responde en espanol, con claridad y adapta las explicaciones al aprendizaje de programacion. Usa la busqueda web para datos actuales o inciertos y cita las fuentes (URLs) cuando sea posible. No afirmes haber ejecutado codigo ni acceder a datos que no se te hayan proporcionado. No compartas informacion privada de otros usuarios."));
         historial.stream().filter(m -> m.getRol() == RolChatbot.usuario || m.getRol() == RolChatbot.asistente)
                 .skip(Math.max(0, historial.size() - 20L)).forEach(m -> contexto.add(Map.of(
                         "role", m.getRol() == RolChatbot.usuario ? "user" : "assistant", "content", m.getContenido())));

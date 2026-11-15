@@ -17,6 +17,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { MessageService } from '../../core/services/message.service';
 import { LogoComponent } from '../../shared/components/logo/logo.component';
+import { ChatbotWidgetComponent } from '../../shared/components/chatbot-widget/chatbot-widget.component';
 
 /** Elemento de navegacion de un panel. */
 export interface ElementoPanel {
@@ -46,7 +47,7 @@ export interface SeccionPanel {
 @Component({
   selector: 'app-panel-layout',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, LogoComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, LogoComponent, ChatbotWidgetComponent],
   template: `
     <div class="min-h-screen bg-[#f6f8f5] lg:flex">
       @if (menuAbierto()) {
@@ -216,6 +217,9 @@ export interface SeccionPanel {
           </div>
         </main>
       </div>
+
+      <!-- Asistente IA global (estudiante · docente · administrador) -->
+      <app-chatbot-widget />
     </div>
   `,
 })
