@@ -1,11 +1,13 @@
 // @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
-import { Router, RouterLink, ActivatedRoute } from '@angular/router';
+import { RouterLink } from '@angular/router';
+import { NgClass } from '@angular/common';
 
 import { AuthService } from '../../core/services/auth.service';
 import { CourseService } from '../../core/services/course.service';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { CURSO_PRINCIPIOS_ALGORITMOS } from '../../core/services/guardianes-acceso.service';
+import { GUARDIANES, type GuardianeRareza } from './guardians-catalog';
 
 interface NivelItem {
   numero: number;
@@ -27,73 +29,184 @@ interface NivelItem {
 @Component({
   selector: 'app-guardians-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, NgClass],
   template: `
-    <section class="space-y-6">
+    <section class="space-y-5">
       @if (error()) {
         <div class="rounded-xl border border-warning-200 bg-warning-50 p-4 text-sm text-warning-800" role="alert">{{ error() }}</div>
       }
-      <header class="rounded-2xl border border-gold-500/40 bg-gradient-to-br from-marine-900 via-marine-800 to-marine-700 p-6 text-white">
-        <div class="flex flex-wrap items-start justify-between gap-6">
-          <div class="space-y-2">
-            <span class="inline-flex items-center gap-1 rounded-full bg-gold-500/20 px-3 py-1 text-[0.7rem] font-extrabold uppercase tracking-[0.14em] text-gold-400">Guardianes del Conocimiento</span>
-            <h1 class="text-3xl font-extrabold leading-tight md:text-4xl">Survive. Aprende.<br/><span class="text-gold-400">Protege el algoritmo.</span></h1>
-            <p class="max-w-2xl text-sm text-marine-100">Campaña de supervivencia por hordas exclusiva del curso Principios de Algoritmos. Mientras aprendes fundamentos, estructuras condicionales y estructuras repetitivas, tu personaje sobrevive a las oleadas.</p>
-            <div class="flex flex-wrap gap-3 pt-3">
-              <a class="btn btn-gold" [routerLink]="['/estudiante/guardianes/nivel', primerDisponible() ?? 1]">Empezar partida</a>
-              <button type="button" class="btn btn-outline-light" (click)="irACampana()">Ver campaña</button>
+
+      <!-- ══════════ HERO ══════════ -->
+      <header class="relative overflow-hidden rounded-2xl border border-gold-500/30 bg-marine-950 text-white shadow-[0_20px_60px_-25px_rgba(15,26,51,0.9)]">
+        <div aria-hidden="true" class="pointer-events-none absolute inset-0">
+          <div class="absolute -top-24 -left-24 size-96 rounded-full bg-gold-500/15 blur-3xl"></div>
+          <div class="absolute -bottom-28 right-[-6rem] size-[26rem] rounded-full bg-brand-500/15 blur-3xl"></div>
+          <div class="absolute inset-0 opacity-[0.05]" style="background-image: radial-gradient(circle, #ffffff 1px, transparent 1px); background-size: 22px 22px;"></div>
+        </div>
+
+        <div class="relative grid gap-6 p-6 sm:p-8 lg:grid-cols-12 lg:gap-8">
+          <!-- Columna izquierda: mensaje + CTA -->
+          <div class="flex flex-col justify-center lg:col-span-7">
+            <span class="inline-flex w-fit items-center gap-2 rounded-full border border-gold-500/40 bg-gold-500/10 px-3.5 py-1.5 text-[0.68rem] font-extrabold uppercase tracking-[0.18em] text-gold-400">
+              <svg viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8L12 2z"/></svg>
+              Campaña · Principios de Algoritmos
+            </span>
+
+            <h1 class="mt-4 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">
+              Survive. Aprende.<br/>
+              <span class="bg-gradient-to-r from-gold-300 via-gold-400 to-amber-500 bg-clip-text text-transparent">Protege el algoritmo.</span>
+            </h1>
+
+            <p class="mt-4 max-w-xl text-sm leading-relaxed text-marine-100/90 sm:text-[0.95rem]">
+              Supervivencia por hordas exclusiva del curso Principios de Algoritmos. Fundamentos, condicionales y repetitivas:
+              cada oleada que superes refuerza lo que estás aprendiendo en clase.
+            </p>
+
+            <!-- CTA — botones uniformes -->
+            <div class="mt-6 flex flex-wrap items-center gap-3">
+              <a class="btn btn-gold btn-lg shadow-[0_6px_0_#b45309] hover:translate-y-[1px] hover:shadow-[0_4px_0_#b45309]" [routerLink]="['/estudiante/guardianes/nivel', primerDisponible() ?? 1]">
+                <svg viewBox="0 0 24 24" class="size-5" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.52.85l10.2-6.5a1 1 0 0 0 0-1.7L9.52 4.65A1 1 0 0 0 8 5.5z"/></svg>
+                Empezar partida · Nivel {{ primerDisponible() }}
+              </a>
+              <button type="button" class="btn btn-outline-light btn-lg" (click)="irACampana()">
+                <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+                Ver campaña
+              </button>
             </div>
+
+            <!-- Meta chips -->
+            <dl class="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[0.72rem] font-bold uppercase tracking-wider text-marine-200/80">
+              <div class="flex items-center gap-2"><span class="size-1.5 rounded-full bg-gold-400"></span>18 niveles</div>
+              <div class="flex items-center gap-2"><span class="size-1.5 rounded-full bg-brand-400"></span>162 hordas</div>
+              <div class="flex items-center gap-2"><span class="size-1.5 rounded-full bg-emerald-400"></span>4 guardianes</div>
+              <div class="flex items-center gap-2"><span class="size-1.5 rounded-full bg-violet-400"></span>Checkeo académico</div>
+            </dl>
           </div>
-          <div class="flex flex-col items-end gap-2">
-            <p class="text-xs text-marine-300 uppercase tracking-wider">Curso</p>
-            <p class="font-bold">Principios de Algoritmos</p>
-            <p class="text-xs text-marine-300">InkaQuest · Edición 2026</p>
+
+          <!-- Columna derecha: escuadrón -->
+          <div class="lg:col-span-5">
+            <div class="flex h-full flex-col rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm sm:p-5">
+              <div class="mb-3 flex items-center justify-between gap-2">
+                <h2 class="text-[0.7rem] font-extrabold uppercase tracking-[0.22em] text-marine-200/80">Tu escuadrón</h2>
+                <span class="rounded-full border border-brand-400/40 bg-brand-400/10 px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-brand-300">4 guardianes</span>
+              </div>
+              <div class="grid flex-1 grid-cols-2 gap-2.5">
+                @for (g of guardianes; track g.id) {
+                  <div class="group flex flex-col items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-marine-900/60 px-2 py-3 text-center transition-all duration-200 hover:border-gold-400/50 hover:bg-marine-800/70">
+                    <img [src]="g.sprite" [alt]="g.nombre" width="64" height="64" class="size-16 [image-rendering:pixelated] drop-shadow-[0_6px_10px_rgba(0,0,0,0.55)] transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110" loading="lazy" />
+                    <p class="text-[0.78rem] font-extrabold leading-tight text-white">{{ g.nombre }}</p>
+                    <span class="rounded-full px-2 py-0.5 text-[0.58rem] font-extrabold uppercase tracking-[0.16em]" [ngClass]="rarezaClass(g.rareza)">{{ rarezaLabel(g.rareza) }}</span>
+                  </div>
+                }
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
-      <div class="grid gap-6 lg:grid-cols-12">
-        <aside class="card card-body lg:col-span-4 space-y-3">
-          <h2 class="text-base font-bold text-marine-800">Tu rendimiento</h2>
-          <div class="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-            <div class="rounded-xl border border-surface-200 bg-surface-50 p-3"><p class="text-2xl font-extrabold text-marine-800">{{ totalIntentos() }}</p><p class="text-[0.65rem] uppercase tracking-widest text-marine-500">Partidas</p></div>
-            <div class="rounded-xl border border-surface-200 bg-surface-50 p-3"><p class="text-2xl font-extrabold text-emerald-600">{{ totalVictorias() }}</p><p class="text-[0.65rem] uppercase tracking-widest text-marine-500">Victorias</p></div>
-            <div class="rounded-xl border border-surface-200 bg-surface-50 p-3"><p class="text-2xl font-extrabold text-gold-600">+{{ xpTotal() }}</p><p class="text-[0.65rem] uppercase tracking-widest text-marine-500">XP ganada</p></div>
-            <div class="rounded-xl border border-surface-200 bg-surface-50 p-3"><p class="text-2xl font-extrabold text-brand-600">{{ precisionMedia() }}%</p><p class="text-[0.65rem] uppercase tracking-widest text-marine-500">Precisión</p></div>
-          </div>
-          <div class="rounded-xl border border-gold-500/30 bg-gold-50/60 p-3 text-sm">
-            <p class="font-extrabold text-gold-700">Nivel {{ siguienteNumero() }} / 18</p>
-            <p class="mt-0.5 text-xs text-gold-800">Próximo objetivo: completar {{ siguienteTitulo() }}</p>
-          </div>
-        </aside>
+      <!-- ══════════ STATS ══════════ -->
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div class="card flex items-center gap-3 p-4">
+          <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-marine-100 text-marine-700">
+            <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12M6 20h12M8 4v6a4 4 0 0 0 8 0V4M8 20v-4a4 4 0 0 1 8 0v4"/></svg>
+          </span>
+          <span><span class="block text-2xl font-extrabold leading-none text-marine-800">{{ totalIntentos() }}</span><span class="mt-1 block text-[0.62rem] font-bold uppercase tracking-widest text-marine-500">Partidas</span></span>
+        </div>
+        <div class="card flex items-center gap-3 p-4">
+          <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
+            <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a2 2 0 0 0 2 4h1M17 6h3a2 2 0 0 1-2 4h-1"/></svg>
+          </span>
+          <span><span class="block text-2xl font-extrabold leading-none text-emerald-600">{{ totalVictorias() }}</span><span class="mt-1 block text-[0.62rem] font-bold uppercase tracking-widest text-marine-500">Victorias</span></span>
+        </div>
+        <div class="card flex items-center gap-3 p-4">
+          <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-gold-50 text-gold-600">
+            <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8L12 2z"/></svg>
+          </span>
+          <span><span class="block text-2xl font-extrabold leading-none text-gold-600">+{{ xpTotal() }}</span><span class="mt-1 block text-[0.62rem] font-bold uppercase tracking-widest text-marine-500">XP ganada</span></span>
+        </div>
+        <div class="card flex items-center gap-3 p-4">
+          <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600">
+            <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>
+          </span>
+          <span><span class="block text-2xl font-extrabold leading-none text-brand-600">{{ precisionMedia() }}%</span><span class="mt-1 block text-[0.62rem] font-bold uppercase tracking-widest text-marine-500">Precisión</span></span>
+        </div>
+      </div>
 
-        <div id="campana" class="card card-body lg:col-span-8 rounded-2xl border transition-all duration-300" [class.ring-2]="flashCampana()" [class.ring-gold-400]="flashCampana()" [class.shadow-xl]="flashCampana()">
-          <h2 class="text-base font-bold text-marine-800">Campaña — 18 niveles</h2>
-          <p class="text-xs text-marine-500">Cada nivel corresponde a una lekction del curso.</p>
-          <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div class="grid gap-5 lg:grid-cols-12">
+        <!-- ══════════ CAMPAÑA ══════════ -->
+        <div id="campana" class="card card-body rounded-2xl transition-all duration-300 lg:col-span-8" [class.ring-2]="flashCampana()" [class.ring-gold-400]="flashCampana()" [class.shadow-xl]="flashCampana()">
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 class="text-lg font-extrabold text-marine-900">Campaña — 18 niveles</h2>
+              <p class="text-xs text-marine-500">Cada nivel corresponde a una lekctión del curso. Supera hordas, responde checkeos y completa la lección.</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="text-right">
+                <p class="text-xs font-extrabold uppercase tracking-wider text-marine-500">Progreso</p>
+                <p class="text-sm font-extrabold text-marine-800">{{ completados() }} / 18 completados</p>
+              </div>
+              <div class="h-2.5 w-28 overflow-hidden rounded-full bg-surface-200 sm:w-36">
+                <div class="h-full rounded-full bg-gradient-to-r from-gold-400 to-amber-500 transition-all duration-500" [style.width.%]="progresoCampana()"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             @for (n of niveles(); track n.numero) {
               <a
-                class="relative flex h-28 flex-col items-start justify-between rounded-xl p-3 text-left transition"
-                [class.bg-marine-100]="n.bloqueada"
-                [class.text-marine-600]="n.bloqueada"
-                [class.border]="n.bloqueada"
-                [class.border-marine-200]="n.bloqueada"
-                [class.bg-gradient-to-br]="!n.bloqueada"
-                [class.from-marine-800]="!n.bloqueada"
-                [class.to-marine-700]="!n.bloqueada"
-                [class.text-white]="!n.bloqueada"
-                [class.hover:-translate-y-0.5]="!n.bloqueada"
-                [class.cursor-not-allowed]="n.bloqueada"
+                class="group relative flex min-h-[6.5rem] flex-col justify-between overflow-hidden rounded-xl border p-3 text-left transition-all duration-200"
+                [ngClass]="tileClass(n)"
                 [routerLink]="n.bloqueada ? null : ['/estudiante/guardianes/nivel', n.numero]"
                 [attr.aria-disabled]="n.bloqueada ? 'true' : null"
               >
-                <span class="text-[0.65rem] font-bold uppercase tracking-wider opacity-80">Nivel {{ n.numero }}</span>
-                <span class="text-xs font-semibold leading-snug line-clamp-2">{{ n.titulo }}</span>
-                <span class="text-[0.65rem] opacity-80">{{ n.bloqueada ? '🔒 Bloqueado' : (n.completada ? '⭐ Completado' : '▶ Disponible') }}</span>
+                <div class="flex items-center justify-between gap-2">
+                  <span class="grid size-7 place-items-center rounded-lg text-[0.72rem] font-extrabold" [ngClass]="numeroClass(n)">{{ n.numero }}</span>
+                  @if (n.completada) {
+                    <svg viewBox="0 0 24 24" class="size-5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  } @else if (n.bloqueada) {
+                    <svg viewBox="0 0 24 24" class="size-5 text-marine-400" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" class="size-5 text-gold-400" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.52.85l10.2-6.5a1 1 0 0 0 0-1.7L9.52 4.65A1 1 0 0 0 8 5.5z"/></svg>
+                  }
+                </div>
+                <span class="line-clamp-2 text-[0.78rem] font-bold leading-snug">{{ n.titulo }}</span>
+                <span class="text-[0.6rem] font-bold uppercase tracking-[0.14em] opacity-80">{{ n.bloqueada ? 'Bloqueado' : (n.completada ? 'Completado' : 'Disponible') }}</span>
               </a>
             }
           </div>
         </div>
+
+        <!-- ══════════ ASIDE ══════════ -->
+        <aside class="space-y-4 lg:col-span-4">
+          <!-- Siguiente objetivo -->
+          <div class="relative overflow-hidden rounded-2xl border border-gold-500/40 bg-gradient-to-br from-gold-50 via-amber-50 to-gold-100 p-5">
+            <div aria-hidden="true" class="pointer-events-none absolute -right-6 -top-6 size-28 rounded-full bg-gold-400/20 blur-2xl"></div>
+            <p class="text-[0.65rem] font-extrabold uppercase tracking-[0.22em] text-gold-700">Siguiente objetivo</p>
+            <p class="mt-1.5 text-2xl font-extrabold text-marine-900">Nivel {{ siguienteNumero() }} <span class="text-base font-bold text-marine-500">/ 18</span></p>
+            <p class="mt-1 text-sm font-semibold leading-snug text-gold-800">{{ siguienteTitulo() }}</p>
+            <a class="btn btn-gold btn-md mt-4 w-full" [routerLink]="['/estudiante/guardianes/nivel', siguienteNumero()]">
+              <svg viewBox="0 0 24 24" class="size-4" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.52.85l10.2-6.5a1 1 0 0 0 0-1.7L9.52 4.65A1 1 0 0 0 8 5.5z"/></svg>
+              Jugar ahora
+            </a>
+          </div>
+
+          <!-- Cómo jugar -->
+          <div class="card card-body">
+            <h3 class="text-sm font-extrabold uppercase tracking-[0.18em] text-marine-500">Cómo jugar</h3>
+            <ol class="mt-3 space-y-2.5 text-sm text-marine-700">
+              <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">1</span>Elige tu guardián y supera las hordas de la lección.</li>
+              <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">2</span>Acierta el checkeo académico entre oleadas para ganar XP y monedas.</li>
+              <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">3</span>Completa la lección en el aula para desbloquear el siguiente nivel.</li>
+            </ol>
+          </div>
+
+          <!-- Curso -->
+          <div class="rounded-2xl border border-marine-800 bg-marine-950 p-4 text-white">
+            <p class="text-[0.62rem] font-extrabold uppercase tracking-[0.22em] text-marine-300">Curso vinculado</p>
+            <p class="mt-1 font-extrabold leading-snug">Principios de Algoritmos</p>
+            <p class="mt-0.5 text-xs text-marine-300">InkaQuest · Edición 2026</p>
+          </div>
+        </aside>
       </div>
     </section>
   `,
@@ -102,7 +215,6 @@ export class GuardiansComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly cursos = inject(CourseService);
   private readonly supabase = inject(SupabaseService);
-  private readonly router = inject(Router);
 
   protected readonly niveles = signal<NivelItem[]>([]);
   protected readonly cargando = signal(true);
@@ -114,6 +226,46 @@ export class GuardiansComponent implements OnInit, OnDestroy {
   protected readonly totalVictorias = signal(0);
   protected readonly xpTotal = signal(0);
   protected readonly precisionMedia = signal(0);
+  protected readonly guardianes = GUARDIANES;
+
+  protected completados(): number {
+    return this.niveles().filter((n) => n.completada).length;
+  }
+
+  protected progresoCampana(): number {
+    const total = this.niveles().length || 18;
+    return Math.round((this.completados() / total) * 100);
+  }
+
+  protected rarezaLabel(r: GuardianeRareza): string {
+    return r === 'leyenda' ? 'Leyenda' : r === 'heroe' ? 'Héroe' : 'Común';
+  }
+
+  protected rarezaClass(r: GuardianeRareza): Record<string, boolean> {
+    return {
+      'border border-slate-400/40 bg-slate-500/15 text-slate-300': r === 'comun',
+      'border border-brand-400/50 bg-brand-500/15 text-brand-300': r === 'heroe',
+      'border border-gold-400/60 bg-gold-500/15 text-gold-300': r === 'leyenda',
+    };
+  }
+
+  protected tileClass(n: NivelItem): Record<string, boolean> {
+    return {
+      'border-marine-800 bg-gradient-to-br from-marine-900 via-marine-800 to-marine-900 text-white hover:-translate-y-0.5 hover:border-gold-500/60 hover:shadow-[0_12px_30px_-12px_rgba(242,165,65,0.35)] cursor-pointer':
+        !n.bloqueada && !n.completada,
+      'border-emerald-500/40 bg-gradient-to-br from-emerald-950 via-marine-900 to-marine-900 text-white hover:-translate-y-0.5 hover:border-emerald-400/60 cursor-pointer':
+        n.completada,
+      'border-surface-200 bg-surface-100 text-marine-400 cursor-not-allowed': n.bloqueada,
+    };
+  }
+
+  protected numeroClass(n: NivelItem): Record<string, boolean> {
+    return {
+      'bg-gold-500 text-marine-900': !n.bloqueada && !n.completada,
+      'bg-emerald-500 text-marine-950': n.completada,
+      'bg-surface-200 text-marine-500': n.bloqueada,
+    };
+  }
 
   protected primerDisponible(): number {
     return this.niveles().find((n) => !n.bloqueada)?.numero ?? 1;
