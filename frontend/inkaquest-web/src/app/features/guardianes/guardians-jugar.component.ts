@@ -1,6 +1,6 @@
 // @ts-nocheck
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgClass } from '@angular/common';
 import Phaser from 'phaser';
 
@@ -27,6 +27,11 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
       }
 
       @if (!elegido()) {
+        <!-- Volver al layout del estudiante -->
+        <a routerLink="/estudiante/guardianes" class="absolute right-3 top-3 z-10 inline-flex items-center gap-2 rounded-xl border border-gold-500/40 bg-marine-900/80 px-3 py-2 text-[0.7rem] font-extrabold uppercase tracking-[0.18em] text-gold-300 backdrop-blur-sm transition-all duration-150 hover:border-gold-400 hover:text-white hover:shadow-[0_0_20px_-6px_rgba(242,165,65,0.45)] sm:right-4 sm:top-4" aria-label="Volver a la campaña">
+          <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Volver a la campaña
+        </a>
         <!-- ═══ SELECCIÓN DE GUARDIÁN ═══ -->
         <div class="rounded-2xl border-2 border-gold-500/60 bg-gradient-to-br from-marine-900 via-marine-800 to-marine-900 p-4 shadow-[0_0_60px_-15px_rgba(242,165,65,0.45)]">
           <div class="mb-4 text-center">
@@ -337,8 +342,20 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
 })
 export class GuardiansJugarComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly supabase = inject(SupabaseService);
   private readonly auth = inject(AuthService);
+
+  /** Esc: en la elección vuelve a la campaña; en partida pausa/reanuda. */
+  @HostListener('document:keydown.escape')
+  protected onEscape(): void {
+    if (this.elegido()) {
+      if (this.enPausa()) { this.reanudar(); return; }
+      if (this.fase() === 'jugando') { this.pausar(); }
+      return;
+    }
+    void this.router.navigate(['/estudiante/guardianes']);
+  }
 
   protected readonly numero = signal(1);
   protected readonly fase = signal<'intro' | 'jugando' | 'victoria' | 'derrota'>('intro');
