@@ -686,6 +686,12 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
         width: CombateScene.ARENA_W, height: CombateScene.ARENA_H,
         backgroundColor: '#0f1a33',
         physics: { default: 'arcade', arcade: { gravity: { y: 0, x: 0 }, debug: false } },
+        callbacks: {
+          preBoot: (game) => {
+            // Solo en los niveles 1–5 se usa el mapa como fondo del arena
+            game.registry.set('mapaNivel15', this.numero() <= 5);
+          },
+        },
         scene: [CombateScene],
       });
 

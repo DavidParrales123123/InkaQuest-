@@ -145,6 +145,8 @@ export class CombateScene extends Phaser.Scene {
   private bossLabel?: Phaser.GameObjects.Text;
   private avisoHorda?: Phaser.GameObjects.Text;
   private pisoGfx?: Phaser.GameObjects.Graphics;
+  /** true cuando el arena usa el mapa de niveles 1–5 como fondo. */
+  private usarMapaNivel15 = false;
   private aimX: number = 640;
   private aimY = 160;
   private playerShadow?: Phaser.GameObjects.Image;
@@ -179,6 +181,8 @@ export class CombateScene extends Phaser.Scene {
     for (const g of GUARDIANES) {
       this.load.image('guard_' + g.id, g.sprite);
     }
+    // Fondo del arena para niveles 1–5 (mapa InkaQuest)
+    this.load.image('arena_mapa_1_5', 'assets/guardianes/mapa-nivel-1-5.jpg');
     // Frames del ciclo de marcha / ataque de Guardianes
     for (let i = 0; i <= 5; i++) {
       this.load.image('rambo_walk_' + i, `assets/guardianes/walk/rambo_walk_${i}.png`);
@@ -208,7 +212,16 @@ export class CombateScene extends Phaser.Scene {
   create(): void {
     this.createTextures();
 
-    // ─── Arena — fondo con paleta de bioma según horda ───
+    // ─── Arena — mapa InkaQuest (niveles 1–5) o paleta procedural ───
+    this.usarMapaNivel15 = this.game.registry.get('mapaNivel15') === true && this.textures.exists('arena_mapa_1_5');
+    if (this.usarMapaNivel15) {
+      this.add
+        .image(CombateScene.ARENA_W / 2, CombateScene.ARENA_H / 2, 'arena_mapa_1_5')
+        .setDisplaySize(CombateScene.ARENA_W, CombateScene.ARENA_H)
+        .setDepth(-20);
+      // Velo navy suave: mantiene el contraste de enemigos y telas
+      this.add.rectangle(CombateScene.ARENA_W / 2, CombateScene.ARENA_H / 2, CombateScene.ARENA_W, CombateScene.ARENA_H, 0x0f1a33, 0.14).setDepth(-19);
+    }
     this.pisoGfx = this.add.graphics();
     this.dibujarPiso();
 
@@ -334,8 +347,16 @@ export class CombateScene extends Phaser.Scene {
   /** Redibuja el piso según la franja de hordas vigente (transición de bioma). */
   private dibujarPiso(): void {
     const g = this.pisoGfx!;
-    const p = paletaPara(this.hordaActual);
     g.clear();
+    // Con el mapa de niveles 1–5 solo encuadramos el arena (el arte manda)
+    if (this.usarMapaNivel15) {
+      g.lineStyle(6, 0xf2a541, 0.35);
+      g.strokeRect(3, 3, CombateScene.ARENA_W - 6, CombateScene.ARENA_H - 6);
+      g.lineStyle(2, 0xf2a541, 0.55);
+      g.strokeRect(10, 10, CombateScene.ARENA_W - 20, CombateScene.ARENA_H - 20);
+      return;
+    }
+    const p = paletaPara(this.hordaActual);
     // Base
     g.fillStyle(p.piso, 1);
     g.fillRect(0, 0, CombateScene.ARENA_W, CombateScene.ARENA_H);
