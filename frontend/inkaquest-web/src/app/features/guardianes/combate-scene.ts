@@ -263,8 +263,10 @@ export class CombateScene extends Phaser.Scene {
     if (this.textures.exists('maga_walk_0') && !anims.exists('maga_walk')) {
       anims.create({
         key: 'maga_walk',
-        frames: [0, 1, 2, 3, 4, 5].map((i) => ({ key: 'maga_walk_' + i })),
-        frameRate: 9,
+        // Ciclo plantado: 0 → 1 → 4 → 5 → 4 → 1 (sin frames de suspensión,
+        // todos con el mismo alto y baseline → marcha, no salto)
+        frames: [0, 1, 4, 5, 4, 1].map((i) => ({ key: 'maga_walk_' + i })),
+        frameRate: 8,
         repeat: -1,
       });
     }
