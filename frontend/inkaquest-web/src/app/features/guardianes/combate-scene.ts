@@ -588,13 +588,13 @@ export class CombateScene extends Phaser.Scene {
       radial(ctx, c, c, 1, 5, '#fffb00', '#ff8c00');
       ctx.beginPath(); ctx.arc(c, c, 5, 0, Math.PI * 2); ctx.fill();
     });
-    // Bala del alienígena: plasma violeta-cian
-    make('alien_bolt', 14, (ctx, s) => {
+    // Bala del alienígena: plasma como las de Rambo pero más pequeño (violeta)
+    make('alien_bolt', 12, (ctx, s) => {
       const c = s / 2;
-      radial(ctx, c, c, 1, c, '#c6f4ff', 'rgba(76,29,149,0)');
+      radial(ctx, c, c, 1, c, '#ffffff', 'rgba(255,255,255,0)');
       ctx.beginPath(); ctx.arc(c, c, c, 0, Math.PI * 2); ctx.fill();
-      radial(ctx, c, c, 1, 4.5, '#e1c2ff', '#7c3aed');
-      ctx.beginPath(); ctx.arc(c, c, 4.5, 0, Math.PI * 2); ctx.fill();
+      radial(ctx, c, c, 1, 3.2, '#ffffff', '#a78bfa');
+      ctx.beginPath(); ctx.arc(c, c, 3.2, 0, Math.PI * 2); ctx.fill();
     });
 
     // ─── Arco de tajo (sable / hacha / guadaña) ───
@@ -847,13 +847,13 @@ export class CombateScene extends Phaser.Scene {
     // Limpieza de balas
     this.bullets = this.bullets.filter((b) => b.active && b.x >= -30 && b.x <= CombateScene.ARENA_W + 30 && b.y >= -30 && b.y <= CombateScene.ARENA_H + 30);
 
-    // Colisiones balas ↔ enemigos
-    const radioImpacto = this.bulletSize + 12;
+    // Colisiones balas ↔ enemigos (hitbox generoso por enemigo)
     for (const b of this.bullets) {
       if (!b.active) continue;
       for (const e of this.enemies) {
         if (!e.active) continue;
-        if (Phaser.Math.Distance.BetweenPoints(b, e) < radioImpacto) {
+        const hitRadius = (e as unknown as { hitRadius?: number }).hitRadius ?? 24;
+        if (Phaser.Math.Distance.BetweenPoints(b, e) < this.bulletSize + hitRadius) {
           const danoMult = (b as unknown as { danoMult?: number }).danoMult ?? 1;
           const dano = this.danoActual * danoMult;
           this.hitEnemy(e, dano);
@@ -869,7 +869,7 @@ export class CombateScene extends Phaser.Scene {
     this.enemyBullets = this.enemyBullets.filter((b) => b.active && b.x >= -25 && b.x <= CombateScene.ARENA_W + 25 && b.y >= -25 && b.y <= CombateScene.ARENA_H + 25);
     for (const b of this.enemyBullets) {
       if (!b.active) continue;
-      if (Phaser.Math.Distance.BetweenPoints(b, this.player) < 17) {
+      if (Phaser.Math.Distance.BetweenPoints(b, this.player) < 22) {
         b.destroy();
         this.hitPlayer(8);
       }
@@ -970,7 +970,9 @@ export class CombateScene extends Phaser.Scene {
     o['atkCdUntil'] = 0;
     o['atkAnimUntil'] = 0;
     o['fireCdUntil'] = this.time.now + 900 + Math.random() * 1100;
-    e.setCircle(radio);
+    // Cuerpo levemente más grande que el sprite visible: el golpe se siente justo
+    e.setCircle(radio + 3);
+    o['hitRadius'] = radio + 8;
     e.setScale(escala);
     if (opciones.tint) e.setTint(opciones.tint);
     e.setDepth(20);
