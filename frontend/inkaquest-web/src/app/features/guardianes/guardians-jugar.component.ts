@@ -6,7 +6,7 @@ import Phaser from 'phaser';
 
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { SupabaseService } from '../../core/services/supabase.service';
-import { CombateScene, MEJORAS, MEJORAS_EXTRA } from './combate-scene';
+import { CombateScene, MEJORAS_EXTRA, mejoresPara } from './combate-scene';
 import { GUARDIANES } from './guardians-catalog';
 
 /** Juego completo de supervivencia por hordas con mejoras entre hordas y progreso persistido. */
@@ -549,7 +549,9 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     // Pool reutilizable por rangos: sólo ofrece lo que aún no está al máximo,
     // con Vitamina Vital como reserva ilimitada si todo está maxeado.
     const rango = (id: string): number => scene?.getRango?.(id) ?? 0;
-    const disponibles = [...MEJORAS, ...MEJORAS_EXTRA].filter((m) => rango(m.id) < m.maxRango);
+    // Pool contextualizado: mejoras para arma a distancia o cuerpo a cuerpo según guardián
+    const modoAtaque = (scene?.attackMode ?? this.guardianActual()?.ataque ?? 'rango') as 'rango' | 'haz';
+    const disponibles = [...mejoresPara(modoAtaque), ...MEJORAS_EXTRA].filter((m) => rango(m.id) < m.maxRango);
     const picks: typeof disponibles = [];
     const pool = [...disponibles];
     while (picks.length < 3 && pool.length) {

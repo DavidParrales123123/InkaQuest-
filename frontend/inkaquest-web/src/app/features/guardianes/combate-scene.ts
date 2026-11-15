@@ -13,33 +13,61 @@ export interface MejoraInfo {
   readonly aplica: (scene: CombateScene) => void;
 }
 
-/** Mejoras posibles entre hordas. Cada una es apilable por rangos. */
-export const MEJORAS: MejoraInfo[] = [
-  { id: 'dano', nombre: 'Espada Algorítmica', rareza: 'comun', maxRango: 5,
-    descripcion: '+1 daño por bala (apilable)',
-    aplica: (s) => { s.danoActual += 1; } },
+/** Mejoras comunes a ambos tipos de arma. Siempre presentes. */
+const MEJORAS_COMUN: MejoraInfo[] = [
   { id: 'vida', nombre: 'Escudo Lógico', rareza: 'comun', maxRango: 4,
     descripcion: '+25 vida máxima y cura 25 (apilable)',
     aplica: (s) => { s.saludMax += 25; s.salud = Math.min(s.saludMax, s.salud + 25); } },
   { id: 'velocidad', nombre: 'Botas GPX', rareza: 'comun', maxRango: 4,
     descripcion: '+20% velocidad de movimiento (apilable)',
     aplica: (s) => { s.vel = Math.floor(s.vel * 1.2); } },
+  { id: 'escudo', nombre: 'Escudo Predictivo', rareza: 'academic', maxRango: 3,
+    descripcion: '+22% resistencia al daño (apilable, máx 85%)',
+    aplica: (s) => { s.resistencia = Math.min(0.85, s.resistencia + 0.22); } },
+  { id: 'regen', nombre: 'Código Médico', rareza: 'legendario', maxRango: 3,
+    descripcion: 'Regenera +1 vida cada 2s por rango (1→2→3)',
+    aplica: (s) => { s.regeneraRango += 1; } },
+];
+
+/** Mejoras con etiqueta de rango (balas). */
+const MEJORAS_RANGO: MejoraInfo[] = [
+  { id: 'dano', nombre: 'Espada Algorítmica', rareza: 'comun', maxRango: 5,
+    descripcion: '+1 daño por bala (apilable)',
+    aplica: (s) => { s.danoActual += 1; } },
   { id: 'cadencia', nombre: 'Cañón Aritmético', rareza: 'comun', maxRango: 4,
     descripcion: 'Disparo 20% más rápido (apilable)',
     aplica: (s) => { s.fireInterval = Math.max(90, Math.floor(s.fireInterval * 0.8)); } },
   { id: 'radio', nombre: 'Área Extendida', rareza: 'academic', maxRango: 3,
     descripcion: '+35% radio de impacto de las balas (apilable)',
     aplica: (s) => { s.bulletSize = Math.ceil(s.bulletSize * 1.35); } },
-  { id: 'escudo', nombre: 'Escudo Predictivo', rareza: 'academic', maxRango: 3,
-    descripcion: '+22% resistencia al daño (apilable, máx 85%)',
-    aplica: (s) => { s.resistencia = Math.min(0.85, s.resistencia + 0.22); } },
   { id: 'critico', nombre: 'Rayo Crítico', rareza: 'academic', maxRango: 3,
     descripcion: 'Cada 3er disparo es crítico (×3 → ×4 → ×5)',
     aplica: (s) => { s.criticoRango += 1; } },
-  { id: 'regen', nombre: 'Código Médico', rareza: 'legendario', maxRango: 3,
-    descripcion: 'Regenera +1 vida cada 2s por rango (1→2→3)',
-    aplica: (s) => { s.regeneraRango += 1; } },
 ];
+
+/** Mejoras con etiqueta de haz (tajo cuerpo a cuerpo). */
+const MEJORAS_HAZ: MejoraInfo[] = [
+  { id: 'dano', nombre: 'Filo Colosal', rareza: 'comun', maxRango: 5,
+    descripcion: '+1 daño por tajo (apilable)',
+    aplica: (s) => { s.danoActual += 1; } },
+  { id: 'cadencia', nombre: 'Reflejo del Guerrero', rareza: 'comun', maxRango: 4,
+    descripcion: 'Tajo 20% más rápido (apilable)',
+    aplica: (s) => { s.fireInterval = Math.max(90, Math.floor(s.fireInterval * 0.8)); } },
+  { id: 'radio', nombre: 'Arco Exótico', rareza: 'academic', maxRango: 3,
+    descripcion: '+35 px de alcance y +12° de arco en el tajo (apilable)',
+    aplica: (s) => { s.meleeAlcance += 35; s.meleeArcRad += 0.2; } },
+  { id: 'critico', nombre: 'Rayo Solar', rareza: 'academic', maxRango: 3,
+    descripcion: 'Cada 3er tajo es crítico (×3 → ×4 → ×5)',
+    aplica: (s) => { s.criticoRango += 1; } },
+];
+
+/** Pool completo (para el rank tracking y la aplica global en la escena). */
+export const MEJORAS: MejoraInfo[] = [...MEJORAS_COMUN, ...MEJORAS_RANGO, ...MEJORAS_HAZ];
+
+/** Devuelve el pool de mejoras según el tipo de arma del guardián. */
+export function mejoresPara(modo: 'rango' | 'haz'): MejoraInfo[] {
+  return [...MEJORAS_COMUN, ...(modo === 'rango' ? MEJORAS_RANGO : MEJORAS_HAZ)];
+}
 
 /** Extensión de reserva cuando el pool alcance su rango máximo. */
 export const MEJORAS_EXTRA: MejoraInfo[] = [
@@ -120,7 +148,7 @@ export class CombateScene extends Phaser.Scene {
 
   // ─── Personaje/guardián elegido ───
   guardian?: GuardianConfig;
-  private attackMode: 'rango' | 'haz' = 'rango';
+  attackMode: 'rango' | 'haz' = 'rango';
   private bulletSpeedMult = 1;
   private bulletSizeBoost = 1;
   private healOnKill = 0;
@@ -129,6 +157,8 @@ export class CombateScene extends Phaser.Scene {
   private attackPulse = 0;
   private ramboAnimActiva = false;
   private sasukeAttackUntil = 0;
+  meleeAlcance = 140;
+  meleeArcRad = 1.05;
 
   constructor() {
     super({ key: 'Combate' });
@@ -770,16 +800,15 @@ export class CombateScene extends Phaser.Scene {
     this.tweens.add({ targets: impacto, scale: 1.25, alpha: 0, duration: 190, onComplete: () => impacto.destroy() });
 
     // Aplicar daño a enemigos dentro del arco
-    const alcance = 140;
     for (const e of this.enemies) {
       if (!e.active) continue;
       const distancia = Phaser.Math.Distance.Between(p.x, p.y, e.x, e.y);
-      if (distancia > alcance) continue;
+      if (distancia > this.meleeAlcance) continue;
       const ang = Math.atan2(e.y - p.y, e.x - p.x);
       let diff = ang - baseAng;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      if (Math.abs(diff) > 1.05) continue;
+      if (Math.abs(diff) > this.meleeArcRad) continue;
       this.hitEnemy(e, dano);
     }
 
