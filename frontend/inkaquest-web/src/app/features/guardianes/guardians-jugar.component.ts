@@ -40,14 +40,29 @@ import { CombateScene, MEJORAS, MEJORAS_EXTRA } from './combate-scene';
             <p>Horda <strong>{{ hordaActual() }} / 9</strong></p>
             @if (esEvaluacion()) { <p class="mt-1 inline-block rounded-full border border-rose-400/50 bg-rose-500/15 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-widest text-rose-300">⚔ Nivel de evaluación · jefes</p> }
           </div>
-          <div class="rounded-xl border border-brand-200 bg-brand-50/60 p-3 text-xs text-marine-700">
-            <p class="font-bold text-marine-800">Controles</p>
-            <p class="mt-1"><strong>WASD / ← → ↑ ↓</strong> para moverte<br/><strong>Mouse</strong> para apuntar<br/>Disparo automático hacia donde apuntas</p>
+          <div class="text-[0.7rem] text-marine-500">
+            <p>El apuntado se hace con el <strong>mouse</strong> — durante la partida no verás nada en pantalla.</p>
           </div>
         </div>
 
         <div class="lg:col-span-8 order-1 lg:order-2 space-y-4">
           <div id="juego-root" class="relative h-[60vh] min-h-[420px] w-full overflow-hidden rounded-2xl border border-gold-500/30 bg-marine-900" aria-label="Área de juego. Combate top-down.">
+            <!-- Overlay de bienvenida con controles (sólo al inicio) -->
+            @if (mostrarIntro()) {
+              <div class="absolute inset-0 z-20 flex items-center justify-center bg-marine-900/70 p-4 backdrop-blur-sm">
+                <div class="max-w-sm w-full space-y-4 rounded-2xl border border-gold-400/40 bg-gradient-to-br from-marine-800 to-marine-900 p-5 text-center text-white shadow-2xl">
+                  <span class="inline-flex w-fit items-center gap-1.5 rounded-full bg-gold-500/15 px-3 py-1 text-[0.65rem] font-extrabold uppercase tracking-[0.16em] text-gold-400">Guardianes del Conocimiento</span>
+                  <h3 class="text-xl font-extrabold leading-tight">Protege la lección<br/>sobreviviendo las hordas</h3>
+                  <ul class="space-y-2 text-left text-sm text-marine-100">
+                    <li class="flex items-start gap-2"><span class="text-gold-400">◆</span><span><strong>WASD / ← → ↑ ↓</strong> para moverte</span></li>
+                    <li class="flex items-start gap-2"><span class="text-gold-400">◆</span><span><strong>Mouse</strong> para apuntar — el disparo sale hacia donde apuntas</span></li>
+                    <li class="flex items-start gap-2"><span class="text-gold-400">◆</span><span><strong>Elimina hordas</strong> y elige mejoras entre una y otra</span></li>
+                    <li class="flex items-start gap-2"><span class="text-gold-400">◆</span><span><strong>Responde las preguntas</strong> de tu lección y gana más XP</span></li>
+                  </ul>
+                  <button type="button" class="btn btn-gold w-full justify-center" (click)="comenzarPartida()">¡Entendido, jugar!</button>
+                </div>
+              </div>
+            }
             <!-- Overlay de mejoras entre hordas -->
             @if (elegirMejora()) {
               <div class="absolute inset-0 z-10 flex items-center justify-center bg-marine-900/80 p-3 backdrop-blur-sm">
@@ -145,6 +160,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected readonly mensajeResultado = signal('');
   protected readonly elegirMejora = signal(false);
   protected readonly candidatosMejora = signal<readonly { id: string; nombre: string; descripcion: string; rareza: string; rango: number; maxRango: number }[]>([]);
+  protected readonly mostrarIntro = signal(true);
   protected readonly preguntaActual = signal<{ preguntaId: string; enunciado: string; opciones: string[]; tema: string; dificultad: string } | null>(null);
   protected readonly respuestaElegida = signal<string | null>(null);
   protected readonly respuestaResultado = signal<{ esCorrecta: boolean; correcta?: string; explicacion?: string; xp: number; monedas: number } | null>(null);
@@ -175,6 +191,11 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void { this.limpiar(); }
 
+  protected comenzarPartida(): void {
+    this.mostrarIntro.set(false);
+    this.game?.resume();
+  }
+
   protected pausar(): void { this.enPausa.set(true); this.game?.pause(); }
   protected reanudar(): void { this.enPausa.set(false); this.game?.resume(); }
 
@@ -182,6 +203,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     this.salud.set(100); this.saludMax.set(100); this.xp.set(0); this.enemigosVivos.set(0); this.tiempo.set(0); this.hordaActual.set(1);
     this.fase.set('intro'); this.xpGanado.set(0); this.monedasGanadas.set(0); this.mensajeResultado.set(''); this.intentoId = null; this.elegirMejora.set(false);
     this.preguntaActual.set(null); this.respuestaElegida.set(null); this.respuestaResultado.set(null); this.preguntaExcluidas = [];
+    this.mostrarIntro.set(true);
     if (this.game) { this.game.destroy(true); this.game = null; }
     if (this.hudTimer) clearInterval(this.hudTimer);
     queueMicrotask(() => this.arrancar());
@@ -341,6 +363,8 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
       this.game.events.once('ready', () => {
         const scene = this.game?.scene?.getScene('Combate') as any;
         const nivelIdLocal = nivelId;
+        // Arrancar pausado: el estudiante decide cuando empieza
+        this.game?.pause();
         if (scene && nivelIdLocal) {
           scene.evaluacionMode = this.esEvaluacion();
           scene.emitHud = () => this.crearTickHud(scene);
