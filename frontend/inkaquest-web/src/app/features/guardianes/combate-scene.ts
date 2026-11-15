@@ -157,6 +157,8 @@ export class CombateScene extends Phaser.Scene {
   private attackPulse = 0;
   private ramboAnimActiva = false;
   private sasukeAttackUntil = 0;
+  private attackLungeAngle = 0;
+  private attackLungeUntil = 0;
   meleeAlcance = 140;
   meleeArcRad = 1.05;
 
@@ -645,7 +647,7 @@ export class CombateScene extends Phaser.Scene {
       this.aimY = ptr.worldY ?? ptr.y;
     }
 
-    // Movimiento (WASD + flechas)
+    // Movimiento (WASD + flechas) + lunge físico durante ataque haz
     const kb = this.input.keyboard!;
     const isDown = (code: number): boolean => kb.addKey(code).isDown;
     const KEY_A = 65, KEY_W = 87, KEY_D = 68, KEY_S = 83;
@@ -655,6 +657,14 @@ export class CombateScene extends Phaser.Scene {
     else if (isDown(KEY_D) || isDown(RIGHT)) vx = this.vel;
     if (isDown(KEY_W) || isDown(UP)) vy = -this.vel;
     else if (isDown(KEY_S) || isDown(DOWN)) vy = this.vel;
+    // Lunge: anulación breve del control de teclado durante el ataque
+    const lungeEdad = this.attackLungeUntil - this.time.now;
+    if (lungeEdad > 0) {
+      const fwd = lungeEdad / 260;
+      const lungeSpeed = Math.sin(fwd * Math.PI) * this.vel * 1.45;
+      vx = Math.cos(this.attackLungeAngle) * lungeSpeed;
+      vy = Math.sin(this.attackLungeAngle) * lungeSpeed;
+    }
     this.player.setVelocity(vx, vy);
 
     // ─── Mirada lateral: el personaje mira hacia donde apunta (flip-X) ───
@@ -685,7 +695,12 @@ export class CombateScene extends Phaser.Scene {
       } else if (esNatalia && ahora >= this.sasukeAttackUntil) {
         playerSprite.anims.play('natalia_walk', true);
       } else if (esScythe && ahora >= this.sasukeAttackUntil) {
-        playerSprite.anims.play('scythe_walk', true);
+        // In-engine wobble: vertical bob + lateral lean + scaleX pulse (real walking motion)
+        const fase = (this.time.now / 220) % (Math.PI * 2);
+        const wobble = Math.sin(fase);
+        const pulse = 1 + Math.abs(Math.sin(fase)) * 0.09;
+        this.player.setScale(0.85 * pulse, 0.85 * (2.05 - pulse));
+        this.player.setRotation(wobble * 0.07);
       } else if (!esSasuke && !esNatalia && !esScythe) {
         const pulso = Math.sin(ahora / 140);
         const base = 0.85;
@@ -743,7 +758,8 @@ export class CombateScene extends Phaser.Scene {
         if ((this.guardian?.id === 'sasuke' || this.guardian?.id === 'natalia' || this.guardian?.id === 'scythe') && playerSprite.anims) {
           const key = this.guardian?.id === 'sasuke' ? 'sasuke_atk' : this.guardian?.id === 'natalia' ? 'natalia_atk' : 'scythe_atk';
           playerSprite.anims.play(key, true);
-          this.sasukeAttackUntil = this.time.now + 260;
+          this.attackLungeAngle = Math.atan2(this.aimY - this.player!.y, this.aimX - this.player!.x);
+          this.attackLungeUntil = this.time.now + 260;
         }
       }
     }
