@@ -15,6 +15,7 @@ interface IntentoFila {
   estado: string;
   hordas_completadas: number;
   puntaje: number;
+  precision: number;
   tiempo_segundos: number;
   xp_recibido: number;
   monedas_recibidas: number;
@@ -48,7 +49,7 @@ interface IntentoFila {
           <div class="table-wrap overflow-x-auto rounded-xl border border-surface-200">
             <table class="table">
               <thead>
-                <tr><th scope="col">Estudiante</th><th scope="col">Nivel</th><th scope="col">Estado</th><th scope="col">Hordas</th><th scope="col">Puntaje</th><th scope="col">Tiempo</th><th scope="col">XP ganada</th></tr>
+                <tr><th scope="col">Estudiante</th><th scope="col">Nivel</th><th scope="col">Estado</th><th scope="col">Hordas</th><th scope="col">Puntaje</th><th scope="col">Tiempo</th><th scope="col">Precisión</th><th scope="col">XP ganada</th></tr>
               </thead>
               <tbody>
                 @for (fila of intentosOrdenados(); track fila.id) {
@@ -59,6 +60,7 @@ interface IntentoFila {
                     <td class="tabular-nums">{{ fila.hordas_completadas }}</td>
                     <td class="tabular-nums">{{ fila.puntaje }}</td>
                     <td class="tabular-nums">{{ formatearDuracion(fila.tiempo_segundos) }}</td>
+                    <td class="tabular-nums">{{ formatearPrecision(fila.precision) }}</td>
                     <td class="tabular-nums font-semibold text-gold-700">+{{ fila.xp_recibido }}</td>
                   </tr>
                 }
@@ -101,6 +103,12 @@ export class TeacherGuardiansComponent implements OnInit {
     const m = Math.floor(seg / 60);
     const s = Math.max(0, Math.trunc(seg % 60));
     return `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  protected formatearPrecision(p: number): string {
+    const v = Number(p);
+    if (!Number.isFinite(v)) return '—';
+    return `${Math.round(v)}%`;
   }
 
   protected async cargar(): Promise<void> {

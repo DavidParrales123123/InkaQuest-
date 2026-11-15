@@ -13,6 +13,7 @@ interface FilaAdmin {
   nivel_id: string;
   estado: string;
   hordas_completadas: number;
+  precision: number;
   xp_recibido: number;
   monedas_recibidas: number;
   iniciado_en: string;
@@ -44,7 +45,7 @@ interface FilaAdmin {
           <div class="table-wrap overflow-x-auto rounded-xl border border-surface-200">
             <table class="table">
               <thead>
-                <tr><th scope="col">Estudiante</th><th scope="col">Nivel</th><th scope="col">Estado</th><th scope="col">Hordas</th><th scope="col">XP</th><th scope="col">Monedas</th><th scope="col">Inicio</th></tr>
+                <tr><th scope="col">Estudiante</th><th scope="col">Nivel</th><th scope="col">Estado</th><th scope="col">Hordas</th><th scope="col">Precisión</th><th scope="col">XP</th><th scope="col">Monedas</th><th scope="col">Inicio</th></tr>
               </thead>
               <tbody>
                 @for (fila of intentos(); track fila.id) {
@@ -53,6 +54,7 @@ interface FilaAdmin {
                     <td><span class="font-mono">{{ nivelNumero(fila.nivel_id) }}</span></td>
                     <td>{{ fila.estado }}</td>
                     <td class="tabular-nums">{{ fila.hordas_completadas }}</td>
+                    <td class="tabular-nums">{{ formatPrecision(fila.precision) }}</td>
                     <td class="tabular-nums">{{ fila.xp_recibido }}</td>
                     <td class="tabular-nums">{{ fila.monedas_recibidas }}</td>
                     <td class="text-xs text-marine-500">{{ fila.iniciado_en.slice(0, 10) }}</td>
@@ -81,6 +83,7 @@ export class AdminGuardiansComponent implements OnInit {
   protected readonly monedasRepartidas = () => this.intentos().reduce((s, i) => s + (i.monedas_recibidas ?? 0), 0);
 
   protected nivelNumero(id: string): string { return String(this.nivelMap()[id] ?? '?'); }
+  protected formatPrecision(p: number): string { const v = Number(p); return Number.isFinite(v) ? `${Math.round(v)}%` : '—'; }
 
   ngOnInit(): void { void this.cargar(); }
 

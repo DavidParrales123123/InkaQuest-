@@ -394,6 +394,14 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
       return;
     }
     const sb = this.supabase.client;
+    // Precisión real: aciertos / preguntas respondidas del chequeo académico
+    let precision = 100;
+    try {
+      const { data: rs } = await sb.from('guardianes_respuesta').select('es_correcta').eq('intento_id', this.intentoId);
+      const total = rs?.length ?? 0;
+      const aciertos = (rs ?? []).filter((r: any) => r.es_correcta).length;
+      if (total > 0) precision = Math.round((aciertos / total) * 100);
+    } catch { /* sin respuestas: precisión por defecto */ }
     try {
       const { data } = await sb.rpc('guardianes_finalizar_intento', {
         p_intento_id: this.intentoId,
@@ -401,7 +409,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
         p_matados: matados,
         p_hordas: hordasActuales,
         p_tiempo: tiempoSeg,
-        p_precision: 100,
+        p_precision: precision,
       });
       const payload = data as any;
       this.xpGanado.set(payload?.xp ?? 0);

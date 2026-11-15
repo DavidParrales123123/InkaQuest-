@@ -53,8 +53,13 @@ interface NivelItem {
 
       <div class="grid gap-6 lg:grid-cols-12">
         <aside class="card card-body lg:col-span-4 space-y-3">
-          <h2 class="text-base font-bold text-marine-800">Progreso de la campaña</h2>
-          <p class="text-xs text-marine-500">Completa las lecciones de Principios de Algoritmos para desbloquear el siguiente nivel.</p>
+          <h2 class="text-base font-bold text-marine-800">Tu rendimiento</h2>
+          <div class="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+            <div class="rounded-xl border border-surface-200 bg-surface-50 p-3"><p class="text-2xl font-extrabold text-marine-800">{{ totalIntentos() }}</p><p class="text-[0.65rem] uppercase tracking-widest text-marine-500">Partidas</p></div>
+            <div class="rounded-xl border border-surface-200 bg-surface-50 p-3"><p class="text-2xl font-extrabold text-emerald-600">{{ totalVictorias() }}</p><p class="text-[0.65rem] uppercase tracking-widest text-marine-500">Victorias</p></div>
+            <div class="rounded-xl border border-surface-200 bg-surface-50 p-3"><p class="text-2xl font-extrabold text-gold-600">+{{ xpTotal() }}</p><p class="text-[0.65rem] uppercase tracking-widest text-marine-500">XP ganada</p></div>
+            <div class="rounded-xl border border-surface-200 bg-surface-50 p-3"><p class="text-2xl font-extrabold text-brand-600">{{ precisionMedia() }}%</p><p class="text-[0.65rem] uppercase tracking-widest text-marine-500">Precisión</p></div>
+          </div>
           <div class="rounded-xl border border-gold-500/30 bg-gold-50/60 p-3 text-sm">
             <p class="font-extrabold text-gold-700">Nivel {{ siguienteNumero() }} / 18</p>
             <p class="mt-0.5 text-xs text-gold-800">Próximo objetivo: completar {{ siguienteTitulo() }}</p>
@@ -103,6 +108,10 @@ export class GuardiansComponent implements OnInit, OnDestroy {
   protected readonly error = signal<string | null>(null);
   protected readonly siguienteNumero = signal(1);
   protected readonly siguienteTitulo = signal('');
+  protected readonly totalIntentos = signal(0);
+  protected readonly totalVictorias = signal(0);
+  protected readonly xpTotal = signal(0);
+  protected readonly precisionMedia = signal(0);
 
   protected primerDisponible(): number {
     return this.niveles().find((n) => !n.bloqueada)?.numero ?? 1;
@@ -132,28 +141,32 @@ export class GuardiansComponent implements OnInit, OnDestroy {
         this.cargando.set(false);
         return;
       }
-      const [{ data: unidades }, { data: modulos }, { data: lekctiones }, { data: progreso }] = await Promise.all([
-        supabase.from('unidad').select('id, numero').eq('curso_id', COURSE_ID).order('numero'),
-        supabase.from('modulo').select('id, numero, unidad_id'),
-        supabase.from('leccion').select('id, numero, titulo, modulo_id, xp_otorgado').limit(1000),
+      const [{ data: campana }, { data: progreso }, { data: intentos }] = await Promise.all([
+        supabase.from('guardianes_campana').select('id').limit(1).maybeSingle(),
         supabase.from('progreso_leccion').select('leccion_id,estado').eq('estudiante_id', USER.id),
+        supabase.from('guardianes_intento').select('estado, xp_recibido, precision, hordas_completadas').eq('estudiante_id', USER.id),
       ]);
-      const moduleByUnidadCurso = new Map<string, { numero: number; unidad_id: string }>();
-      (modulos ?? []).forEach((m: any) => moduleByUnidadCurso.set(m.id, { numero: m.numero, unidad_id: m.unidad_id }));
-      const unidadById = new Map((unidades ?? []).map((u: any) => [u.id, u.numero as number]));
+      const { data: nivelesDb, error: nivelesErr } = await supabase
+        .from('guardianes_nivel')
+        .select('numero, titulo, leccion_id, xp_recompensa, monedas_recompensa')
+        .eq('campana_id', campana?.id ?? '')
+        .order('numero');
+      if (nivelesErr) throw new Error(nivelesErr.message);
       const completadas = new Set((progreso ?? []).filter((r: any) => r.estado === 'completado').map((r: any) => r.leccion_id));
-      const grupo: any[] = (lekctiones ?? []).map((l: any) => {
-        const m = moduleByUnidadCurso.get(l.modulo_id);
-        return { leccion: l, unidad: m ? (unidadById.get(m.unidad_id) ?? 99) : 99, modulo: m?.numero ?? 99 };
-      }).sort((a, b) => a.unidad - b.unidad || a.modulo - b.modulo || a.leccion.numero - b.leccion.numero).slice(0, 18);
-      const items: NivelItem[] = grupo.map((g, i) => ({
-        numero: i + 1,
-        titulo: g.leccion.titulo ?? `Nivel ${i + 1}`,
-        lekctioneId: g.leccion.id,
+      const items: NivelItem[] = (nivelesDb ?? []).map((n: any) => ({
+        numero: n.numero,
+        titulo: n.titulo ?? `Nivel ${n.numero}`,
+        lekctioneId: n.leccion_id,
         bloqueada: false,
-        completada: completadas.has(g.leccion.id),
+        completada: completadas.has(n.leccion_id),
         disponible: true,
       }));
+      // Estadísticas del jugador
+      this.totalIntentos.set(intentos?.length ?? 0);
+      this.totalVictorias.set((intentos ?? []).filter((i: any) => i.estado === 'completado').length);
+      this.xpTotal.set((intentos ?? []).reduce((s: number, i: any) => s + (i.xp_recibido ?? 0), 0));
+      const precisiones = (intentos ?? []).map((i: any) => Number(i.precision ?? 0)).filter((v) => Number.isFinite(v) && v > 0);
+      this.precisionMedia.set(precisiones.length ? Math.round(precisiones.reduce((a, b) => a + b, 0) / precisiones.length) : 0);
       // Bloqueo progresivo: nivel N+1 bloqueado si el N-1 no está completado
       for (let i = 1; i < items.length; i++) {
         if (!items[i - 1].completada) items[i].bloqueada = true;
