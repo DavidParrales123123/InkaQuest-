@@ -134,11 +134,11 @@ export class CombateScene extends Phaser.Scene {
   private regenTick = 0;
   private spawnTimer = 0;
   private fireTimer = 0;
-  private damageAccum = 0;
   private spawnBossCounter = 0;
 
   private enemies: Phaser.Physics.Arcade.Sprite[] = [];
   private bullets: Phaser.Physics.Arcade.Sprite[] = [];
+  private enemyBullets: Phaser.Physics.Arcade.Sprite[] = [];
   private particulas: Particula[] = [];
   private particulasGfx?: Phaser.GameObjects.Graphics;
   private bossHpGfx?: Phaser.GameObjects.Graphics;
@@ -186,6 +186,12 @@ export class CombateScene extends Phaser.Scene {
     this.load.image('arena_mapa_6_9', 'assets/guardianes/mapa-nivel-6-9-v1.jpg');
     this.load.image('arena_mapa_10_15', 'assets/guardianes/mapa-nivel-10-15-v1.jpg');
     this.load.image('arena_mapa_16_18', 'assets/guardianes/mapa-nivel-16-18-v1.jpg');
+    // Enemigos (imagen oficial) — el canvas queda como fallback si la carga falla
+    // enemy_red=Asesino · enemy_orange=Esqueleto · enemy_vampiro=Vampiro · enemy_barbaro=Bárbaro
+    // enemy_zombi=Zombi (élite hordas jefe) · enemy_alien=Pistolero · boss=jefe_1
+    for (const id of ['enemy_red', 'enemy_orange', 'enemy_vampiro', 'enemy_barbaro', 'enemy_zombi', 'enemy_alien', 'boss']) {
+      this.load.image(id, `assets/guardianes/enemigos/${id}.png`);
+    }
     // Frames del ciclo de marcha / ataque de Guardianes
     for (let i = 0; i <= 5; i++) {
       this.load.image('rambo_walk_' + i, `assets/guardianes/walk/rambo_walk_${i}.png`);
@@ -513,32 +519,7 @@ export class CombateScene extends Phaser.Scene {
       ctx.beginPath(); ctx.arc(c + 6, c - 3, 1.2, 0, Math.PI * 2); ctx.fill();
     });
 
-    // ─── Excepción (dorado): escarabajo Real dorado — hordas 7-8 ───
-    make('enemy_gold', 40, (ctx, s) => {
-      const c = s / 2;
-      radial(ctx, c, c, 4, c - 3, '#ffe680', '#b8860b');
-      ctx.beginPath();
-      ctx.ellipse(c, c, c - 4, c - 1, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#3d2c00';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.ellipse(c, c, c - 4, c - 1, 0, 0, Math.PI * 2); ctx.stroke();
-      // caparazón: franjas brillantes
-      ctx.strokeStyle = '#ffe98a';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(c, c - 9); ctx.lineTo(c, c + 9); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(c - 9, c); ctx.lineTo(c + 9, c); ctx.stroke();
-      // núcleo energético
-      radial(ctx, c, c, 1, 5, '#fff7b3', '#d4920b');
-      ctx.beginPath(); ctx.arc(c, c, 4, 0, Math.PI * 2); ctx.fill();
-      // ojos ópalo
-      ctx.fillStyle = '#d0f4ff';
-      ctx.beginPath(); ctx.arc(c - 7, c - 4, 2.2, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(c + 7, c - 4, 2.2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#09262e';
-      ctx.beginPath(); ctx.arc(c - 7, c - 4, 1, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(c + 7, c - 4, 1, 0, Math.PI * 2); ctx.fill();
-    });
+
 
     // ─── Jefe: Rey de la Cripta — araña-corona ───
     make('boss', 72, (ctx, s) => {
@@ -606,6 +587,14 @@ export class CombateScene extends Phaser.Scene {
       ctx.beginPath(); ctx.arc(c, c, c, 0, Math.PI * 2); ctx.fill();
       radial(ctx, c, c, 1, 5, '#fffb00', '#ff8c00');
       ctx.beginPath(); ctx.arc(c, c, 5, 0, Math.PI * 2); ctx.fill();
+    });
+    // Bala del alienígena: plasma violeta-cian
+    make('alien_bolt', 14, (ctx, s) => {
+      const c = s / 2;
+      radial(ctx, c, c, 1, c, '#c6f4ff', 'rgba(76,29,149,0)');
+      ctx.beginPath(); ctx.arc(c, c, c, 0, Math.PI * 2); ctx.fill();
+      radial(ctx, c, c, 1, 4.5, '#e1c2ff', '#7c3aed');
+      ctx.beginPath(); ctx.arc(c, c, 4.5, 0, Math.PI * 2); ctx.fill();
     });
 
     // ─── Arco de tajo (sable / hacha / guadaña) ───
@@ -793,9 +782,53 @@ export class CombateScene extends Phaser.Scene {
       this.marcarHordaCompletada();
     }
 
-    // Enemigos persiguen al jugador
+    // ─── Enemigos: IA + caminata (wobble) + ataque con arma ───
     for (const e of this.enemies) {
-      if (e.active) this.physics.moveTo(e, this.player.x, this.player.y, 90 + this.hordaActual * 10);
+      if (!e?.active) continue;
+      const spr = e as unknown as Phaser.Physics.Arcade.Sprite & {
+        esGunner?: boolean;
+        spawnSeed?: number;
+        atkCdUntil?: number;
+        atkAnimUntil?: number;
+        fireCdUntil?: number;
+        dano?: number;
+      };
+      const dist = Phaser.Math.Distance.Between(spr.x, spr.y, this.player.x, this.player.y);
+      const seed = spr.spawnSeed ?? 0;
+
+      if (spr.esGunner) {
+        // Pistolero: mantiene distancia y dispara plasma
+        if (dist < 225) {
+          const anguloFuera = Math.atan2(spr.y - this.player.y, spr.x - this.player.x);
+          this.physics.moveTo(spr, spr.x + Math.cos(anguloFuera) * 200, spr.y + Math.sin(anguloFuera) * 200, 110);
+        } else if (dist > 425) {
+          this.physics.moveTo(spr, this.player.x, this.player.y, 80);
+        } else {
+          this.physics.moveTo(spr, spr.x + Math.cos(seed) * 60, spr.y + Math.sin(seed) * 60, 30);
+        }
+        if (dist < 540 && ahora >= (spr.fireCdUntil ?? 0)) {
+          spr.fireCdUntil = ahora + 1500 + Math.random() * 650;
+          this.spawnAlienBullet(spr);
+        }
+      } else {
+        // Cuerpo a cuerpo: persigue y ataca cuando está en rango
+        this.physics.moveTo(spr, this.player.x, this.player.y, 90 + this.hordaActual * 10);
+        if (dist < 54 && ahora >= (spr.atkCdUntil ?? 0)) {
+          const key = spr.texture.key;
+          const cd = key === 'boss' ? 1050 : key === 'enemy_barbaro' || key === 'enemy_zombi' ? 850 : 700;
+          spr.atkCdUntil = ahora + cd;
+          spr.atkAnimUntil = ahora + 340;
+          this.playEnemyAttackAnim(spr);
+          this.hitPlayer(spr.dano ?? 6);
+        }
+      }
+
+      // Caminata: balanceo sutil del cuerpo (excepto durante el swing)
+      if ((spr.atkAnimUntil ?? 0) <= ahora) {
+        const amp = spr.esGunner ? 2 : 4;
+        const velocidad = spr.esGunner ? 260 : 205;
+        spr.setAngle(Math.sin(((ahora + seed * 137) % 100000) / velocidad * Math.PI * 2) * amp);
+      }
     }
 
     // Disparo/tajo automático + pulso de ataque
@@ -832,11 +865,13 @@ export class CombateScene extends Phaser.Scene {
       }
     }
 
-    // Colisiones enemigos ↔ jugador
-    for (const e of this.enemies) {
-      if (!e.active) continue;
-      if (Phaser.Math.Distance.BetweenPoints(this.player, e) < 20) {
-        this.damageTick(deltaMs);
+    // ─── Balas del alienígena: avanzan, expiran e impactan ───
+    this.enemyBullets = this.enemyBullets.filter((b) => b.active && b.x >= -25 && b.x <= CombateScene.ARENA_W + 25 && b.y >= -25 && b.y <= CombateScene.ARENA_H + 25);
+    for (const b of this.enemyBullets) {
+      if (!b.active) continue;
+      if (Phaser.Math.Distance.BetweenPoints(b, this.player) < 17) {
+        b.destroy();
+        this.hitPlayer(8);
       }
     }
 
@@ -852,16 +887,7 @@ export class CombateScene extends Phaser.Scene {
     this.emitHud?.();
   }
 
-  private damageTick(ms: number): void {
-    this.damageAccum += ms;
-    if (this.damageAccum > 500) {
-      this.damageAccum = 0;
-      const daño = Math.max(1, Math.round(5 * (1 - this.resistencia)));
-      this.salud = Math.max(0, this.salud - daño);
-      this.cameras.main.shake(120, 0.004);
-      this.emitHud?.();
-    }
-  }
+
 
   /** Muzzle flash: destello breve en el arma. */
   private muzzleFlash(): void {
@@ -926,43 +952,104 @@ export class CombateScene extends Phaser.Scene {
 
   }
 
+  /** Inicializa un enemigo con física, HP, daño de contacto y semilla de caminata. */
+  private initEnemy(
+    e: Phaser.Physics.Arcade.Sprite,
+    hp: number,
+    radio: number,
+    escala: number,
+    dano: number,
+    opciones: { tint?: number; gunner?: boolean } = {},
+  ): void {
+    const o = opciones as unknown as Record<string, unknown>;
+    (e as unknown as { hp: number }).hp = hp;
+    (e as unknown as { hpMax: number }).hpMax = hp;
+    (e as unknown as { dano: number }).dano = dano;
+    o['esGunner'] = Boolean(opciones.gunner);
+    o['spawnSeed'] = Math.random() * 1000;
+    o['atkCdUntil'] = 0;
+    o['atkAnimUntil'] = 0;
+    o['fireCdUntil'] = this.time.now + 900 + Math.random() * 1100;
+    e.setCircle(radio);
+    e.setScale(escala);
+    if (opciones.tint) e.setTint(opciones.tint);
+    e.setDepth(20);
+    e.setCollideWorldBounds(true, 0, 0, false);
+    this.enemies.push(e);
+  }
+
   private spawnEnemy(): void {
     const side = Math.floor(Math.random() * 4);
     const x = side === 0 ? 0 : side === 1 ? CombateScene.ARENA_W : Math.random() * CombateScene.ARENA_W;
     const y = side === 2 ? 0 : side === 3 ? CombateScene.ARENA_H : Math.random() * CombateScene.ARENA_H;
     const esHordaJefe = this.hordaActual === 9 || (this.evaluacionMode && (this.hordaActual === 3 || this.hordaActual === 6));
     this.spawnBossCounter++;
+    // ─── Jefe: jefe_1 (Rey de la Cripta) ───
     if (esHordaJefe && this.spawnBossCounter % 4 === 1) {
       const hpJefe = this.hordaActual >= 9 ? 14 : this.hordaActual >= 6 ? 9 : 6;
       const boss = this.physics.add.sprite(x, y, 'boss');
-      (boss as unknown as { hp: number; hpMax: number }).hp = hpJefe;
-      (boss as unknown as { hp: number; hpMax: number }).hpMax = hpJefe;
-      boss.setCircle(40);
-      boss.setScale(1.55);
-      boss.setDepth(20);
-      boss.setCollideWorldBounds(true, 0, 0, false);
-      this.enemies.push(boss);
+      this.initEnemy(boss, hpJefe, 40, 1.55, 18);
       return;
     }
+    // ─── Élites dorados que acompañan al jefe ───
     if (esHordaJefe) {
-      const e = this.physics.add.sprite(x, y, 'enemy_gold');
-      (e as unknown as { hp: number }).hp = 4;
-      e.setCircle(18);
-      e.setScale(1.4);
-      e.setDepth(20);
-      e.setCollideWorldBounds(true, 0, 0, false);
-      this.enemies.push(e);
+      const pool = ['enemy_zombi', 'enemy_barbaro', 'enemy_vampiro'] as const;
+      const e = this.physics.add.sprite(x, y, pool[Math.floor(Math.random() * pool.length)]);
+      this.initEnemy(e, 5, 18, 1.4, 12, { tint: 0xffd24d });
       return;
     }
+    // ─── Pistolero alienígena (desde horda 4, máx. 2 activos) ───
+    const gunnersVivos = this.enemies.filter((e) => e.active && (e as unknown as { esGunner?: boolean }).esGunner).length;
+    if (this.hordaActual >= 4 && gunnersVivos < 2 && Math.random() < 0.24) {
+      const e = this.physics.add.sprite(x, y, 'enemy_alien');
+      this.initEnemy(e, this.hordaActual >= 7 ? 3 : 2, 17, 1.35, 5, { gunner: true });
+      return;
+    }
+    // ─── Tiers por horda ───
     const tier = this.hordaActual <= 3 ? 0 : this.hordaActual <= 6 ? 1 : 2;
-    const keys = ['enemy_red', 'enemy_orange', 'enemy_gold'];
-    const e = this.physics.add.sprite(x, y, keys[tier]);
-    (e as unknown as { hp: number }).hp = tier === 0 ? 1 : tier === 1 ? 2 : 3;
-    e.setCircle(18);
-    e.setScale(1.35);
-    e.setDepth(20);
-    e.setCollideWorldBounds(true, 0, 0, false);
-    this.enemies.push(e);
+    const pool = tier === 0 ? ['enemy_red'] : tier === 1 ? ['enemy_orange', 'enemy_vampiro'] : ['enemy_barbaro', 'enemy_zombi', 'enemy_vampiro'];
+    const key = pool[Math.floor(Math.random() * pool.length)];
+    const hp = tier === 0 ? 1 : tier === 1 ? 2 : 3;
+    const e = this.physics.add.sprite(x, y, key);
+    this.initEnemy(e, hp, 18, 1.35, tier === 0 ? 6 : tier === 1 ? 8 : 12);
+  }
+
+  /** Daño al jugador con resistencia aplicada. */
+  private hitPlayer(dmg: number): void {
+    const daño = Math.max(1, Math.round(dmg * (1 - this.resistencia)));
+    this.salud = Math.max(0, this.salud - daño);
+    this.cameras.main.shake(130, 0.004);
+  }
+
+  /** El alienígena dispara plasma hacia el jugador (con destello de boca). */
+  private spawnAlienBullet(spr: Phaser.Physics.Arcade.Sprite): void {
+    if (!this.player) return;
+    const ang = Math.atan2(this.player.y - spr.y, this.player.x - spr.x);
+    const b = this.physics.add.sprite(spr.x, spr.y, 'alien_bolt');
+    b.setDepth(26);
+    b.body!.setCircle(6);
+    b.setVelocity(Math.cos(ang) * 320, Math.sin(ang) * 320);
+    this.enemyBullets.push(b);
+    const f = this.add.image(spr.x + Math.cos(ang) * 18, spr.y + Math.sin(ang) * 18, 'impact_flash')
+      .setDepth(28).setBlendMode(Phaser.BlendModes.ADD).setScale(0.42).setTint(0xc07aff).setAlpha(0.95);
+    this.tweens.add({ targets: f, scale: 0.85, alpha: 0, duration: 110, onComplete: () => f.destroy() });
+  }
+
+  /** Swing del arma del enemigo: giro rápido hacia el jugador + arco visual de tajo. */
+  private playEnemyAttackAnim(spr: Phaser.Physics.Arcade.Sprite): void {
+    if (!this.player) return;
+    const ang = Math.atan2(this.player.y - spr.y, this.player.x - spr.x);
+    // Giro de "barrido" del arma
+    this.tweens.add({
+      targets: spr,
+      angle: { from: -22, to: 14 },
+      duration: 150,
+      yoyo: true,
+      onComplete: () => { spr.angle = 0; },
+    });
+    // Arco de impacto en la dirección del tajo
+    const slash = this.add.image(spr.x, spr.y, 'slash_arc').setDepth(28).setRotation(ang).setAlpha(0.78);
+    this.tweens.add({ targets: slash, scale: 0.9, alpha: 0, duration: 160, onComplete: () => slash.destroy() });
   }
 
   private nearestEnemy(): Phaser.Physics.Arcade.Sprite | null {
