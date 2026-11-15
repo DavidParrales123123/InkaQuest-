@@ -260,8 +260,9 @@ import { GUARDIANES } from './guardians-catalog';
                           </span>
                           <h3 class="mt-2 text-lg font-extrabold leading-snug tracking-tight text-white">{{ p.enunciado }}</h3>
                           @if (p.tema) { <p class="mt-1 text-[0.62rem] font-bold uppercase tracking-[0.18em] text-marine-300">{{ p.tema }} · {{ p.dificultad }}</p> }
+                          @if (mejoraEnJuego()) { <p class="mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-gold-500/40 bg-gold-500/10 px-2 py-0.5 text-[0.6rem] font-extrabold uppercase tracking-[0.18em] text-gold-300"><svg viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>Tu mejora está en juego: acierta para conservarla</p> }
                         </div>
-                        @if (!respuestaResultado()) { <button type="button" class="shrink-0 text-[0.62rem] font-bold uppercase tracking-widest text-marine-300 underline underline-offset-2 transition-colors hover:text-white" (click)="omitirChequeo()">Omitir</button> }
+                        @if (!respuestaResultado()) { <button type="button" class="shrink-0 text-[0.62rem] font-bold uppercase tracking-widest text-marine-300 underline underline-offset-2 transition-colors hover:text-white" (click)="omitirChequeo()">{{ mejoraEnJuego() ? 'Omitir (pierdes la mejora)' : 'Omitir' }}</button> }
                       </div>
                       <div class="grid gap-2">
                         @for (op of p.opciones; track op; let i = $index) {
@@ -274,10 +275,11 @@ import { GUARDIANES } from './guardians-catalog';
                       @if (respuestaResultado(); as r) {
                         <div class="rounded-xl border p-3 text-sm" [ngClass]="r.esCorrecta ? 'border-emerald-400/40 bg-emerald-400/10' : 'border-rose-400/40 bg-rose-400/10'">
                           <p class="font-extrabold" [ngClass]="r.esCorrecta ? 'text-emerald-300' : 'text-rose-300'">{{ r.esCorrecta ? '¡Correcto! +' + r.xp + ' XP · +' + r.monedas + ' monedas' : 'Respuesta incorrecta' }}</p>
+                          @if (mejoraEnJuego()) { <p class="mt-1 font-bold" [ngClass]="(r.esCorrecta || r.error) ? 'text-gold-300' : 'text-rose-300'">{{ r.error ? 'Error al calificar: conservas tu mejora.' : (r.esCorrecta ? '¡Conservas la mejora que elegiste!' : 'Perdiste la mejora que elegiste.') }}</p> }
                           @if (!r.esCorrecta && r.correcta) { <p class="mt-1 text-marine-100">Respuesta correcta: <strong class="text-emerald-300">{{ r.correcta }}</strong></p> }
                           @if (r.explicacion) { <p class="mt-1 text-[0.8rem] leading-snug text-marine-200">{{ r.explicacion }}</p> }
                         </div>
-                        <button type="button" class="btn btn-gold w-full justify-center" (click)="continuarTrasChequeo()">Continuar →</button>
+                        <button type="button" class="btn btn-gold w-full justify-center" (click)="continuarTrasChequeo()">{{ (r.esCorrecta || r.error) ? 'Continuar con tu mejora →' : 'Continuar sin la mejora →' }}</button>
                       } @else {
                         <button type="button" class="btn btn-gold w-full justify-center text-marine-900 disabled:opacity-40" [disabled]="!respuestaElegida()" (click)="confirmarRespuesta()">Comprobar respuesta</button>
                       }
@@ -338,6 +340,10 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected readonly mensajeResultado = signal('');
   protected readonly elegirMejora = signal(false);
   protected readonly ultimoUsado = signal<string | null>(null);
+  /** true mientras la mejora elegida está "en el aire" esperando el chequeo. */
+  protected readonly mejoraEnJuego = signal(false);
+  /** Mejora elegida por el estudiante, aún NO aplicada al motor (el chequeo decide). */
+  private mejoraPendiente: { id: string; nombre: string } | null = null;
   protected readonly candidatosMejora = signal<readonly { id: string; nombre: string; descripcion: string; rareza: string; rango: number; maxRango: number }[]>([]);
   protected readonly mostrarIntro = signal(true);
   protected readonly elegido = signal<string | null>(null);
@@ -345,7 +351,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected readonly guardianActual = computed(() => GUARDIANES.find((g) => g.id === this.elegido()) ?? null);
   protected readonly preguntaActual = signal<{ preguntaId: string; enunciado: string; opciones: string[]; tema: string; dificultad: string } | null>(null);
   protected readonly respuestaElegida = signal<string | null>(null);
-  protected readonly respuestaResultado = signal<{ esCorrecta: boolean; correcta?: string; explicacion?: string; xp: number; monedas: number } | null>(null);
+  protected readonly respuestaResultado = signal<{ esCorrecta: boolean; error?: boolean; correcta?: string; explicacion?: string; xp: number; monedas: number } | null>(null);
   private preguntaExcluidas: string[] = [];
   private nivelId: string | null = null;
   private preguntaDesde = 0;
@@ -418,12 +424,12 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   }
 
   protected aplicarMejora(m: { id: string; nombre: string }): void {
-    const scene = this.game?.scene?.getScene('Combate') as any;
-    if (scene) {
-      scene.applyUpgrade(m.id);
-    }
+    // La mejora queda PENDIENTE: se aplica sólo si el estudiante acierta el chequeo;
+    // si falla (o lo omite), la perderá.
+    this.mejoraPendiente = m;
+    this.mejoraEnJuego.set(true);
     this.elegirMejora.set(false);
-    // Tras la mejora: chequeo académico de la lección antes de la siguiente horda
+    // Tras elegir mejora: chequeo académico de la lección antes de la siguiente horda
     void this.iniciarChequeo();
   }
 
@@ -433,9 +439,19 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     this.hordaActual.set(scene?.hordaActual ?? 1);
   }
 
+  /** Resuelve la mejora pendiente según el resultado del chequeo. */
+  private resolverMejoraTrasChequeo(conservada: boolean): void {
+    if (conservada && this.mejoraPendiente) {
+      const scene = this.game?.scene?.getScene('Combate') as any;
+      scene?.applyUpgrade?.(this.mejoraPendiente.id);
+    }
+    this.mejoraPendiente = null;
+    this.mejoraEnJuego.set(false);
+  }
+
   private async iniciarChequeo(): Promise<void> {
     const nivelId = this.nivelId;
-    if (!nivelId || !this.intentoId) { this.iniciarSiguienteHorda(); return; }
+    if (!nivelId || !this.intentoId) { this.resolverMejoraTrasChequeo(true); this.iniciarSiguienteHorda(); return; }
     const sb = this.supabase.client;
     try {
       const { data, error } = await sb.rpc('guardianes_pregunta_aleatoria', {
@@ -444,9 +460,9 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
       });
       if (error) throw error;
       const row = (Array.isArray(data) ? data[0] : null) as any;
-      if (!row) { this.iniciarSiguienteHorda(); return; }
+      if (!row) { this.resolverMejoraTrasChequeo(true); this.iniciarSiguienteHorda(); return; }
       const opciones = Array.isArray(row.opciones) ? row.opciones.map(String) : [];
-      if (opciones.length < 2) { this.iniciarSiguienteHorda(); return; }
+      if (opciones.length < 2) { this.resolverMejoraTrasChequeo(true); this.iniciarSiguienteHorda(); return; }
       this.preguntaExcluidas.push(row.pregunta_id);
       this.preguntaActual.set({
         preguntaId: row.pregunta_id,
@@ -460,6 +476,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
       this.preguntaDesde = Date.now();
     } catch (e) {
       console.warn('[guardianes] chequeo:', e);
+      this.resolverMejoraTrasChequeo(true);
       this.iniciarSiguienteHorda();
     }
   }
@@ -497,7 +514,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
       }
     } catch (e) {
       console.warn('[guardianes] responder chequeo:', e);
-      this.respuestaResultado.set({ esCorrecta: false, explicacion: 'No se pudo calificar. Revisa tu conexión.', xp: 0, monedas: 0 });
+      this.respuestaResultado.set({ esCorrecta: false, error: true, explicacion: 'No se pudo calificar. Revisa tu conexión.', xp: 0, monedas: 0 });
     }
   }
 
@@ -505,11 +522,21 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     this.preguntaActual.set(null);
     this.respuestaElegida.set(null);
     this.respuestaResultado.set(null);
+    // Omitir el chequeo también implica perder la mejora pendiente
+    this.resolverMejoraTrasChequeo(false);
     this.iniciarSiguienteHorda();
   }
 
   protected continuarTrasChequeo(): void {
-    this.omitirChequeo();
+    const r = this.respuestaResultado();
+    this.preguntaActual.set(null);
+    this.respuestaElegida.set(null);
+    this.respuestaResultado.set(null);
+    // La mejora pendiente se conserva sólo si el chequeo fue correcto;
+    // un error técnico de calificación no cuesta la mejora.
+    const conservada = Boolean(r && (r.esCorrecta || r.error));
+    this.resolverMejoraTrasChequeo(conservada);
+    this.iniciarSiguienteHorda();
   }
 
   protected claseOpcion(op: string): string {
@@ -612,7 +639,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   }
 
   private abrirMenuMejoras(): void {
-    // La escena ya queda congelada con pickingUpgrade; aquí sólo mostramos el overlay
+    // La escena ya queda congelada con pickingUpgrade; mostramos el overlay
     this.elegirMejora.set(true);
     const scene = this.game?.scene?.getScene('Combate') as any;
     this.hordaActual.set(scene?.hordaActual ?? 1);

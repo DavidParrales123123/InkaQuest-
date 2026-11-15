@@ -195,7 +195,7 @@ interface NivelItem {
             <h3 class="text-sm font-extrabold uppercase tracking-[0.18em] text-marine-500">Cómo jugar</h3>
             <ol class="mt-3 space-y-2.5 text-sm text-marine-700">
               <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">1</span>Elige tu guardián y supera las hordas de la lección.</li>
-              <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">2</span>Acierta el chequeo académico entre oleadas para ganar XP y monedas.</li>
+              <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">2</span>Entre oleadas eliges una mejora: el chequeo académico decide si la conservas — si fallas, la pierdes.</li>
               <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">3</span>Completa la lección en el aula para desbloquear el siguiente nivel.</li>
             </ol>
           </div>
