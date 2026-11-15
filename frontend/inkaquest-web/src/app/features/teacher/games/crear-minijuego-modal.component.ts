@@ -23,10 +23,10 @@ interface ParItem {
 }
 
 /**
- * Modal que replica el flujo del proyecto anterior para crear un minijuego sobre
- * uno de los 96 motores sembrados en la BD.
+ * Modal para crear un minijuego usando uno de los 4 motores esenciales
+ * sembrados en la BD (quiz rápido, memoria, emparejamiento, arrastrar y soltar).
  *
- *   Paso 1 — Elige el motor (matriz filtrable con búsqueda y familia).
+ *   Paso 1 — Elige el motor (búsqueda con los 4 esenciales).
  *   Paso 2 — Información básica (nombre, dificultad, XP, duración, instrucciones, fecha límite).
  *   Paso 3 — Contenido (solo juegos que lo necesitan: quiz/memoria/emparejamiento).
  *
@@ -87,17 +87,11 @@ interface ParItem {
         <!-- PASO 1 -->
         @if (paso() === 'motor') {
           <div class="mt-4 space-y-4">
-            <p class="text-sm text-marine-600">Elige uno de los motores disponibles en la base de datos. Cada uno define una mecánica diferente.</p>
+            <p class="text-sm text-marine-600">Elige un motor clásico. Cada uno define una mecánica de juego diferente. Todos funcionan en cualquier curso.</p>
             <div class="grid gap-2 sm:grid-cols-3">
-              <div class="sm:col-span-2">
+              <div class="sm:col-span-3">
                 <input type="text" class="input" [value]="filtroMotor()" (input)="filtroMotor.set($any($event.target).value)" placeholder="Buscar motor…" aria-label="Buscar motor" autocomplete="off" />
               </div>
-              <select class="select" [value]="filtroFamilia()" (change)="filtroFamilia.set($any($event.target).value)" aria-label="Familia">
-                <option value="">Todas las familias</option>
-                <option value="generico">Genéricos (4)</option>
-                <option value="especifico">Específicos (46)</option>
-                <option value="adicional">Adicionales (46)</option>
-              </select>
             </div>
             <div class="grid max-h-[55vh] gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
               @for (m of motoresFiltrados(); track m.id) {
@@ -105,12 +99,16 @@ interface ParItem {
                   <span class="flex items-center gap-1.5 text-sm font-bold text-marine-800"><span class="text-base">{{ m.icono || '🎮' }}</span>{{ m.nombre }}</span>
                   @if (m.descripcion) { <span class="line-clamp-2 text-[0.7rem] text-marine-500">{{ m.descripcion }}</span> }
                   <span class="mt-auto flex flex-wrap gap-1 pt-1">
-                    <span class="rounded-full bg-surface-100 px-2 py-0.5 text-[0.62rem] font-bold uppercase text-marine-600">{{ m.familia }}</span>
+                    <span class="rounded-full bg-gold-100 px-2 py-0.5 text-[0.62rem] font-extrabold uppercase tracking-widest text-gold-700">Esencial</span>
                     <span class="rounded-full bg-surface-100 px-2 py-0.5 font-mono text-[0.6rem] text-marine-500">{{ m.codigo }}</span>
                   </span>
                 </button>
               } @empty {
-                <p class="col-span-full py-6 text-center text-xs text-marine-500">Ningún motor coincide con el filtro.</p>
+                <div class="col-span-full rounded-2xl border border-dashed border-surface-300 py-6 text-center">
+                  <p class="text-2xl">🔍</p>
+                  <p class="mt-1 text-xs font-semibold text-marine-700">Ningún motor coincide con tu búsqueda</p>
+                  <p class="mt-0.5 text-[0.7rem] text-marine-500">Prueba con «quiz», «memoria», «emparejamiento» o «arrastrar».</p>
+                </div>
               }
             </div>
             <div class="flex justify-end gap-2 border-t border-surface-100 pt-3">
@@ -126,7 +124,7 @@ interface ParItem {
               <span class="text-3xl">{{ motorSel()?.icono || '🎮' }}</span>
               <div class="min-w-0">
                 <p class="text-sm font-bold text-marine-800">{{ motorSel()?.nombre }}</p>
-                <p class="text-xs text-marine-500">{{ motorSel()?.familia }} · {{ motorSel()?.codigo }}</p>
+                <p class="text-xs text-marine-500">Motor esencial · {{ motorSel()?.codigo }}</p>
               </div>
             </div>
 
@@ -312,7 +310,7 @@ interface ParItem {
                   <p class="mt-1 text-xs text-marine-500">Clave/valor JSON que se pasa al motor — ej. cantidad de intentos, tiempo por nivel, opciones del motor.</p>
                 </div>
 
-                <p class="text-xs text-marine-400">Motor: <code>{{ motorSel()?.codigo }}</code> · Familia: <code>{{ motorSel()?.familia }}</code>.</p>
+                <p class="text-xs text-marine-400">Motor: <code>{{ motorSel()?.codigo }}</code> · Motor esencial.</p>
               </div>
             }
 
@@ -352,7 +350,6 @@ export class CrearMinijuegoModalComponent implements OnInit {
   protected readonly motores = signal<Motor[]>([]);
   protected readonly lecciones = signal<{ id: string; titulo: string; unidadNumero: number }[]>([]);
   protected readonly filtroMotor = signal('');
-  protected readonly filtroFamilia = signal<string>('');
   protected readonly tiempoPreguntaSec = signal<number>(30);
 
   protected readonly preguntas = signal<PreguntaQuiz[]>([
@@ -381,9 +378,8 @@ export class CrearMinijuegoModalComponent implements OnInit {
 
   protected readonly motoresFiltrados = computed(() => {
     const q = this.filtroMotor().trim().toLowerCase();
-    const f = this.filtroFamilia();
     return this.motores().filter(
-      (m) => (f === '' || m.familia === f) && (q === '' || m.nombre.toLowerCase().includes(q) || (m.descripcion ?? '').toLowerCase().includes(q) || m.codigo.includes(q)),
+      (m) => q === '' || m.nombre.toLowerCase().includes(q) || (m.descripcion ?? '').toLowerCase().includes(q) || m.codigo.includes(q),
     );
   });
 

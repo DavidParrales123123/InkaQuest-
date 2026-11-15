@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { NgClass } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -25,10 +26,11 @@ type LeccionCtx = Leccion & { moduloTitulo: string; unidadTitulo: string; unidad
 /**
  * Panel del docente para gestionar minijuegos de sus cursos.
  *
- * <p>Replicando la experiencia del proyecto anterior, el docente:</p>
+ * <p>Replicando el catálogo vigente, el docente:</p>
  * <ol>
- *   <li>Ve el catálogo completo de motores (96) sembrados en la base.</li>
- *   <li>Puede filtrar por curso, familia y búsqueda.</li>
+ *   <li>Ve los 4 motores esenciales sembrados en la base (quiz, memoria,
+ *       emparejamiento y arrastrar y soltar), listos para cualquier curso.</li>
+ *   <li>Puede filtrar por motor y búsqueda.</li>
  *   <li>Selecciona un motor y crea el minijuego (flujo modal de 3 pasos).</li>
  *   <li>Ve sus juegos publicados en el curso actual.</li>
  *   <li>Asigna esos juegos a lecciones como actividades publicadas.</li>
@@ -37,52 +39,53 @@ type LeccionCtx = Leccion & { moduloTitulo: string; unidadTitulo: string; unidad
 @Component({
   selector: 'app-teacher-games',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, ReactiveFormsModule, DataPanelComponent, PageHeaderComponent, StatusBadgeComponent, CrearMinijuegoModalComponent],
+  imports: [RouterLink, ReactiveFormsModule, DataPanelComponent, PageHeaderComponent, StatusBadgeComponent, CrearMinijuegoModalComponent, NgClass],
   template: `
     <section class="space-y-5">
       <app-page-header
         titulo="Minijuegos"
-        descripcion="Crea un minijuego a partir de un motor, publícalo para un curso y compártelo en la lección."
+        descripcion="Diseña minijuegos interactivos con los 4 motores clásicos: quiz rápido, memoria, emparejamiento y arrastrar y soltar. Publica el juego en cualquier lección."
         [acciones]="true"
       >
         <div acciones><button class="btn btn-primary btn-sm" type="button" (click)="abrirModalLibre()" [disabled]="!cursoIdSel()">+ Nuevo minijuego</button></div>
       </app-page-header>
 
       <!-- ═══ PASO 1 · ELIGE MOTOR Y CREA ═══ -->
-      <section class="card card-body space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-2">
+      <section class="card card-body space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="flex items-start gap-2">
             <span class="flex size-7 items-center justify-center rounded-full bg-brand-500 text-xs font-extrabold text-white">1</span>
             <div>
-              <h2 class="text-base font-semibold text-marine-800">Elige un motor</h2>
-              <p class="text-xs text-marine-500">{{ totalMotores() }} motores en el catálogo · filtros por familia y búsqueda.</p>
+              <h2 class="text-base font-semibold text-marine-800">Elige un motor clásico</h2>
+              <p class="text-xs text-marine-500">{{ totalMotores() }} motores disponibles · listos para cualquier curso.</p>
             </div>
           </div>
-          <div class="flex flex-wrap gap-1.5">
-            @for (t of familiaTabs; track t.value) {
-              <button type="button" class="btn btn-outline btn-sm !py-1" [class.bg-marine-800]="filtroFamiliaMotor() === t.value" [class.text-white]="filtroFamiliaMotor() === t.value" (click)="filtroFamiliaMotor.set(t.value)">{{ t.label }}</button>
-            }
-          </div>
+          <span class="badge badge-neutral">Catálogo esencial</span>
         </div>
-        <div class="grid gap-2 sm:grid-cols-[1fr_220px_auto]">
+        <div class="grid gap-2 sm:grid-cols-[1fr_260px_auto]">
           <input class="input" [value]="buscadorMotor()" (input)="buscadorMotor.set($any($event.target).value)" placeholder="Buscar motor…" autocomplete="off" aria-label="Buscar motor" />
           <select class="select" [value]="cursoIdSel()" (change)="onCursoChange($any($event.target).value)" aria-label="Curso asignado">
             @for (c of cursos(); track c.id) { <option [value]="c.id">{{ c.titulo }}</option> }
           </select>
           <span class="flex items-center gap-2 text-xs text-marine-500"><span class="badge badge-neutral">{{ motoresFiltrados().length }}</span> visibles</span>
         </div>
-        <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           @for (m of motoresFiltrados(); track m.id) {
-            <article class="rounded-xl border border-surface-200 p-3 flex flex-col gap-1.5">
-              <div class="flex items-center justify-between gap-2">
-                <span class="text-xl leading-none">{{ iconoFamilia(m) }}</span>
-                <span class="text-[0.6rem] font-extrabold uppercase text-marine-400">{{ m.familia }}</span>
+            <article class="group flex flex-col gap-2 overflow-hidden rounded-2xl border border-surface-200 bg-white p-4 transition-all duration-200 hover:-translate-y-1 hover:border-brand-300 hover:shadow-xl hover:shadow-brand-500/10">
+              <div class="flex items-start justify-between gap-2">
+                <span class="flex size-12 items-center justify-center rounded-xl text-2xl shadow-sm" [ngClass]="infoMotor(m).tile">{{ infoMotor(m).icono }}</span>
+                <span class="rounded-full bg-gold-100 px-2 py-0.5 text-[0.62rem] font-extrabold uppercase tracking-widest text-gold-700">Esencial</span>
               </div>
-              <h3 class="text-sm font-semibold text-marine-800 leading-snug">{{ m.nombre }}</h3>
-              <button type="button" class="btn btn-primary btn-sm mt-auto !py-1.5" (click)="abrirModalConMotor(m)" [disabled]="!cursoIdSel()">Crear aquí</button>
+              <h3 class="mt-1 text-sm font-bold leading-snug text-marine-800">{{ m.nombre }}</h3>
+              <p class="min-h-8 text-[0.7rem] leading-snug text-marine-500">{{ infoMotor(m).tagline }}</p>
+              <button type="button" class="btn btn-primary btn-sm mt-auto !py-2" (click)="abrirModalConMotor(m)" [disabled]="!cursoIdSel()">Crear minijuego</button>
             </article>
           } @empty {
-            <p class="col-span-full py-4 text-center text-xs text-marine-500">Ningún motor coincide con el filtro.</p>
+            <div class="col-span-full rounded-2xl border border-dashed border-surface-300 py-8 text-center">
+              <p class="text-3xl">🔍</p>
+              <p class="mt-2 text-sm font-semibold text-marine-700">Ningún motor coincide con tu búsqueda</p>
+              <p class="mt-0.5 text-xs text-marine-500">Prueba con «quiz», «memoria», «emparejamiento» o «arrastrar».</p>
+            </div>
           }
         </div>
       </section>
@@ -252,16 +255,20 @@ export class GamesComponent implements OnInit {
 
   // ─── Panel admin (modo catálogo) ───
   protected readonly buscadorMotor = signal('');
-  protected readonly filtroFamiliaMotor = signal<'generico' | 'especifico' | 'adicional' | ''>('generico');
   protected readonly modalCrear = signal(false);
   protected readonly motorPreseleccionado = signal<Motor | null>(null);
 
-  protected readonly familiaTabs: { value: '' | 'generico' | 'especifico' | 'adicional'; label: string }[] = [
-    { value: '', label: 'Todos' },
-    { value: 'generico', label: 'Genéricos' },
-    { value: 'especifico', label: 'Específicos' },
-    { value: 'adicional', label: 'Adicionales' },
-  ];
+  /** Descripciones curadas por código de motor (las de BD son poco útiles). */
+  private static readonly INFO_MOTORES: Record<string, { icono: string; tagline: string; tile: string }> = {
+    'quiz-rapido': { icono: '❓', tagline: 'Preguntas con racha, puntaje y revisión inmediata.', tile: 'bg-brand-50' },
+    'memoria': { icono: '🧠', tagline: 'Encuentra las parejas de tarjetas escondidas.', tile: 'bg-gold-50' },
+    'emparejamiento': { icono: '🔗', tagline: 'Conecta cada concepto con su pareja correcta.', tile: 'bg-marine-100' },
+    'arrastrar-soltar': { icono: '🎯', tagline: 'Arrastra los elementos a su contenedor correcto.', tile: 'bg-danger-50' },
+  };
+
+  protected infoMotor(m: Motor): { icono: string; tagline: string; tile: string } {
+    return GamesComponent.INFO_MOTORES[m.codigo] ?? { icono: '🎮', tagline: m.descripcion || 'Motor de minijuego interactivo.', tile: 'bg-surface-100' };
+  }
 
   // ─── Estado de datos ───
   protected readonly cursos = signal<Curso[]>([]);
@@ -285,13 +292,11 @@ export class GamesComponent implements OnInit {
     return this.motores().filter((m) => !asociados.has(m.id));
   });
 
-  // ─── Catálogo filtrable (96 motores del común) ───
+  // ─── Catálogo filtrable (4 motores esenciales) ───
   protected readonly motoresFiltrados = computed(() => {
     const q = this.buscadorMotor().trim().toLowerCase();
-    const f = this.filtroFamiliaMotor();
     return this.motores().filter((m) =>
-      (f === '' || m.familia === f) &&
-      (q === '' || m.nombre.toLowerCase().includes(q) || (m.descripcion ?? '').toLowerCase().includes(q) || m.codigo.toLowerCase().includes(q)),
+      q === '' || m.nombre.toLowerCase().includes(q) || (m.descripcion ?? '').toLowerCase().includes(q) || m.codigo.toLowerCase().includes(q),
     );
   });
 
@@ -399,20 +404,6 @@ export class GamesComponent implements OnInit {
       const corto = v.length > 40 ? v.slice(0, 40) + '…' : v;
       return `${c.clave}: ${corto}`;
     });
-  }
-
-  protected iconoFamilia(m: Motor): string {
-    const g = m.familia === 'generico';
-    if (g) {
-      const nombre = (m.nombre || '').toLowerCase();
-      if (nombre.includes('quiz')) return '❓';
-      if (nombre.includes('memoria')) return '🧠';
-      if (nombre.includes('emparejamiento')) return '🔗';
-      if (nombre.includes('arrastrar')) return '🎯';
-      return '🎮';
-    }
-    if (m.familia === 'especifico') return '🎯';
-    return '✨';
   }
 
   protected onMotorDemo(m: Motor): void {
