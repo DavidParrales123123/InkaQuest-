@@ -64,10 +64,10 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
                 </div>
                 <p class="text-[0.68rem] leading-snug text-marine-300" [class.opacity-60]="!g.desbloqueado">{{ g.descripcion }}</p>
                 <span class="inline-flex w-fit items-center gap-1 rounded-full border border-marine-600 bg-marine-900/60 px-2 py-0.5 text-[0.58rem] font-extrabold uppercase tracking-widest" [class.text-brand-300]="g.ataque === 'rango'" [class.text-rose-300]="g.ataque === 'haz'" [class.opacity-60]="!g.desbloqueado">{{ g.ataque === 'rango' ? '◎ Rango · Gatillo' : '× Haz · Cuerpo a cuerpo' }}</span>
-                <div class="grid w-full grid-cols-3 gap-1 text-[0.62rem] font-bold uppercase tracking-wider" [class.opacity-60]="!g.desbloqueado">
-                  <span class="rounded border border-rose-900/50 bg-rose-950/40 p-1 text-rose-200">DMG {{ g.danoBase }}</span>
-                  <span class="rounded border border-emerald-900/50 bg-emerald-950/40 p-1 text-emerald-200">VID {{ 100 + g.vidaExtra }}</span>
-                  <span class="rounded border border-sky-900/50 bg-sky-950/40 p-1 text-sky-200">VEL {{ 240 + g.velocidadExtra }}</span>
+                <div class="grid w-full grid-cols-3 overflow-hidden rounded-lg border border-white/10 text-[0.62rem] font-extrabold uppercase tracking-wider" [class.opacity-60]="!g.desbloqueado">
+                  <span class="flex items-center justify-center gap-1.5 border-r border-white/10 bg-white/[0.04] px-1 py-1 text-rose-300">DMG <b class="tabular-nums text-white">{{ g.danoBase }}</b></span>
+                  <span class="flex items-center justify-center gap-1.5 border-r border-white/10 bg-white/[0.04] px-1 py-1 text-emerald-300">VID <b class="tabular-nums text-white">{{ 100 + g.vidaExtra }}</b></span>
+                  <span class="flex items-center justify-center gap-1.5 bg-white/[0.04] px-1 py-1 text-sky-300">VEL <b class="tabular-nums text-white">{{ 240 + g.velocidadExtra }}</b></span>
                 </div>
                 <p class="text-[0.68rem] font-bold text-gold-300" [class.opacity-60]="!g.desbloqueado">{{ g.pasivaNombre }}</p>
                 <p class="text-[0.62rem] leading-snug text-marine-200" [class.opacity-60]="!g.desbloqueado">{{ g.pasivaDescripcion }}</p>
@@ -159,18 +159,18 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
                 <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gold-950/50"><div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-gold-300 transition-all duration-200" [style.width.%]="xpPct()"></div></div>
               </div>
               <!-- PODER -->
-              <div class="grid grid-cols-3 gap-1.5">
-                <div class="rounded-lg border border-rose-900/50 bg-black/30 p-1.5 text-center">
-                  <p class="text-[0.55rem] font-extrabold uppercase tracking-widest text-rose-400">ATK</p>
-                  <p class="mt-0.5 font-display text-base font-extrabold text-white">{{ guardianActual()?.danoBase ?? 0 }}</p>
+              <div class="grid grid-cols-3 overflow-hidden rounded-lg border border-white/10 text-center" aria-label="Poder del guardián">
+                <div class="border-r border-white/10 bg-white/[0.04] py-1.5">
+                  <p class="text-[0.55rem] font-extrabold uppercase tracking-widest text-rose-300">ATK</p>
+                  <p class="mt-0.5 font-display text-lg font-extrabold tabular-nums text-white">{{ guardianActual()?.danoBase ?? 0 }}</p>
                 </div>
-                <div class="rounded-lg border border-emerald-900/50 bg-black/30 p-1.5 text-center">
-                  <p class="text-[0.55rem] font-extrabold uppercase tracking-widest text-emerald-400">VID</p>
-                  <p class="mt-0.5 font-display text-base font-extrabold text-white">{{ saludMax() }}</p>
+                <div class="border-r border-white/10 bg-white/[0.04] py-1.5">
+                  <p class="text-[0.55rem] font-extrabold uppercase tracking-widest text-emerald-300">VID</p>
+                  <p class="mt-0.5 font-display text-lg font-extrabold tabular-nums text-white">{{ saludMax() }}</p>
                 </div>
-                <div class="rounded-lg border border-sky-900/50 bg-black/30 p-1.5 text-center">
-                  <p class="text-[0.55rem] font-extrabold uppercase tracking-widest text-sky-400">VEL</p>
-                  <p class="mt-0.5 font-display text-base font-extrabold text-white">{{ 240 + (guardianActual()?.velocidadExtra ?? 0) }}</p>
+                <div class="bg-white/[0.04] py-1.5">
+                  <p class="text-[0.55rem] font-extrabold uppercase tracking-widest text-sky-300">VEL</p>
+                  <p class="mt-0.5 font-display text-lg font-extrabold tabular-nums text-white">{{ 240 + (guardianActual()?.velocidadExtra ?? 0) }}</p>
                 </div>
               </div>
               <!-- Guardián -->

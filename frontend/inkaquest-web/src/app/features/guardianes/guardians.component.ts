@@ -111,33 +111,43 @@ interface NivelItem {
         </div>
       </header>
 
-      <!-- ══════════ STATS ══════════ -->
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div class="card flex items-center gap-3 p-4">
-          <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-marine-100 text-marine-700">
-            <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12M6 20h12M8 4v6a4 4 0 0 0 8 0V4M8 20v-4a4 4 0 0 1 8 0v4"/></svg>
-          </span>
-          <span><span class="block text-2xl font-extrabold leading-none text-marine-800">{{ totalIntentos() }}</span><span class="mt-1 block text-[0.62rem] font-bold uppercase tracking-widest text-marine-500">Partidas</span></span>
+      <!-- ══════════ TU RENDIMIENTO (panel encuadrado, 4 celdas uniformes) ══════════ -->
+      <section class="card overflow-hidden" aria-label="Rendimiento del jugador">
+        <div class="flex items-center justify-between gap-3 border-b border-surface-200 bg-surface-50/70 px-4 py-2 sm:px-5">
+          <p class="text-[0.62rem] font-extrabold uppercase tracking-[0.22em] text-marine-500">Tu rendimiento</p>
+          <p class="text-[0.58rem] font-bold uppercase tracking-widest text-marine-400">Resumen de la campaña</p>
         </div>
-        <div class="card flex items-center gap-3 p-4">
-          <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
-            <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a2 2 0 0 0 2 4h1M17 6h3a2 2 0 0 1-2 4h-1"/></svg>
-          </span>
-          <span><span class="block text-2xl font-extrabold leading-none text-emerald-600">{{ totalVictorias() }}</span><span class="mt-1 block text-[0.62rem] font-bold uppercase tracking-widest text-marine-500">Victorias</span></span>
+        <div class="grid grid-cols-2 divide-x divide-y divide-surface-200 sm:grid-cols-4 sm:divide-y-0">
+          <div class="flex flex-col items-center justify-center gap-1 px-2 py-4 text-center">
+            <span class="grid size-8 place-items-center rounded-lg bg-marine-100 text-marine-600">
+              <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12M6 20h12M8 4v6a4 4 0 0 0 8 0V4M8 20v-4a4 4 0 0 1 8 0v4"/></svg>
+            </span>
+            <span class="text-2xl font-extrabold leading-none tabular-nums text-marine-800">{{ totalIntentos() }}</span>
+            <span class="text-[0.58rem] font-bold uppercase tracking-[0.18em] text-marine-500">Partidas</span>
+          </div>
+          <div class="flex flex-col items-center justify-center gap-1 px-2 py-4 text-center">
+            <span class="grid size-8 place-items-center rounded-lg bg-emerald-50 text-emerald-600">
+              <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a2 2 0 0 0 2 4h1M17 6h3a2 2 0 0 1-2 4h-1"/></svg>
+            </span>
+            <span class="text-2xl font-extrabold leading-none tabular-nums text-emerald-600">{{ totalVictorias() }}</span>
+            <span class="text-[0.58rem] font-bold uppercase tracking-[0.18em] text-marine-500">Victorias</span>
+          </div>
+          <div class="flex flex-col items-center justify-center gap-1 px-2 py-4 text-center">
+            <span class="grid size-8 place-items-center rounded-lg bg-gold-50 text-gold-600">
+              <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8L12 2z"/></svg>
+            </span>
+            <span class="text-2xl font-extrabold leading-none tabular-nums text-gold-600">+{{ xpTotal() }}</span>
+            <span class="text-[0.58rem] font-bold uppercase tracking-[0.18em] text-marine-500">XP ganada</span>
+          </div>
+          <div class="flex flex-col items-center justify-center gap-1 px-2 py-4 text-center">
+            <span class="grid size-8 place-items-center rounded-lg bg-brand-50 text-brand-600">
+              <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>
+            </span>
+            <span class="text-2xl font-extrabold leading-none tabular-nums text-brand-600">{{ precisionMedia() }}%</span>
+            <span class="text-[0.58rem] font-bold uppercase tracking-[0.18em] text-marine-500">Precisión</span>
+          </div>
         </div>
-        <div class="card flex items-center gap-3 p-4">
-          <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-gold-50 text-gold-600">
-            <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8L12 2z"/></svg>
-          </span>
-          <span><span class="block text-2xl font-extrabold leading-none text-gold-600">+{{ xpTotal() }}</span><span class="mt-1 block text-[0.62rem] font-bold uppercase tracking-widest text-marine-500">XP ganada</span></span>
-        </div>
-        <div class="card flex items-center gap-3 p-4">
-          <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600">
-            <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>
-          </span>
-          <span><span class="block text-2xl font-extrabold leading-none text-brand-600">{{ precisionMedia() }}%</span><span class="mt-1 block text-[0.62rem] font-bold uppercase tracking-widest text-marine-500">Precisión</span></span>
-        </div>
-      </div>
+      </section>
 
       <div class="grid gap-5 lg:grid-cols-12">
         <!-- ══════════ CAMPAÑA ══════════ -->
