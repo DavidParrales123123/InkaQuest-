@@ -330,7 +330,7 @@ public class ChatbotService {
                 .body(Map.of(
                         "query", query,
                         "search_depth", "basic",
-                        "max_results", 6,
+                        "max_results", 3,
                         "include_answer", true,
                         "include_raw_content", false))
                 .retrieve()
@@ -358,7 +358,7 @@ public class ChatbotService {
         try {
             JsonNode respuesta = http.post().uri(apiUrl).contentType(MediaType.APPLICATION_JSON)
                     .header("Authorization", "Bearer " + apiKey)
-                    .body(Map.of("model", modeloAUsar, "messages", mensajesIA, "temperature", 0.7, "max_tokens", 600))
+                    .body(Map.of("model", modeloAUsar, "messages", mensajesIA, "temperature", 0.7, "max_tokens", 400))
                     .retrieve().body(JsonNode.class);
             String texto = respuesta == null ? null : respuesta.path("choices").path(0).path("message").path("content").asText(null);
             if (texto == null || texto.isBlank()) throw new ServiceUnavailableException("El proveedor IA no devolvio una respuesta valida.");
