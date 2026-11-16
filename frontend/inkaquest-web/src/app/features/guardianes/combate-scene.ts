@@ -126,7 +126,7 @@ export class CombateScene extends Phaser.Scene {
 
   hordaActual = 1;
   evaluacionMode = false;
-  /** Input virtual del joystick táctil (izq.): -1..1 por eje. El índice pone esto en marcha en móviles. */
+  private nivelActual = 1;
   public readonly virtualMove = { x: 0, y: 0 };
   /** true en dispositivos táctiles: la mira auto-apunta al enemigo más cercano (el juego ya auto-dispara). */
   private autoAim = false;
@@ -190,9 +190,19 @@ export class CombateScene extends Phaser.Scene {
     this.load.image('arena_mapa_10_15', 'assets/guardianes/mapa-nivel-10-15-v1.jpg');
     this.load.image('arena_mapa_16_18', 'assets/guardianes/mapa-nivel-16-18-v1.jpg');
     // Enemigos (imagen oficial) — el canvas queda como fallback si la carga falla
-    // enemy_red=Asesino · enemy_orange=Esqueleto · enemy_vampiro=Vampiro · enemy_barbaro=Bárbaro
-    // enemy_zombi=Zombi (élite hordas jefe) · enemy_alien=Pistolero · boss=jefe_1
+    // Enemigos oficiales existentes
     for (const id of ['enemy_red', 'enemy_orange', 'enemy_vampiro', 'enemy_barbaro', 'enemy_zombi', 'enemy_alien', 'boss']) {
+      this.load.image(id, `assets/guardianes/enemigos/${id}.png`);
+    }
+    // Nuevos enemigos de bioma
+    for (const id of [
+      'enemy_goblin', 'enemy_escorpion', 'enemy_murcielago', 'enemy_mantiz', 'enemy_hombre_lobo',
+      'enemy_orco',
+      'enemy_fantasma', 'enemy_mago', 'enemy_moustro', 'enemy_magma', 'enemy_fuego',
+      'enemy_esqueleto_fuego', 'enemy_esqueleto_gel', 'enemy_gel',
+      'enemy_esqueleto_helado', 'enemy_hielo', 'enemy_yety', 'enemy_gorila',
+      'boss_hielo', 'boss_fuego', 'boss_gel',
+    ]) {
       this.load.image(id, `assets/guardianes/enemigos/${id}.png`);
     }
     // Frames del ciclo de marcha / ataque de Guardianes
@@ -230,6 +240,7 @@ export class CombateScene extends Phaser.Scene {
     }
 
     // ─── Arena — mapa InkaQuest (niveles 1–5) o paleta procedural ───
+    this.nivelActual = Number(this.game.registry.get('nivel') as number | string | undefined) || 1;
     const mapaSel = this.game.registry.get('mapaArena') as string | undefined;
     const mapaKey = mapaSel === '1-5' ? 'arena_mapa_1_5' : mapaSel === '6-9' ? 'arena_mapa_6_9' : mapaSel === '10-15' ? 'arena_mapa_10_15' : mapaSel === '16-18' ? 'arena_mapa_16_18' : undefined;
     this.usarMapaBioma = mapaKey !== undefined && this.textures.exists(mapaKey);
@@ -833,7 +844,7 @@ export class CombateScene extends Phaser.Scene {
         const rango = spr.atkRange ?? 48;
         if (dist < rango && ahora >= (spr.atkCdUntil ?? 0)) {
           const key = spr.texture.key;
-          const cd = key === 'boss' ? 1050 : key === 'enemy_barbaro' || key === 'enemy_zombi' ? 850 : 700;
+          const cd = (spr as unknown as { esBoss?: boolean }).esBoss ? 1050 : key === 'enemy_barbaro' || key === 'enemy_zombi' ? 850 : 700;
           spr.atkCdUntil = ahora + cd;
           spr.atkAnimUntil = ahora + 340;
           this.playEnemyAttackAnim(spr);
@@ -977,7 +988,7 @@ export class CombateScene extends Phaser.Scene {
     radio: number,
     escala: number,
     dano: number,
-    opciones: { tint?: number; gunner?: boolean; atkRange?: number } = {},
+    opciones: { tint?: number; gunner?: boolean; atkRange?: number; boss?: boolean; hpJefe?: number } = {},
   ): void {
     const o = opciones as unknown as Record<string, unknown>;
     void o; // compat — propiedades se escriben directamente sobre el sprite `e`
@@ -986,6 +997,7 @@ export class CombateScene extends Phaser.Scene {
     (s as unknown as { hpMax: number }).hpMax = hp;
     (s as unknown as { dano: number }).dano = dano;
     s['esGunner'] = Boolean(opciones.gunner);
+    s['esBoss'] = Boolean(opciones.boss);
     s['spawnSeed'] = Math.random() * 1000;
     s['atkCdUntil'] = 0;
     s['atkAnimUntil'] = 0;
@@ -1001,23 +1013,52 @@ export class CombateScene extends Phaser.Scene {
     this.enemies.push(e);
   }
 
+  /** Tabla declarativa de biomas y qué enemigos aparecen por horda. */
+  private bioma(): { min: number; max: number; tier0: string[]; tier1: string[]; tier2: string[]; boss: string; bossHp: [number, number, number]; elite: string; bossDano: number } {
+    const n = this.nivelActual;
+    if (n <= 5) return {
+      min: 1, max: 5,
+      tier0: ['enemy_red', 'enemy_goblin', 'enemy_murcielago'],
+      tier1: ['enemy_escorpion', 'enemy_orange', 'enemy_hombre_lobo', 'enemy_fantasma'],
+      tier2: ['enemy_mantiz', 'enemy_hombre_lobo', 'enemy_barbaro', 'enemy_vampiro'],
+      boss: 'boss', bossHp: [4, 7, 11], elite: 'enemy_zombi', bossDano: 12 };
+    if (n <= 9) return {
+      min: 6, max: 9,
+      tier0: ['enemy_goblin', 'enemy_escorpion'],
+      tier1: ['enemy_escorpion', 'enemy_magma', 'enemy_hombre_lobo'],
+      tier2: ['enemy_orco', 'enemy_hombre_lobo', 'enemy_barbaro'],
+      boss: 'enemy_orco', bossHp: [6, 10, 13], elite: 'enemy_orco', bossDano: 14 };
+    if (n <= 15) return {
+      min: 10, max: 15,
+      tier0: ['enemy_fantasma', 'enemy_goblin'],
+      tier1: ['enemy_mago', 'enemy_moustro', 'enemy_vampiro'],
+      tier2: ['enemy_esqueleto_fuego', 'enemy_magma', 'enemy_fuego', 'enemy_esqueleto_gel'],
+      boss: 'boss_gel', bossHp: [6, 10, 13], elite: 'enemy_mago', bossDano: 14 };
+    return {
+      min: 16, max: 18,
+      tier0: ['enemy_esqueleto_helado', 'enemy_hielo'],
+      tier1: ['enemy_gel', 'enemy_gorila', 'enemy_hombre_lobo'],
+      tier2: ['enemy_yety', 'enemy_gorila'],
+      boss: 'boss_hielo', bossHp: [7, 10, 13], elite: 'enemy_gorila', bossDano: 14 };
+  }
+
   private spawnEnemy(): void {
     const side = Math.floor(Math.random() * 4);
     const x = side === 0 ? 0 : side === 1 ? CombateScene.ARENA_W : Math.random() * CombateScene.ARENA_W;
     const y = side === 2 ? 0 : side === 3 ? CombateScene.ARENA_H : Math.random() * CombateScene.ARENA_H;
     const esHordaJefe = this.hordaActual === 9 || (this.evaluacionMode && (this.hordaActual === 3 || this.hordaActual === 6));
     this.spawnBossCounter++;
-    // ─── Jefe: jefe_1 (Rey de la Cripta) ───
+    const bioma = this.bioma();
+    // ─── Jefe: según bioma ───
     if (esHordaJefe && this.spawnBossCounter % 4 === 1) {
-      const hpJefe = this.hordaActual >= 9 ? 11 : this.hordaActual >= 6 ? 7 : 4;
-      const boss = this.physics.add.sprite(x, y, 'boss');
-      this.initEnemy(boss, hpJefe, 40, 1.55, 12, { atkRange: 64 });
+      const hurtIdx = this.hordaActual >= 9 ? 2 : this.hordaActual >= 6 ? 1 : 0;
+      const boss = this.physics.add.sprite(x, y, bioma.boss);
+      this.initEnemy(boss, bioma.bossHp[hurtIdx], 40, 1.55, bioma.bossDano, { boss: true, atkRange: 64 });
       return;
     }
     // ─── Élites dorados que acompañan al jefe ───
     if (esHordaJefe) {
-      const pool = ['enemy_zombi', 'enemy_barbaro', 'enemy_vampiro'] as const;
-      const e = this.physics.add.sprite(x, y, pool[Math.floor(Math.random() * pool.length)]);
+      const e = this.physics.add.sprite(x, y, bioma.elite);
       this.initEnemy(e, 3, 18, 1.4, 8, { tint: 0xffd24d, atkRange: 50 });
       return;
     }
@@ -1028,9 +1069,10 @@ export class CombateScene extends Phaser.Scene {
       this.initEnemy(e, this.hordaActual >= 7 ? 2 : 1, 17, 1.35, 4, { gunner: true });
       return;
     }
-    // ─── Tiers por horda ───
+    // ─── Tiers por horda según bioma ───
     const tier = this.hordaActual <= 3 ? 0 : this.hordaActual <= 6 ? 1 : 2;
-    const pool = tier === 0 ? ['enemy_red'] : tier === 1 ? ['enemy_orange', 'enemy_vampiro'] : ['enemy_barbaro', 'enemy_zombi', 'enemy_vampiro'];
+    const biomaLocal = this.bioma();
+    const pool = tier === 0 ? biomaLocal.tier0 : tier === 1 ? biomaLocal.tier1 : biomaLocal.tier2;
     const key = pool[Math.floor(Math.random() * pool.length)];
     const hp = tier === 0 ? 1 : tier === 1 ? 1 : 2;
     const alcance = tier === 0 ? 44 : tier === 1 ? 46 : 50;
@@ -1161,7 +1203,7 @@ export class CombateScene extends Phaser.Scene {
     const g = this.bossHpGfx;
     if (!g) return;
     g.clear();
-    const boss = this.enemies.find((e) => e.active && e.texture.key === 'boss');
+    const boss = this.enemies.find((e) => e.active && (e as unknown as { esBoss?: boolean }).esBoss);
     if (!boss) { this.bossLabel?.setVisible(false); return; }
     const target = boss as unknown as { hp: number; hpMax: number };
     const max = target.hpMax ?? target.hp;
