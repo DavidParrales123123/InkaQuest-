@@ -790,7 +790,7 @@ export class CombateScene extends Phaser.Scene {
     const hordaWindowMs = 33 * 1000;
     const spawnInterval = Math.max(280, 700 - this.hordaActual * 50);
     if (this.phaseMs < hordaWindowMs) {
-      if (this.enemies.length < 4 + this.hordaActual * 2 && this.spawnTimer > spawnInterval) {
+      if (this.enemies.length < 3 + this.hordaActual * 2 && this.spawnTimer > spawnInterval) {
         this.spawnTimer = 0;
         this.spawnEnemy();
       }
@@ -1009,7 +1009,7 @@ export class CombateScene extends Phaser.Scene {
     this.spawnBossCounter++;
     // ─── Jefe: jefe_1 (Rey de la Cripta) ───
     if (esHordaJefe && this.spawnBossCounter % 4 === 1) {
-      const hpJefe = this.hordaActual >= 9 ? 14 : this.hordaActual >= 6 ? 9 : 6;
+      const hpJefe = this.hordaActual >= 9 ? 11 : this.hordaActual >= 6 ? 7 : 4;
       const boss = this.physics.add.sprite(x, y, 'boss');
       this.initEnemy(boss, hpJefe, 40, 1.55, 18, { atkRange: 64 });
       return;
@@ -1018,21 +1018,21 @@ export class CombateScene extends Phaser.Scene {
     if (esHordaJefe) {
       const pool = ['enemy_zombi', 'enemy_barbaro', 'enemy_vampiro'] as const;
       const e = this.physics.add.sprite(x, y, pool[Math.floor(Math.random() * pool.length)]);
-      this.initEnemy(e, 5, 18, 1.4, 12, { tint: 0xffd24d, atkRange: 50 });
+      this.initEnemy(e, 3, 18, 1.4, 12, { tint: 0xffd24d, atkRange: 50 });
       return;
     }
     // ─── Pistolero alienígena (desde horda 4, máx. 2 activos) ───
     const gunnersVivos = this.enemies.filter((e) => e.active && (e as unknown as { esGunner?: boolean }).esGunner).length;
     if (this.hordaActual >= 4 && gunnersVivos < 2 && Math.random() < 0.24) {
       const e = this.physics.add.sprite(x, y, 'enemy_alien');
-      this.initEnemy(e, this.hordaActual >= 7 ? 3 : 2, 17, 1.35, 5, { gunner: true });
+      this.initEnemy(e, this.hordaActual >= 7 ? 2 : 1, 17, 1.35, 5, { gunner: true });
       return;
     }
     // ─── Tiers por horda ───
     const tier = this.hordaActual <= 3 ? 0 : this.hordaActual <= 6 ? 1 : 2;
     const pool = tier === 0 ? ['enemy_red'] : tier === 1 ? ['enemy_orange', 'enemy_vampiro'] : ['enemy_barbaro', 'enemy_zombi', 'enemy_vampiro'];
     const key = pool[Math.floor(Math.random() * pool.length)];
-    const hp = tier === 0 ? 1 : tier === 1 ? 2 : 3;
+    const hp = tier === 0 ? 1 : tier === 1 ? 1 : 2;
     const alcance = tier === 0 ? 44 : tier === 1 ? 46 : 50;
     const e = this.physics.add.sprite(x, y, key);
     this.initEnemy(e, hp, 18, 1.35, tier === 0 ? 6 : tier === 1 ? 8 : 12, { atkRange: alcance });
