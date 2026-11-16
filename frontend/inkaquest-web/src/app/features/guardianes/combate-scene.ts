@@ -980,18 +980,20 @@ export class CombateScene extends Phaser.Scene {
     opciones: { tint?: number; gunner?: boolean; atkRange?: number } = {},
   ): void {
     const o = opciones as unknown as Record<string, unknown>;
-    (e as unknown as { hp: number }).hp = hp;
-    (e as unknown as { hpMax: number }).hpMax = hp;
-    (e as unknown as { dano: number }).dano = dano;
-    o['esGunner'] = Boolean(opciones.gunner);
-    o['spawnSeed'] = Math.random() * 1000;
-    o['atkCdUntil'] = 0;
-    o['atkAnimUntil'] = 0;
-    o['fireCdUntil'] = this.time.now + 900 + Math.random() * 1100;
-    o['atkRange'] = opciones.atkRange ?? 48;
+    void o; // compat — propiedades se escriben directamente sobre el sprite `e`
+    const s = e as unknown as Record<string, unknown>;
+    (s as unknown as { hp: number }).hp = hp;
+    (s as unknown as { hpMax: number }).hpMax = hp;
+    (s as unknown as { dano: number }).dano = dano;
+    s['esGunner'] = Boolean(opciones.gunner);
+    s['spawnSeed'] = Math.random() * 1000;
+    s['atkCdUntil'] = 0;
+    s['atkAnimUntil'] = 0;
+    s['fireCdUntil'] = this.time.now + 900 + Math.random() * 1100;
+    s['atkRange'] = opciones.atkRange ?? 48;
     // Cuerpo levemente más grande que el sprite visible: el golpe se siente justo
     e.setCircle(radio + 3);
-    o['hitRadius'] = radio + 8;
+    s['hitRadius'] = radio + 8;
     e.setScale(escala);
     if (opciones.tint) e.setTint(opciones.tint);
     e.setDepth(20);
