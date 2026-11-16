@@ -65,7 +65,10 @@ public class ChatbotService {
         this.mensajes = mensajes;
         this.perfiles = perfiles;
         this.rls = rls;
-        this.http = builder.build();
+        var factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(10_000);
+        factory.setReadTimeout(45_000);
+        this.http = builder.requestFactory(factory).build();
         this.apiKey = apiKey;
         this.apiUrl = apiUrl;
         this.modelo = modelo;
