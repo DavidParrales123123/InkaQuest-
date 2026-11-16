@@ -596,13 +596,13 @@ export class CombateScene extends Phaser.Scene {
       radial(ctx, c, c, 1, 5, '#fffb00', '#ff8c00');
       ctx.beginPath(); ctx.arc(c, c, 5, 0, Math.PI * 2); ctx.fill();
     });
-    // Bala del alienígena: plasma como las de Rambo pero más pequeño (violeta)
-    make('alien_bolt', 12, (ctx, s) => {
+    // Bala del alienígena: plasma carmesí (rojo neón, se ve lejos del fondo)
+    make('alien_bolt', 14, (ctx, s) => {
       const c = s / 2;
-      radial(ctx, c, c, 1, c, '#ffffff', 'rgba(255,255,255,0)');
+      radial(ctx, c, c, 1, c, '#ff8b8b', 'rgba(255,60,60,0)');
       ctx.beginPath(); ctx.arc(c, c, c, 0, Math.PI * 2); ctx.fill();
-      radial(ctx, c, c, 1, 3.2, '#ffffff', '#a78bfa');
-      ctx.beginPath(); ctx.arc(c, c, 3.2, 0, Math.PI * 2); ctx.fill();
+      radial(ctx, c, c, 1, 4.6, '#ffffff', '#ff1f3d');
+      ctx.beginPath(); ctx.arc(c, c, 4.6, 0, Math.PI * 2); ctx.fill();
     });
 
     // ─── Arco de tajo (sable / hacha / guadaña) ───
@@ -1055,7 +1055,7 @@ export class CombateScene extends Phaser.Scene {
     b.setVelocity(Math.cos(ang) * 320, Math.sin(ang) * 320);
     this.enemyBullets.push(b);
     const f = this.add.image(spr.x + Math.cos(ang) * 18, spr.y + Math.sin(ang) * 18, 'impact_flash')
-      .setDepth(28).setBlendMode(Phaser.BlendModes.ADD).setScale(0.42).setTint(0xc07aff).setAlpha(0.95);
+      .setDepth(28).setBlendMode(Phaser.BlendModes.ADD).setScale(0.42).setTint(0xff2b4d).setAlpha(0.95);
     this.tweens.add({ targets: f, scale: 0.85, alpha: 0, duration: 110, onComplete: () => f.destroy() });
   }
 
