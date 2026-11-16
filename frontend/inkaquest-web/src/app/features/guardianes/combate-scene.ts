@@ -1221,6 +1221,11 @@ export class CombateScene extends Phaser.Scene {
 
   private marcarHordaCompletada(): void {
     this.pickingUpgrade = true;
+    // Regla del juego: al limpiar una horda la vida se restaura al máximo
+    if (this.salud < this.saludMax) {
+      this.salud = this.saludMax;
+      this.emitHud?.();
+    }
     this.emitUpgradePick?.();
   }
 

@@ -264,6 +264,7 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
                           <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-gold-500/50 bg-gold-500/10 text-[0.6rem] font-extrabold text-gold-400">W</span><span><strong>WASD / Flechas</strong> — muévete</span></li>
                           <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-brand-500/50 bg-brand-500/10 text-[0.6rem] font-extrabold text-brand-400">◎</span><span><strong>Mouse</strong> — apunta con el cursor</span></li>
                         }
+                        <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-rose-500/50 bg-rose-500/10 text-[0.6rem] font-extrabold text-rose-400">♥</span><span><strong>Al limpiar una horda</strong> tu vida se restaura al máximo</span></li>
                         <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-rose-500/50 bg-rose-500/10 text-[0.6rem] font-extrabold text-rose-400">×</span><span><strong>Elimina hordas</strong> y elige una mejora</span></li>
                         <li class="flex items-center gap-2"><span class="grid size-5 shrink-0 place-items-center rounded border border-sky-500/50 bg-sky-500/10 text-[0.6rem] font-extrabold text-sky-400">★</span><span><strong>Responde</strong> la pregunta y gana +15 XP</span></li>
                       </ul>
