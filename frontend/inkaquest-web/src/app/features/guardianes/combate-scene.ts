@@ -809,7 +809,7 @@ export class CombateScene extends Phaser.Scene {
       this.marcarHordaCompletada();
     }
 
-    // ─── Enemigos: IA + caminata (wobble) + ataque con arma ───
+    // ─── Enemigos: IA + caminata (wobble) + ataque con arma + aura élites ───
     for (const e of this.enemies) {
       if (!e?.active) continue;
       const spr = e as unknown as Phaser.Physics.Arcade.Sprite & {
@@ -820,7 +820,13 @@ export class CombateScene extends Phaser.Scene {
         fireCdUntil?: number;
         dano?: number;
         atkRange?: number;
+        esElite?: boolean;
+        baseScale?: number;
+        sombra?: Phaser.GameObjects.Image;
       };
+      // Sombra sigue al enemigo
+      if (spr.sombra) spr.sombra.setPosition(spr.x, spr.y + 14);
+
       const dist = Phaser.Math.Distance.Between(spr.x, spr.y, this.player.x, this.player.y);
       const seed = spr.spawnSeed ?? 0;
 
@@ -857,6 +863,11 @@ export class CombateScene extends Phaser.Scene {
         const amp = spr.esGunner ? 2 : 4;
         const velocidad = spr.esGunner ? 260 : 205;
         spr.setAngle(Math.sin(((ahora + seed * 137) % 100000) / velocidad * Math.PI * 2) * amp);
+      }
+
+      // Aura de élite: pulso dorado constante
+      if (spr.esElite && spr.baseScale) {
+        spr.setScale(spr.baseScale * (1 + Math.sin(ahora / 280) * 0.09));
       }
     }
 
@@ -1003,6 +1014,9 @@ export class CombateScene extends Phaser.Scene {
     s['atkAnimUntil'] = 0;
     s['fireCdUntil'] = this.time.now + 900 + Math.random() * 1100;
     s['atkRange'] = opciones.atkRange ?? 48;
+    // Marca élite dorado para animación de pulso
+    s['esElite'] = opciones.tint === 0xffd24d;
+    s['baseScale'] = escala;
     // Cuerpo levemente más grande que el sprite visible: el golpe se siente justo
     e.setCircle(radio + 3);
     s['hitRadius'] = radio + 8;
@@ -1010,6 +1024,12 @@ export class CombateScene extends Phaser.Scene {
     if (opciones.tint) e.setTint(opciones.tint);
     e.setDepth(20);
     e.setCollideWorldBounds(true, 0, 0, false);
+    // Sombra suave bajo el enemigo
+    (e as unknown as { sombra?: Phaser.GameObjects.Image }).sombra = this.add
+      .image(e.x, e.y + 14, 'player_shadow')
+      .setScale(escala > 1.4 ? 1.1 : 0.85, escala > 1.4 ? 0.6 : 0.5)
+      .setAlpha(0.4)
+      .setDepth(4);
     this.enemies.push(e);
   }
 
@@ -1159,11 +1179,23 @@ export class CombateScene extends Phaser.Scene {
     e.setTint(0xffffff);
     e.setTintFill();
     this.time.delayedCall(60, () => { if (e.active) e.clearTint(); });
+    // Color de muerte según el tipo de enemigo
+    const key = e.texture.key;
+    const colorMuerte =
+      key === 'enemy_fantasma' ? 0x70f0ff : key === 'enemy_mago' ? 0xc07aff :
+      key === 'enemy_moustro' ? 0xfff4a8 : key === 'enemy_murcielago' ? 0xff8c5a :
+      key === 'enemy_escorpion' ? 0x8af56b : key === 'enemy_hombre_lobo' ? 0xffa64d :
+      key === 'enemy_esqueleto_helado' ? 0x6bd4ff : key === 'enemy_helado' ? 0x6bd4ff :
+      key === 'enemy_hielo' ? 0x6bd4ff : key === 'enemy_yety' ? 0x4db8ff :
+      key === 'enemy_gorila' ? 0x9ec8e3 : key === 'enemy_gel' ? 0xc07aff :
+      key === 'enemy_magma' ? 0xff5b2e : key === 'enemy_fuego' ? 0xff6b1f :
+      key.startsWith('boss') || (e as unknown as { esBoss?: boolean }).esBoss ? 0xffd700 : 0xffd700;
     // Partículas
-    this.spawnParticulas(e.x, e.y, target.hp <= 0 ? 0xffd700 : 0xffffff, target.hp <= 0 ? 12 : 5);
+    this.spawnParticulas(e.x, e.y, target.hp <= 0 ? colorMuerte : 0xffffff, target.hp <= 0 ? 22 : 6);
     // Número flotante de daño
     this.floatingText(`-${dano}`, e.x, e.y - 10, target.hp <= 0 ? '#ffd700' : '#ffffff', target.hp <= 0 ? 15 : 12);
     if (target.hp <= 0) {
+      (e as unknown as { sombra?: Phaser.GameObjects.Image }).sombra?.destroy();
       e.destroy();
       this.enemies = this.enemies.filter((x) => x !== e);
       this.xp += 5;
