@@ -1070,14 +1070,17 @@ export class CombateScene extends Phaser.Scene {
       return;
     }
     // ─── Tiers por horda según bioma ───
+    const RANGED = new Set(['enemy_fantasma', 'enemy_mago', 'enemy_moustro', 'enemy_murcielago']);
     const tier = this.hordaActual <= 3 ? 0 : this.hordaActual <= 6 ? 1 : 2;
     const biomaLocal = this.bioma();
     const pool = tier === 0 ? biomaLocal.tier0 : tier === 1 ? biomaLocal.tier1 : biomaLocal.tier2;
     const key = pool[Math.floor(Math.random() * pool.length)];
     const hp = tier === 0 ? 1 : tier === 1 ? 1 : 2;
     const alcance = tier === 0 ? 44 : tier === 1 ? 46 : 50;
+    const esRanged = RANGED.has(key);
     const e = this.physics.add.sprite(x, y, key);
-    this.initEnemy(e, hp, 18, 1.35, tier === 0 ? 4 : tier === 1 ? 5 : 8, { atkRange: alcance });
+    // Tiradores a distancia: IA gunner (mantiene distancia, dispara)
+    this.initEnemy(e, hp, 18, 1.35, tier === 0 ? 4 : tier === 1 ? 5 : 8, { gunner: esRanged, atkRange: alcance });
   }
 
   /** Daño al jugador con resistencia aplicada. */
@@ -1087,17 +1090,30 @@ export class CombateScene extends Phaser.Scene {
     this.cameras.main.shake(130, 0.004);
   }
 
-  /** El alienígena dispara plasma hacia el jugador (con destello de boca). */
+  /** Dispara plasma hacia el jugador (proyectiles de color según enemigo). */
   private spawnAlienBullet(spr: Phaser.Physics.Arcade.Sprite): void {
     if (!this.player) return;
     const ang = Math.atan2(this.player.y - spr.y, this.player.x - spr.x);
     const b = this.physics.add.sprite(spr.x, spr.y, 'alien_bolt');
     b.setDepth(26);
     b.body!.setCircle(6);
-    b.setVelocity(Math.cos(ang) * 320, Math.sin(ang) * 320);
+
+    // Color y velocidad por tipo de enemigo tirador
+    const key = spr.texture.key;
+    let tint = 0xff2b4d, speed = 320, scale = 1;
+    if (key === 'enemy_fantasma')        { tint = 0x70f0ff; speed = 330; scale = 0.9; }
+    else if (key === 'enemy_mago')       { tint = 0xc07aff; speed = 360; scale = 1.0; }
+    else if (key === 'enemy_moustro')    { tint = 0xfff4a8; speed = 440; scale = 0.85; }
+    else if (key === 'enemy_murcielago') { tint = 0xff8c5a; speed = 390; scale = 0.75; }
+    b.setTint(tint);
+    b.setScale(scale);
+    b.setVelocity(Math.cos(ang) * speed, Math.sin(ang) * speed);
     this.enemyBullets.push(b);
+    const flashTint =
+      spr.texture.key === 'enemy_fantasma' ? 0x70f0ff : spr.texture.key === 'enemy_mago' ? 0xc07aff :
+      spr.texture.key === 'enemy_moustro' ? 0xfff4a8 : spr.texture.key === 'enemy_murcielago' ? 0xff8c5a : 0xff2b4d;
     const f = this.add.image(spr.x + Math.cos(ang) * 18, spr.y + Math.sin(ang) * 18, 'impact_flash')
-      .setDepth(28).setBlendMode(Phaser.BlendModes.ADD).setScale(0.42).setTint(0xff2b4d).setAlpha(0.95);
+      .setDepth(28).setBlendMode(Phaser.BlendModes.ADD).setScale(0.42).setTint(flashTint).setAlpha(0.95);
     this.tweens.add({ targets: f, scale: 0.85, alpha: 0, duration: 110, onComplete: () => f.destroy() });
   }
 
