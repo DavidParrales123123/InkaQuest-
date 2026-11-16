@@ -136,6 +136,7 @@ chatbot:
   model: ${CHATBOT_MODEL:gpt-4o-mini-search-preview}
   vision-model: ${CHATBOT_VISION_MODEL:gpt-4o-mini-search-preview}
   max-mensajes-diarios: ${CHATBOT_MAX_MENSAJES_DIARIOS:60}
-  # Activa busqueda web nativa (Gemini generateContent + google_search tool).
-  # Requiere que la clave pertenezca a un proyecto con acceso a Google Search.
+  # Activa busqueda web (Tavily si TAVILY_API_KEY esta definida, si no google_search).
   search-enabled: ${CHATBOT_SEARCH_ENABLED:false}
+  # Clave de Tavily (opcional pero recomendada): 1000 busquedas/mes gratis
+  tavily-api-key: ${TAVILY_API_KEY:}

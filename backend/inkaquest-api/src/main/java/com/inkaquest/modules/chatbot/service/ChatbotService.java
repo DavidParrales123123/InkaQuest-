@@ -47,8 +47,9 @@ public class ChatbotService {
     private final String modelo;
     private final String visionModel;
     private final long maxMensajesDiarios;
-    /** true = usar Gemini nativo con herramienta google_search (solo Gemini). */
+    /** true = usar busqueda web (Tavily si esta definida, si no google_search). */
     private final boolean searchEnabled;
+    private final String tavilyApiKey;
 
     static final String SYSTEM_PROMPT =
             "Eres el asistente educativo de InkaQuest. Responde en espanol, con claridad y adapta las explicaciones al aprendizaje de programacion. Usa la busqueda web para datos actuales o inciertos y cita las fuentes (URLs) cuando sea posible. No afirmes haber ejecutado codigo ni acceder a datos que no se te hayan proporcionado. No compartas informacion privada de otros usuarios.";
@@ -63,7 +64,8 @@ public class ChatbotService {
                           @Value("${chatbot.model:gpt-4o-mini-search-preview}") String modelo,
                           @Value("${chatbot.vision-model:gpt-4o-mini-search-preview}") String visionModel,
                           @Value("${chatbot.max-mensajes-diarios:60}") long maxMensajesDiarios,
-                          @Value("${chatbot.search-enabled:false}") boolean searchEnabled) {
+                          @Value("${chatbot.search-enabled:false}") boolean searchEnabled,
+                          @Value("${chatbot.tavily-api-key:}") String tavilyApiKey) {
         this.conversaciones = conversaciones;
         this.mensajes = mensajes;
         this.perfiles = perfiles;
@@ -78,6 +80,7 @@ public class ChatbotService {
         this.visionModel = visionModel;
         this.maxMensajesDiarios = maxMensajesDiarios;
         this.searchEnabled = searchEnabled;
+        this.tavilyApiKey = tavilyApiKey;
     }
 
     public List<ChatbotConversacionResponse> listar(UUID usuarioId) {
@@ -181,12 +184,18 @@ public class ChatbotService {
         Instant inicio = Instant.now();
         AiResult aiInicial;
         if (this.searchEnabled && !tieneImagen) {
-            try {
-                aiInicial = consultarGeminiSearch(construirGeminiMessages(usuarioId, id, contenido, analisis));
-            } catch (ServiceUnavailableException ex) {
-                // Degradación elegante: si google_search agota cuota/error, el bot responde
-                // con el modelo normal (sin search). Nunca se queda mudo para el estudiante.
-                aiInicial = consultarProveedor(openaiMessages, modeloAUsar);
+            if (this.tavilyApiKey != null && !this.tavilyApiKey.isBlank()) {
+                try {
+                    aiInicial = consultarProveedorConTavily(openaiMessages, modeloAUsar, contenido);
+                } catch (ServiceUnavailableException ex) {
+                    aiInicial = consultarProveedor(openaiMessages, modeloAUsar);
+                }
+            } else {
+                try {
+                    aiInicial = consultarGeminiSearch(construirGeminiMessages(usuarioId, id, contenido, analisis));
+                } catch (ServiceUnavailableException ex) {
+                    aiInicial = consultarProveedor(openaiMessages, modeloAUsar);
+                }
             }
         } else {
             aiInicial = consultarProveedor(openaiMessages, modeloAUsar);
@@ -283,6 +292,66 @@ public class ChatbotService {
             throw new ServiceUnavailableException(
                     "Gemini (google_search) no respondio. Detalle: " + extraerErrorProveedor(ex));
         }
+    }
+
+    /** Construye y ejecuta un proxy proveedor con contexto de búsqueda Tavily. */
+    private AiResult consultarProveedorConTavily(List<Map<String, Object>> messages, String modeloAUsar, String consultaOriginal) {
+        String contexto;
+        try {
+            contexto = buscarEnTavily(consultaOriginal);
+        } catch (Exception ex) {
+            throw new ServiceUnavailableException("No se pudo buscar en internet. Revisa TAVILY_API_KEY y tu conexión.");
+        }
+        if (contexto == null || contexto.isBlank()) {
+            return consultarProveedor(messages, modeloAUsar);
+        }
+        // Añadir un system message con los resultados como contexto estricto
+        List<Map<String, Object>> augmented = new ArrayList<>();
+        augmented.add(Map.of("role", "system", "content",
+                "Eres el asistente educativo de InkaQuest. Usa los resultados de búsqueda para responder la pregunta actual del usuario. Cita las fuentes con sus URLs al final de tu respuesta.\n\n"
+                + "Resultados de búsqueda:\n" + contexto));
+        augmented.addAll(messages);
+        return consultarProveedor(augmented, modeloAUsar);
+    }
+
+    private String buscarEnTavily(String query) {
+        RestClient rapido = RestClient.builder()
+                .requestFactory(new org.springframework.http.client.SimpleClientHttpRequestFactory() {{
+                    setConnectTimeout(8_000);
+                    setReadTimeout(15_000);
+                }})
+                .build();
+        var resp = rapido.post()
+                .uri("https://api.tavily.com/search")
+                .headers(h -> {
+                    h.setBearerAuth(tavilyApiKey);
+                    h.setContentType(MediaType.APPLICATION_JSON);
+                })
+                .body(Map.of(
+                        "query", query,
+                        "search_depth", "basic",
+                        "max_results", 6,
+                        "include_answer", true,
+                        "include_raw_content", false))
+                .retrieve()
+                .body(Map.class);
+        if (resp == null) return "";
+        StringBuilder sb = new StringBuilder();
+        Object answer = resp.get("answer");
+        if (answer instanceof String a && !a.isBlank()) {
+            sb.append("Resumen: ").append(a).append("\n\n");
+        }
+        Object results = resp.get("results");
+        if (results instanceof List<?> list) {
+            for (Object it : list) {
+                if (!(it instanceof Map<?, ?> r)) continue;
+                String title = String.valueOf(r.get("title"));
+                String url   = String.valueOf(r.get("url"));
+                String content= String.valueOf(r.get("content"));
+                sb.append("- ").append(title).append(" — ").append(url).append("\n").append(content).append("\n\n");
+            }
+        }
+        return sb.toString();
     }
 
     private AiResult consultarProveedor(List<Map<String, Object>> mensajesIA, String modeloAUsar) {
