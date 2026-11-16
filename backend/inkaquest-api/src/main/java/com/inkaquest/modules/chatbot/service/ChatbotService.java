@@ -67,7 +67,7 @@ public class ChatbotService {
         this.rls = rls;
         var factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(10_000);
-        factory.setReadTimeout(45_000);
+        factory.setReadTimeout(90_000);
         this.http = builder.requestFactory(factory).build();
         this.apiKey = apiKey;
         this.apiUrl = apiUrl;
@@ -205,7 +205,7 @@ public class ChatbotService {
         try {
             JsonNode respuesta = http.post().uri(apiUrl).contentType(MediaType.APPLICATION_JSON)
                     .header("Authorization", "Bearer " + apiKey)
-                    .body(Map.of("model", modeloAUsar, "messages", mensajesIA, "temperature", 0.7, "max_tokens", 1400))
+                    .body(Map.of("model", modeloAUsar, "messages", mensajesIA, "temperature", 0.7, "max_tokens", 900))
                     .retrieve().body(JsonNode.class);
             String texto = respuesta == null ? null : respuesta.path("choices").path(0).path("message").path("content").asText(null);
             if (texto == null || texto.isBlank()) throw new ServiceUnavailableException("El proveedor IA no devolvio una respuesta valida.");
