@@ -205,7 +205,7 @@ public class ChatbotService {
         try {
             JsonNode respuesta = http.post().uri(apiUrl).contentType(MediaType.APPLICATION_JSON)
                     .header("Authorization", "Bearer " + apiKey)
-                    .body(Map.of("model", modeloAUsar, "messages", mensajesIA, "temperature", 0.7, "max_tokens", 900))
+                    .body(Map.of("model", modeloAUsar, "messages", mensajesIA, "temperature", 0.7, "max_tokens", 600))
                     .retrieve().body(JsonNode.class);
             String texto = respuesta == null ? null : respuesta.path("choices").path(0).path("message").path("content").asText(null);
             if (texto == null || texto.isBlank()) throw new ServiceUnavailableException("El proveedor IA no devolvio una respuesta valida.");
@@ -307,7 +307,7 @@ public class ChatbotService {
                 mensajes.findAllByConversacionId_IdOrderByCreadoEnAsc(conversacionId));
         historial.stream()
                 .filter(m -> m.getRol() == RolChatbot.usuario || m.getRol() == RolChatbot.asistente)
-                .skip(Math.max(0, historial.size() - 18L))
+                .skip(Math.max(0, historial.size() - 10L))
                 .forEach(m -> messages.add(Map.of(
                         "role", m.getRol() == RolChatbot.usuario ? "user" : "assistant",
                         "content", m.getContenido())));
