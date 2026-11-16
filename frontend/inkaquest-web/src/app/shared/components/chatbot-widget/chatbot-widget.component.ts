@@ -458,7 +458,8 @@ export class ChatbotWidgetComponent {
         { id: `a${++nextId}`, rol: 'asistente', contenido: texto, hora: new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) },
       ]);
     } catch (e) {
-      this.error.set('El asistente no está disponible. El backend necesita la clave CHATBOT_API_KEY (ver .env.example) e internet en el servidor. Tu pregunta no se procesó.');
+      const mensaje = e instanceof Error && e.message ? e.message : 'No se pudo procesar tu pregunta. Inténtalo de nuevo en un momento.';
+      this.error.set(mensaje);
     } finally {
       this.enviando.set(false);
     }
