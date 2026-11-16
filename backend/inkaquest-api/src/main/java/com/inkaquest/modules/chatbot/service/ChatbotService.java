@@ -209,8 +209,28 @@ public class ChatbotService {
             return new AiResult(texto, respuesta.path("usage").path("prompt_tokens").asInt(0),
                     respuesta.path("usage").path("completion_tokens").asInt(0));
         } catch (RestClientException ex) {
-            throw new ServiceUnavailableException("No se pudo contactar al proveedor de inteligencia artificial.");
+            throw new ServiceUnavailableException(
+                    "No se pudo contactar al proveedor de inteligencia artificial. Detalle: " + extraerErrorProveedor(ex));
         }
+    }
+
+    /** Extrae el código HTTP y cuerpo de la respuesta de error del proveedor para depurar. */
+    private String extraerErrorProveedor(RestClientException ex) {
+        // 1) Fallback genérico: incluimos el mensaje de Spring (suele traer status code y "Response:" con el body)
+        Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+        if (cause instanceof org.springframework.web.client.HttpStatusCodeException hse) {
+            return hse.getStatusCode() + " — " + truncate(hse.getResponseBodyAsString(), 400);
+        }
+        if (cause instanceof org.springframework.web.client.ResourceAccessException rae) {
+            return "Error de red/timeout/DNS: " + truncate(rae.getMessage(), 400);
+        }
+        return cause.getClass().getSimpleName() + ": " + truncate(cause.getMessage(), 300);
+    }
+
+    private String truncate(String s, int max) {
+        if (s == null) return "";
+        String trim = s.replaceAll("\\s+", " ").trim();
+        return trim.length() > max ? trim.substring(0, max) + "…" : trim;
     }
 
     /** Descarga bytes de una URL firmada (signed URL del bucket privado 'chat'). */
