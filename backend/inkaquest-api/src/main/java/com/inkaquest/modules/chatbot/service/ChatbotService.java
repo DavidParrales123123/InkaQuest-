@@ -176,16 +176,22 @@ public class ChatbotService {
         String modeloAUsar = tieneImagen ? visionModel : modelo;
 
         // Construir mensajes para el proveedor (historial + turno actual)
-        List<Map<String, Object>> openaiMessages = construirContextoOpenAI(usuarioId, id, contenido, analisis);
+        final List<Map<String, Object>> openaiMessages = construirContextoOpenAI(usuarioId, id, contenido, analisis);
 
         Instant inicio = Instant.now();
-        AiResult ai;
+        AiResult aiInicial;
         if (this.searchEnabled && !tieneImagen) {
-            // Ruta Gemini nativo con google_search: responde con datos actuales y citas
-            ai = consultarGeminiSearch(construirGeminiMessages(usuarioId, id, contenido, analisis));
+            try {
+                aiInicial = consultarGeminiSearch(construirGeminiMessages(usuarioId, id, contenido, analisis));
+            } catch (ServiceUnavailableException ex) {
+                // Degradación elegante: si google_search agota cuota/error, el bot responde
+                // con el modelo normal (sin search). Nunca se queda mudo para el estudiante.
+                aiInicial = consultarProveedor(openaiMessages, modeloAUsar);
+            }
         } else {
-            ai = consultarProveedor(openaiMessages, modeloAUsar);
+            aiInicial = consultarProveedor(openaiMessages, modeloAUsar);
         }
+        final AiResult aiFinal = aiInicial;
         int latencia = (int) Math.min(Duration.between(inicio, Instant.now()).toMillis(), Integer.MAX_VALUE);
         ChatbotMensaje respuesta = rls.executeAs(usuarioId, () -> {
             ChatbotMensaje m = new ChatbotMensaje();
@@ -193,16 +199,16 @@ public class ChatbotService {
             m.setAutorId(null);
             m.setRol(RolChatbot.asistente);
             m.setOrigen(OrigenMensaje.asistente);
-            m.setContenido(ai.texto());
-            m.setTokensEntrada(ai.tokensEntrada());
-            m.setTokensSalida(ai.tokensSalida());
+            m.setContenido(aiFinal.texto());
+            m.setTokensEntrada(aiFinal.tokensEntrada());
+            m.setTokensSalida(aiFinal.tokensSalida());
             m.setLatenciaMs(latencia);
             m.setModelo(modeloAUsar);
             m.setDatos(Map.of());
             m.setEsPrivado(false);
             ChatbotMensaje guardado = mensajes.save(m);
             ChatbotConversacion actual = conversacionPropia(usuarioId, id);
-            actual.setTokensTotales((actual.getTokensTotales() == null ? 0 : actual.getTokensTotales()) + ai.tokensEntrada() + ai.tokensSalida());
+            actual.setTokensTotales((actual.getTokensTotales() == null ? 0 : actual.getTokensTotales()) + aiFinal.tokensEntrada() + aiFinal.tokensSalida());
             conversaciones.save(actual);
             return guardado;
         });
