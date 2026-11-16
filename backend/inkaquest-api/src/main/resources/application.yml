@@ -133,4 +133,9 @@ logging:
 chatbot:
   api-key: ${CHATBOT_API_KEY:}
   api-url: ${CHATBOT_API_URL:https://api.openai.com/v1/chat/completions}
-  model: ${CHATBOT_MODEL:gpt-4o-mini}
+  model: ${CHATBOT_MODEL:gpt-4o-mini-search-preview}
+  vision-model: ${CHATBOT_VISION_MODEL:gpt-4o-mini-search-preview}
+  max-mensajes-diarios: ${CHATBOT_MAX_MENSAJES_DIARIOS:60}
+  # Activa busqueda web nativa (Gemini generateContent + google_search tool).
+  # Requiere que la clave pertenezca a un proyecto con acceso a Google Search.
+  search-enabled: ${CHATBOT_SEARCH_ENABLED:false}

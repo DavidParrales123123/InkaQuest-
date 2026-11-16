@@ -47,6 +47,8 @@ public class ChatbotService {
     private final String modelo;
     private final String visionModel;
     private final long maxMensajesDiarios;
+    /** true = usar Gemini nativo con herramienta google_search (solo Gemini). */
+    private final boolean searchEnabled;
 
     static final String SYSTEM_PROMPT =
             "Eres el asistente educativo de InkaQuest. Responde en espanol, con claridad y adapta las explicaciones al aprendizaje de programacion. Usa la busqueda web para datos actuales o inciertos y cita las fuentes (URLs) cuando sea posible. No afirmes haber ejecutado codigo ni acceder a datos que no se te hayan proporcionado. No compartas informacion privada de otros usuarios.";
@@ -59,8 +61,9 @@ public class ChatbotService {
                           @Value("${chatbot.api-key:}") String apiKey,
                           @Value("${chatbot.api-url:https://api.openai.com/v1/chat/completions}") String apiUrl,
                           @Value("${chatbot.model:gpt-4o-mini-search-preview}") String modelo,
-                          @Value("${chatbot.vision-model:gpt-4o-mini}") String visionModel,
-                          @Value("${chatbot.max-mensajes-diarios:60}") long maxMensajesDiarios) {
+                          @Value("${chatbot.vision-model:gpt-4o-mini-search-preview}") String visionModel,
+                          @Value("${chatbot.max-mensajes-diarios:60}") long maxMensajesDiarios,
+                          @Value("${chatbot.search-enabled:false}") boolean searchEnabled) {
         this.conversaciones = conversaciones;
         this.mensajes = mensajes;
         this.perfiles = perfiles;
@@ -74,6 +77,7 @@ public class ChatbotService {
         this.modelo = modelo;
         this.visionModel = visionModel;
         this.maxMensajesDiarios = maxMensajesDiarios;
+        this.searchEnabled = searchEnabled;
     }
 
     public List<ChatbotConversacionResponse> listar(UUID usuarioId) {
@@ -175,7 +179,13 @@ public class ChatbotService {
         List<Map<String, Object>> openaiMessages = construirContextoOpenAI(usuarioId, id, contenido, analisis);
 
         Instant inicio = Instant.now();
-        AiResult ai = consultarProveedor(openaiMessages, modeloAUsar);
+        AiResult ai;
+        if (this.searchEnabled && !tieneImagen) {
+            // Ruta Gemini nativo con google_search: responde con datos actuales y citas
+            ai = consultarGeminiSearch(construirGeminiMessages(usuarioId, id, contenido, analisis));
+        } else {
+            ai = consultarProveedor(openaiMessages, modeloAUsar);
+        }
         int latencia = (int) Math.min(Duration.between(inicio, Instant.now()).toMillis(), Integer.MAX_VALUE);
         ChatbotMensaje respuesta = rls.executeAs(usuarioId, () -> {
             ChatbotMensaje m = new ChatbotMensaje();
@@ -199,6 +209,74 @@ public class ChatbotService {
         return new EnviarMensajeResponse(
                 rls.executeAs(usuarioId, () -> ChatbotConversacionResponse.from(conversacionPropia(usuarioId, id))),
                 ChatbotMensajeResponse.from(mensajeUsuario), ChatbotMensajeResponse.from(respuesta));
+    }
+
+    /** Construye el array "contents" para generateContent de Gemini. */
+    private List<Map<String, Object>> construirGeminiMessages(UUID usuarioId, UUID conversacionId,
+                                                            String contenido, AdjuntoAnalisis analisis) {
+        List<ChatbotMensaje> historial = rls.executeAs(usuarioId, () ->
+                mensajes.findAllByConversacionId_IdOrderByCreadoEnAsc(conversacionId));
+        List<Map<String, Object>> contents = new ArrayList<>();
+        historial.stream()
+                .filter(m -> m.getRol() == RolChatbot.usuario || m.getRol() == RolChatbot.asistente)
+                .skip(Math.max(0, historial.size() - 10L))
+                .forEach(m -> {
+                    List<Map<String, Object>> parts = new ArrayList<>();
+                    parts.add(Map.of("text", m.getContenido()));
+                    contents.add(Map.of("role", m.getRol() == RolChatbot.usuario ? "user" : "model", "parts", parts));
+                });
+        StringBuilder texto = new StringBuilder(contenido == null ? "" : contenido);
+        if (analisis.documentos() != null && !analisis.documentos().isBlank()) {
+            if (texto.length() > 0) texto.append("\n\n");
+            texto.append(analisis.documentos());
+        }
+        List<Map<String, Object>> parts = new ArrayList<>();
+        parts.add(Map.of("text", texto.toString().isBlank() ? "Ayudame con este pedido." : texto.toString()));
+        for (String url : analisis.imagenes()) {
+            int comma = url.indexOf(',');
+            if (comma < 0) continue;
+            String meta = url.substring(0, comma); // data:image/png;base64
+            String mime = meta.startsWith("data:") ? meta.substring(5).split(";")[0] : "image/png";
+            parts.add(Map.of("inline_data", Map.of("mime_type", mime, "data", url.substring(comma + 1))));
+        }
+        contents.add(Map.of("role", "user", "parts", parts));
+        return contents;
+    }
+
+    /** Llama a {@code generateContent} de Gemini con herramienta google_search. */
+    private AiResult consultarGeminiSearch(List<Map<String, Object>> contents) {
+        String modelPath = (modelo == null || modelo.isBlank()) ? "models/gemini-2.5-flash"
+                : (modelo.startsWith("models/") ? modelo : "models/" + modelo);
+        String endpoint = "https://generativelanguage.googleapis.com/v1beta/" + modelPath + ":generateContent?key=" + apiKey;
+        Map<String, Object> body = Map.of(
+                "contents", contents,
+                "systemInstruction", Map.of("parts", List.of(Map.of("text", SYSTEM_PROMPT))),
+                "tools", List.of(Map.of("google_search", Map.of())),
+                "generationConfig", Map.of("temperature", 0.7, "maxOutputTokens", 900));
+        try {
+            JsonNode respuesta = http.post().uri(URI.create(endpoint)).contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve().body(JsonNode.class);
+            StringBuilder texto = new StringBuilder();
+            JsonNode parts = respuesta != null
+                    ? respuesta.path("candidates").path(0).path("content").path("parts")
+                    : null;
+            if (parts != null && parts.isArray()) {
+                for (JsonNode p : parts) {
+                    String t = p.path("text").asText(null);
+                    if (t != null) texto.append(t);
+                }
+            }
+            if (texto.toString().isBlank()) {
+                throw new ServiceUnavailableException("El proveedor IA no devolvio una respuesta valida.");
+            }
+            int tokensIn  = respuesta.path("usageMetadata").path("promptTokenCount").asInt(0);
+            int tokensOut = respuesta.path("usageMetadata").path("candidatesTokenCount").asInt(0);
+            return new AiResult(texto.toString(), tokensIn, tokensOut);
+        } catch (RestClientException ex) {
+            throw new ServiceUnavailableException(
+                    "Gemini (google_search) no respondio. Detalle: " + extraerErrorProveedor(ex));
+        }
     }
 
     private AiResult consultarProveedor(List<Map<String, Object>> mensajesIA, String modeloAUsar) {
