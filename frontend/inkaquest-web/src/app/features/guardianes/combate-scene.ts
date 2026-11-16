@@ -1011,21 +1011,21 @@ export class CombateScene extends Phaser.Scene {
     if (esHordaJefe && this.spawnBossCounter % 4 === 1) {
       const hpJefe = this.hordaActual >= 9 ? 11 : this.hordaActual >= 6 ? 7 : 4;
       const boss = this.physics.add.sprite(x, y, 'boss');
-      this.initEnemy(boss, hpJefe, 40, 1.55, 18, { atkRange: 64 });
+      this.initEnemy(boss, hpJefe, 40, 1.55, 12, { atkRange: 64 });
       return;
     }
     // ─── Élites dorados que acompañan al jefe ───
     if (esHordaJefe) {
       const pool = ['enemy_zombi', 'enemy_barbaro', 'enemy_vampiro'] as const;
       const e = this.physics.add.sprite(x, y, pool[Math.floor(Math.random() * pool.length)]);
-      this.initEnemy(e, 3, 18, 1.4, 12, { tint: 0xffd24d, atkRange: 50 });
+      this.initEnemy(e, 3, 18, 1.4, 8, { tint: 0xffd24d, atkRange: 50 });
       return;
     }
     // ─── Pistolero alienígena (desde horda 4, máx. 2 activos) ───
     const gunnersVivos = this.enemies.filter((e) => e.active && (e as unknown as { esGunner?: boolean }).esGunner).length;
     if (this.hordaActual >= 4 && gunnersVivos < 2 && Math.random() < 0.24) {
       const e = this.physics.add.sprite(x, y, 'enemy_alien');
-      this.initEnemy(e, this.hordaActual >= 7 ? 2 : 1, 17, 1.35, 5, { gunner: true });
+      this.initEnemy(e, this.hordaActual >= 7 ? 2 : 1, 17, 1.35, 4, { gunner: true });
       return;
     }
     // ─── Tiers por horda ───
@@ -1035,7 +1035,7 @@ export class CombateScene extends Phaser.Scene {
     const hp = tier === 0 ? 1 : tier === 1 ? 1 : 2;
     const alcance = tier === 0 ? 44 : tier === 1 ? 46 : 50;
     const e = this.physics.add.sprite(x, y, key);
-    this.initEnemy(e, hp, 18, 1.35, tier === 0 ? 6 : tier === 1 ? 8 : 12, { atkRange: alcance });
+    this.initEnemy(e, hp, 18, 1.35, tier === 0 ? 4 : tier === 1 ? 5 : 8, { atkRange: alcance });
   }
 
   /** Daño al jugador con resistencia aplicada. */
