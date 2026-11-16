@@ -1026,19 +1026,19 @@ export class CombateScene extends Phaser.Scene {
       min: 6, max: 9,
       tier0: ['enemy_goblin', 'enemy_escorpion'],
       tier1: ['enemy_escorpion', 'enemy_magma', 'enemy_hombre_lobo', 'enemy_fuego'],
-      tier2: ['enemy_orco', 'enemy_hombre_lobo', 'enemy_barbaro', 'enemy_esqueleto_fuego'],
+      tier2: ['enemy_orco', 'enemy_hombre_lobo', 'enemy_barbaro', 'enemy_fuego'],
       boss: 'enemy_orco', bossHp: [6, 10, 13], elite: 'enemy_hombre_lobo', bossDano: 14 };
     if (n <= 15) return {
       min: 10, max: 15,
       tier0: ['enemy_fantasma', 'enemy_goblin', 'enemy_murcielago'],
-      tier1: ['enemy_mago', 'enemy_moustro', 'enemy_vampiro', 'enemy_esqueleto_gel'],
-      tier2: ['enemy_esqueleto_fuego', 'enemy_magma', 'enemy_fuego', 'enemy_esqueleto_gel'],
+      tier1: ['enemy_mago', 'enemy_moustro', 'enemy_vampiro', 'enemy_gel'],
+      tier2: ['enemy_magma', 'enemy_fuego', 'enemy_esqueleto_gel'],
       boss: 'boss_gel', bossHp: [6, 10, 13], elite: 'enemy_mago', bossDano: 14 };
     return {
       min: 16, max: 18,
-      tier0: ['enemy_esqueleto_helado', 'enemy_hielo'],
-      tier1: ['enemy_gel', 'enemy_gorila', 'enemy_hombre_lobo', 'enemy_esqueleto_helado'],
-      tier2: ['enemy_yety', 'enemy_gorila', 'enemy_esqueleto_helado'],
+      tier0: ['enemy_hielo'],
+      tier1: ['enemy_gel', 'enemy_gorila', 'enemy_hombre_lobo', 'enemy_hielo'],
+      tier2: ['enemy_yety', 'enemy_gorila', 'enemy_hielo'],
       boss: 'boss_hielo', bossHp: [7, 10, 13], elite: 'enemy_gorila', bossDano: 14 };
   }
 
@@ -1070,7 +1070,7 @@ export class CombateScene extends Phaser.Scene {
       return;
     }
     // ─── Tiers por horda según bioma ───
-    const RANGED = new Set(['enemy_fantasma', 'enemy_mago', 'enemy_moustro', 'enemy_murcielago', 'enemy_escorpion', 'enemy_fuego', 'enemy_esqueleto_fuego', 'enemy_esqueleto_helado', 'enemy_esqueleto_gel']);
+    const RANGED = new Set(['enemy_fantasma', 'enemy_mago', 'enemy_moustro', 'enemy_murcielago', 'enemy_escorpion', 'enemy_fuego', 'enemy_hielo', 'enemy_gel']);
     const tier = this.hordaActual <= 3 ? 0 : this.hordaActual <= 6 ? 1 : 2;
     const biomaLocal = this.bioma();
     const pool = tier === 0 ? biomaLocal.tier0 : tier === 1 ? biomaLocal.tier1 : biomaLocal.tier2;
@@ -1106,10 +1106,9 @@ export class CombateScene extends Phaser.Scene {
     else if (key === 'enemy_moustro')      { tint = 0xfff4a8; speed = 440; scale = 0.85; }
     else if (key === 'enemy_murcielago')   { tint = 0xff8c5a; speed = 390; scale = 0.75; }
     else if (key === 'enemy_escorpion')    { tint = 0x8af56b; speed = 355; scale = 0.9; }
-    else if (key === 'enemy_fuego')        { tint = 0xff2b2b; speed = 380; scale = 0.9; }
-    else if (key === 'enemy_esqueleto_fuego') { tint = 0xff7b1f; speed = 345; scale = 0.95; }
-    else if (key === 'enemy_esqueleto_helado') { tint = 0x6bd4ff; speed = 360; scale = 0.95; }
-    else if (key === 'enemy_esqueleto_gel') { tint = 0x7effc4; speed = 335; scale = 0.95; }
+    else if (key === 'enemy_fuego')        { tint = 0xff6b1f; speed = 380; scale = 0.9; }
+    else if (key === 'enemy_hielo')        { tint = 0x6bd4ff; speed = 360; scale = 0.95; }
+    else if (key === 'enemy_gel')          { tint = 0xc07aff; speed = 335; scale = 0.95; }
     b.setTint(tint);
     b.setScale(scale);
     b.setVelocity(Math.cos(ang) * speed, Math.sin(ang) * speed);
@@ -1117,9 +1116,8 @@ export class CombateScene extends Phaser.Scene {
     const flashTint =
       spr.texture.key === 'enemy_fantasma' ? 0x70f0ff : spr.texture.key === 'enemy_mago' ? 0xc07aff :
       spr.texture.key === 'enemy_moustro' ? 0xfff4a8 : spr.texture.key === 'enemy_murcielago' ? 0xff8c5a :
-      spr.texture.key === 'enemy_escorpion' ? 0x8af56b : spr.texture.key === 'enemy_fuego' ? 0xff2b2b :
-      spr.texture.key === 'enemy_esqueleto_fuego' ? 0xff7b1f : spr.texture.key === 'enemy_esqueleto_helado' ? 0x6bd4ff :
-        spr.texture.key === 'enemy_esqueleto_gel' ? 0x7effc4 : 0xff2b4d;
+      spr.texture.key === 'enemy_escorpion' ? 0x8af56b : spr.texture.key === 'enemy_fuego' ? 0xff6b1f :
+      spr.texture.key === 'enemy_hielo' ? 0x6bd4ff : spr.texture.key === 'enemy_gel' ? 0xc07aff : 0xff2b4d;
     const f = this.add.image(spr.x + Math.cos(ang) * 18, spr.y + Math.sin(ang) * 18, 'impact_flash')
       .setDepth(28).setBlendMode(Phaser.BlendModes.ADD).setScale(0.42).setTint(flashTint).setAlpha(0.95);
     this.tweens.add({ targets: f, scale: 0.85, alpha: 0, duration: 110, onComplete: () => f.destroy() });
