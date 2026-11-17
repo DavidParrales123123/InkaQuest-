@@ -360,10 +360,10 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
                         <h2 class="mt-4 text-3xl font-extrabold text-gold-400 drop-shadow-[0_3px_0_rgba(0,0,0,0.5)]">¡NIVEL SUPERADO!</h2>
                         <p class="mt-2 text-base font-extrabold text-gold-300">+{{ xpGanado() }} XP · +{{ monedasGanadas() }} monedas</p>
                         @if (numero() < 18) {
-                          <a [routerLink]="['/estudiante/guardianes/nivel', numero() + 1]" class="btn btn-gold mt-4 inline-flex w-full justify-center gap-2">
+                          <button type="button" class="btn btn-gold mt-4 inline-flex w-full justify-center gap-2" (click)="irSiguienteNivel()">
                             Siguiente nivel
                             <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-                          </a>
+                          </button>
                         }
                       } @else {
                         <svg viewBox="0 0 120 120" class="mx-auto h-28 w-24" aria-hidden="true">
@@ -612,6 +612,13 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
 
   protected pausar(): void { this.enPausa.set(true); this.game?.pause(); }
   protected reanudar(): void { this.enPausa.set(false); this.game?.resume(); }
+
+  protected irSiguienteNivel(): void {
+    // Navegación directa (igual que reiniciar): el routerLink dinámico
+    // resultaba inerte dentro de esta pantalla de victoria.
+    const siguiente = Math.min(18, Math.max(1, this.numero() + 1));
+    void this.router.navigate(['/estudiante/guardianes/nivel', siguiente]);
+  }
 
   protected reiniciar(): void {
     this.salud.set(100); this.saludMax.set(100); this.xp.set(0); this.enemigosVivos.set(0); this.tiempo.set(0); this.hordaActual.set(1);
