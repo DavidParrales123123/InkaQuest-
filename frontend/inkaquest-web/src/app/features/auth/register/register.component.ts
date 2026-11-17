@@ -6,6 +6,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { TeacherService } from '../../../core/services/teacher.service';
 import { mensajeErrorContrasena, validarContrasenaSegura } from '../../../core/validators/contrasena.validator';
+import { ESTILO_HONEYPOT, crearEstadoAntiSpam, envioHumano } from '../../../core/anti-spam.util';
 
 /**
  * Creación de cuenta.
@@ -38,6 +39,10 @@ import { mensajeErrorContrasena, validarContrasenaSegura } from '../../../core/v
           <p class="auth-subtitle">Elige tu perfil y completa los datos. La activación de rol docente siempre requiere aprobación administrativa.</p>
 
           <form class="auth-form" [formGroup]="form" (ngSubmit)="enviar()" novalidate>
+            <div [style]="ESTILO_HONEYPOT" aria-hidden="true">
+              <label for="empresa">Empresa</label>
+              <input id="empresa" type="text" formControlName="empresa" autocomplete="off" tabindex="-1" aria-hidden="true" inputmode="none" />
+            </div>
             <div class="auth-field">
               <label class="label mb-1.5" style="margin-bottom:0.4rem">Tipo de cuenta</label>
               <div class="grid grid-cols-2 gap-2">
@@ -203,8 +208,12 @@ export class RegisterComponent {
   private readonly teacher = inject(TeacherService);
   private readonly router = inject(Router);
 
+  protected readonly ESTILO_HONEYPOT = ESTILO_HONEYPOT;
+  protected readonly antiSpam = crearEstadoAntiSpam();
+
   protected readonly form = this.fb.nonNullable.group(
     {
+      empresa: [''],
       tipoCuenta: ['estudiante' as 'estudiante' | 'docente'],
       nombre: ['', [Validators.required, Validators.minLength(3)]],
       genero: ['' as '' | 'masculino' | 'femenino', [Validators.required, this.validarGenero()]],
@@ -346,6 +355,13 @@ export class RegisterComponent {
   }
 
   protected async enviar(): Promise<void> {
+    // Anti-bot: rechazos silenciosos con respuesta de éxito fingida.
+    if (!envioHumano({ honeypot: this.form.getRawValue().empresa, creadoEn: this.antiSpam.creadoEn })) {
+      this.exito.set(true);
+      this.mensaje.set('Cuenta creada. Revisa tu correo para confirmar el acceso.');
+      return;
+    }
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.mensaje.set('Revisa los campos marcados.');

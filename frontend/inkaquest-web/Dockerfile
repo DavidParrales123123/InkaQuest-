@@ -30,5 +30,8 @@ COPY --from=builder /app/dist/inkaquest-web/browser ./dist
 # Exponer puerto (Railway inyecta $PORT; por defecto 8080)
 EXPOSE 8080
 
+# Configuración del servidor estático (cabeceras de seguridad + caché de assets)
+COPY serve.json /app/serve.json
+
 # Comando para iniciar (escuchar en $PORT que asigna Railway, con fallback 8080)
 CMD ["sh", "-c", "serve dist -s -l ${PORT:-8080}"]

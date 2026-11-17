@@ -309,7 +309,10 @@ export class ClassroomComponent implements OnInit {
     return ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
   }
   protected urlRecurso(r: Recurso & { urlResuelta?: string | null }): string | null { return r.urlResuelta || r.url || null; }
-  protected urlPrevia(u: string | null): SafeResourceUrl | null { return u ? this.sanitizer.bypassSecurityTrustResourceUrl(u) : null; }
+  /** Vista previa incrustada: solo http(s); nunca javascript:/data:/about: */
+  protected urlPrevia(u: string | null): SafeResourceUrl | null {
+    if (!u || !/^https?:\/\//i.test(u.trim())) return null;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(u.trim()); }
   protected adjuntosDe(leccionId: string, contenidoId: string): (Recurso & { urlResuelta?: string | null })[] {
     return (this.detalles()[leccionId]?.recursos ?? []).filter((r) => r.contenido_id === contenidoId);
   }

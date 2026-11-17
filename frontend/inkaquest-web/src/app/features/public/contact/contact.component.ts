@@ -6,6 +6,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { SupportService } from '../../../core/services/support.service';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
+import { ESTILO_HONEYPOT, crearEstadoAntiSpam, envioHumano } from '../../../core/anti-spam.util';
 
 /**
  * Pagina de contacto.
@@ -71,6 +72,10 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
           }
 
           <form class="mt-6 space-y-4" [formGroup]="form" (ngSubmit)="enviar()" novalidate>
+            <div [style]="ESTILO_HONEYPOT" aria-hidden="true">
+              <label for="empresa">Empresa</label>
+              <input id="empresa" type="text" formControlName="empresa" autocomplete="off" tabindex="-1" aria-hidden="true" inputmode="none" />
+            </div>
             <div class="grid gap-4 md:grid-cols-2">
               <div>
                 <label class="label" for="nombre">Nombre completo</label>
@@ -280,8 +285,13 @@ export class ContactComponent implements OnInit {
     telefono: '+51 1 555 0142',
   } as const;
 
+  /** Honeypot + tiempo de montaje (defensa anti-bot). */
+  protected readonly ESTILO_HONEYPOT = ESTILO_HONEYPOT;
+  protected readonly antiSpam = crearEstadoAntiSpam();
+
   /** Formulario reactivo de contacto. */
   protected readonly form = this.fb.nonNullable.group({
+    empresa: [''],
     nombre: ['', [Validators.required, Validators.minLength(3)]],
     correo: ['', [Validators.required, Validators.email]],
     asunto: ['', [Validators.required, Validators.minLength(5)]],
@@ -341,6 +351,13 @@ export class ContactComponent implements OnInit {
 
   /** Envia la consulta creando un ticket de soporte real. */
   protected async enviar(): Promise<void> {
+    // Anti-bot: rechazos silenciosos con respuesta de éxito fingida.
+    if (!envioHumano({ honeypot: this.form.getRawValue().empresa, creadoEn: this.antiSpam.creadoEn })) {
+      this.exito.set(true);
+      this.mensaje.set('Tu consulta fue enviada. Te responderemos pronto.');
+      return;
+    }
+
     if (!this.auth.autenticado()) {
       this.mensaje.set('Debes iniciar sesión para enviar tu consulta.');
       this.exito.set(false);

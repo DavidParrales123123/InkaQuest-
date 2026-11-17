@@ -82,6 +82,10 @@ public class SecurityConfig {
                         .frameOptions(frame -> frame.deny())
                         .referrerPolicy(referrer -> referrer.policy(
                                 ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .maxAgeInSeconds(63072000)
+                                .preload(true))
                         .contentTypeOptions(Customizer.withDefaults())
                         .cacheControl(Customizer.withDefaults()));
 

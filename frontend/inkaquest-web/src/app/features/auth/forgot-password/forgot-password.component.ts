@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
+import { ESTILO_HONEYPOT, crearEstadoAntiSpam, envioHumano } from '../../../core/anti-spam.util';
 
 /**
  * Recuperación de contraseña.
@@ -32,6 +33,10 @@ import { AuthService } from '../../../core/services/auth.service';
           <p class="auth-subtitle">Escribe tu correo y te enviaremos un enlace para restablecerla.</p>
 
           <form class="auth-form" [formGroup]="form" (ngSubmit)="enviar()" novalidate>
+            <div [style]="ESTILO_HONEYPOT" aria-hidden="true">
+              <label for="empresa">Empresa</label>
+              <input id="empresa" type="text" formControlName="empresa" autocomplete="off" tabindex="-1" aria-hidden="true" inputmode="none" />
+            </div>
             <div class="auth-field">
               <label for="email">Correo electrónico</label>
               <input
@@ -78,8 +83,13 @@ export class ForgotPasswordComponent {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
 
+  /** Honeypot + tiempo de montaje (defensa anti-bot). */
+  protected readonly ESTILO_HONEYPOT = ESTILO_HONEYPOT;
+  protected readonly antiSpam = crearEstadoAntiSpam();
+
   /** Formulario reactivo. */
   protected readonly form = this.fb.nonNullable.group({
+    empresa: [''],
     email: ['', [Validators.required, Validators.email]],
   });
 
@@ -98,6 +108,13 @@ export class ForgotPasswordComponent {
 
   /** Envia la solicitud de recuperacion. */
   protected async enviar(): Promise<void> {
+    // Anti-bot: rechazos silenciosos con respuesta de éxito fingida.
+    if (!envioHumano({ honeypot: this.form.getRawValue().empresa, creadoEn: this.antiSpam.creadoEn })) {
+      this.exito.set(true);
+      this.mensaje.set('Si la cuenta existe, recibirás un enlace en tu correo. Revisa también tu bandeja de spam.');
+      return;
+    }
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
