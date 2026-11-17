@@ -3,6 +3,8 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 
 import { AuthService } from '../../../core/services/auth.service';
 import { GamificationService } from '../../../core/services/gamification.service';
+import { GuardianesAccesoService } from '../../../core/services/guardianes-acceso.service';
+import { GuardianesRankingComponent } from '../../guardianes/ranking-guardianes.component';
 import { Ranking, Temporada } from '../../../core/models/domain.models';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -10,10 +12,14 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 @Component({
   selector: 'app-student-rankings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataPanelComponent, PageHeaderComponent],
+  imports: [DataPanelComponent, PageHeaderComponent, GuardianesRankingComponent],
   template: `
     <section class="space-y-6">
-      <app-page-header titulo="Rankings" descripcion="Clasificación por temporada. Los nombres no se muestran cuando las políticas de privacidad no lo permiten." />
+      <app-page-header titulo="Rankings" descripcion="Clasificación del videojuego del curso y reputación por temporada. Los nombres no se muestran cuando las políticas de privacidad no lo permiten." />
+
+      @if (accesoJuego() === 'permitido') {
+        <app-ranking-guardianes />
+      }
 
       <div class="card card-body">
         <label class="label" for="temporada">Temporada</label>
@@ -57,6 +63,8 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 export class RankingsComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly gamification = inject(GamificationService);
+  protected readonly acceso = inject(GuardianesAccesoService);
+  protected readonly accesoJuego = () => this.acceso.accesoEstudiante();
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
@@ -64,7 +72,7 @@ export class RankingsComponent implements OnInit {
   protected readonly ranking = signal<Ranking[]>([]);
   protected readonly seleccionada = signal<string>('');
 
-  ngOnInit(): void { void this.cargarTemporadas(); }
+  ngOnInit(): void { void this.cargarTemporadas(); void this.acceso.verificar(); }
 
   protected esYo(id: string): boolean { return this.auth.usuario()?.id === id; }
 
