@@ -105,6 +105,60 @@ export class CombateScene extends Phaser.Scene {
   /** Dimensiones del arena del juego. */
   static readonly ARENA_W = 1280;
   static readonly ARENA_H = 720;
+  /** Altura visible objetivo para un enemigo normal (px en pantalla). */
+  private static readonly ENEMY_H = 60;
+  /** Factor para jefes: ~40% más grandes que el resto. */
+  private static readonly JEFE_MULT = 1.4;
+  /** Caché: key de textura → altura visible en px del contenido opaco. */
+  private readonly escalaVisibleCache = new Map<string, number>();
+
+  /**
+   * Escala un enemigo para que su ALTURA VISIBLE sea siempre la misma,
+   * venga como venga encuadrado cada sprite dentro de su lienzo. Mide el
+   * alto opaco la primera vez y cachea el resultado.
+   * `mult` 1 = enemigo normal; JEFE_MULT = jefe (~40% más grande).
+   */
+  private escalaEnemigo(key: string, mult = 1): number {
+    let visible = this.escalaVisibleCache.get(key);
+    if (visible === undefined) {
+      visible = CombateScene.medirAltoVisible(this.textures.get(key)?.getSourceImage() as CanvasImageSource | undefined);
+      this.escalaVisibleCache.set(key, visible);
+    }
+    return (CombateScene.ENEMY_H * mult) / visible;
+  }
+
+  /** Alto (px) del contenido opaco vertical de una textura; 52 como fallback. */
+  private static medirAltoVisible(src: CanvasImageSource | undefined): number {
+    const img = src as (HTMLImageElement & HTMLCanvasElement) | undefined;
+    const w = Math.floor(img?.width ?? 0);
+    const h = Math.floor(img?.height ?? 0);
+    if (!img || w <= 0 || h <= 0 || typeof document === 'undefined') return 52;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return 52;
+      ctx.drawImage(img, 0, 0);
+      const data = ctx.getImageData(0, 0, w, h).data;
+      let minY = h;
+      let maxY = -1;
+      for (let y = 0; y < h; y++) {
+        const row = y * w * 4;
+        for (let x = 0; x < w; x++) {
+          if (data[row + x * 4 + 3] > 16) {
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+            break;
+          }
+        }
+      }
+      if (maxY < 0) return 52;
+      return maxY - minY + 1;
+    } catch {
+      return 52;
+    }
+  }
 
   player?: Phaser.Physics.Arcade.Image;
   salud = 100;
@@ -1029,9 +1083,10 @@ export class CombateScene extends Phaser.Scene {
     e.setDepth(20);
     e.setCollideWorldBounds(true, 0, 0, false);
     // Sombra suave bajo el enemigo (a la altura exacta de sus pies)
+    const sombraGrande = Boolean(opciones.boss);
     (e as unknown as { sombra?: Phaser.GameObjects.Image }).sombra = this.add
       .image(e.x, e.y + Math.round(escala * 34), 'player_shadow')
-      .setScale(escala > 1.4 ? 1.15 : 0.9, escala > 1.4 ? 0.6 : 0.5)
+      .setScale(sombraGrande ? 1.15 : 0.9, sombraGrande ? 0.6 : 0.5)
       .setAlpha(0.4)
       .setDepth(4);
     this.enemies.push(e);
@@ -1077,20 +1132,20 @@ export class CombateScene extends Phaser.Scene {
     if (esHordaJefe && this.spawnBossCounter % 4 === 1) {
       const hurtIdx = this.hordaActual >= 9 ? 2 : this.hordaActual >= 6 ? 1 : 0;
       const boss = this.physics.add.sprite(x, y, bioma.boss);
-      this.initEnemy(boss, bioma.bossHp[hurtIdx], 40, 1.55, bioma.bossDano, { boss: true, atkRange: 64 });
+      this.initEnemy(boss, bioma.bossHp[hurtIdx], 40, this.escalaEnemigo(bioma.boss, CombateScene.JEFE_MULT), bioma.bossDano, { boss: true, atkRange: 64 });
       return;
     }
     // ─── Élites dorados que acompañan al jefe ───
     if (esHordaJefe) {
       const e = this.physics.add.sprite(x, y, bioma.elite);
-      this.initEnemy(e, 3, 18, 1.4, 8, { tint: 0xffd24d, atkRange: 50 });
+      this.initEnemy(e, 3, 18, this.escalaEnemigo(bioma.elite, 1), 8, { tint: 0xffd24d, atkRange: 50 });
       return;
     }
     // ─── Pistolero alienígena (desde horda 4, máx. 2 activos) ───
     const gunnersVivos = this.enemies.filter((e) => e.active && (e as unknown as { esGunner?: boolean }).esGunner).length;
     if (this.hordaActual >= 4 && gunnersVivos < 2 && Math.random() < 0.24) {
       const e = this.physics.add.sprite(x, y, 'enemy_alien');
-      this.initEnemy(e, this.hordaActual >= 7 ? 2 : 1, 17, 1.35, 4, { gunner: true });
+      this.initEnemy(e, this.hordaActual >= 7 ? 2 : 1, 17, this.escalaEnemigo('enemy_alien', 1), 4, { gunner: true });
       return;
     }
     // ─── Tiers por horda según bioma (tamaños ajustados al contenido visible) ───
@@ -1103,16 +1158,9 @@ export class CombateScene extends Phaser.Scene {
     const alcance = tier === 0 ? 44 : tier === 1 ? 46 : 50;
     const esRanged = RANGED.has(key);
     const e = this.physics.add.sprite(x, y, key);
-    // Escala por cobertura de contenido (bug: murciélago/allabaelto vs barbaro)
-    // Tamaños pensados para que TODO el mundo se vea consistente en pantalla:
-    const escala =
-      key === 'enemy_murcielago' ? 0.78                           // más bajo que el resto
-    : key === 'enemy_orco' ? 1.2                                   // orco ya es grande
-    : key === 'enemy_gorila' ? 1.18                               // gorila hielo grande
-    : key === 'enemy_yety' ? 1.12                                  // yety también grande
-    : key === 'enemy_red' || key === 'enemy_alien' ? 1.25          // pequeños: agrandarlos levemente
-    : key === 'enemy_vampiro' ? 1.22                              // vampiro pequeño
-    : 1.2;                                                          // resto estándares
+    // TODOS los enemigos normales con la misma altura visible (ENEMY_H),
+    // sin importar cuánto rellene cada PNG su lienzo de 72×72.
+    const escala = this.escalaEnemigo(key, 1);
     // Tiradores a distancia: IA gunner (mantiene distancia, dispara)
     this.initEnemy(e, hp, 18, escala, tier === 0 ? 4 : tier === 1 ? 5 : 8, { gunner: esRanged, atkRange: alcance });
   }
