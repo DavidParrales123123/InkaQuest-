@@ -7,6 +7,7 @@ import { SupabaseService } from '../../../core/services/supabase.service';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
+import { GuardianesRankingComponent } from '../../guardianes/ranking-guardianes.component';
 
 interface IntentoFila {
   id: string;
@@ -31,7 +32,7 @@ interface IntentoFila {
 @Component({
   selector: 'app-teacher-guardianes',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataPanelComponent, PageHeaderComponent, StatCardComponent],
+  imports: [DataPanelComponent, PageHeaderComponent, StatCardComponent, GuardianesRankingComponent],
   template: `
     <section class="space-y-6">
       <app-page-header titulo="Seguimiento del Videojuego" descripcion="Progreso de tus estudiantes en Guardianes del Conocimiento. Consulta intentos, XP y niveles completados. No puedes modificar ni falsificar resultados." />
@@ -70,6 +71,9 @@ interface IntentoFila {
           <p class="text-xs text-marine-500">Sólo se muestran intentos de estudiantes matriculados en los cursos que tienes asignados a tu cargo. Los datos son de solo lectura.</p>
         </div>
       </app-data-panel>
+
+      <!-- Ranking del curso: quién está en el nivel más alto + mejores tiempos -->
+      <app-ranking-guardianes />
     </section>
   `,
 })

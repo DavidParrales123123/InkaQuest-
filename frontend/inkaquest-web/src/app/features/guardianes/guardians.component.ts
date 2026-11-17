@@ -8,6 +8,7 @@ import { CourseService } from '../../core/services/course.service';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { CURSO_PRINCIPIOS_ALGORITMOS } from '../../core/services/guardianes-acceso.service';
 import { GUARDIANES, NIVEL_DESBLOQUEO, type GuardianeRareza } from './guardians-catalog';
+import { GuardianesRankingComponent } from './ranking-guardianes.component';
 
 interface NivelItem {
   numero: number;
@@ -29,7 +30,7 @@ interface NivelItem {
 @Component({
   selector: 'app-guardians-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, NgClass],
+  imports: [RouterLink, NgClass, GuardianesRankingComponent],
   template: `
     <section class="space-y-5">
       @if (error()) {
@@ -225,6 +226,9 @@ interface NivelItem {
           </div>
         </aside>
       </div>
+
+      <!-- Ranking del curso: nivel más alto superado y mejores tiempos por nivel -->
+      <app-ranking-guardianes />
     </section>
   `,
 })
