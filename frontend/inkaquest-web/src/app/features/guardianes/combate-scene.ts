@@ -1144,7 +1144,7 @@ export class CombateScene extends Phaser.Scene {
     // ─── Élites dorados que acompañan al jefe ───
     if (esHordaJefe) {
       const e = this.physics.add.sprite(x, y, bioma.elite);
-      this.initEnemy(e, 3, 18, this.escalaEnemigo(bioma.elite, 1), 8, { tint: 0xffd24d, atkRange: 50 });
+      this.initEnemy(e, 3, 18, this.escalaEnemigo(bioma.elite, 1), 6, { tint: 0xffd24d, atkRange: 50 });
       return;
     }
     // ─── Pistolero alienígena (solo bioma Glacial 16–18, desde horda 4, máx. 2 activos) ───
@@ -1168,7 +1168,7 @@ export class CombateScene extends Phaser.Scene {
     // sin importar cuánto rellene cada PNG su lienzo de 72×72.
     const escala = this.escalaEnemigo(key, 1);
     // Tiradores a distancia: IA gunner (mantiene distancia, dispara)
-    this.initEnemy(e, hp, 18, escala, tier === 0 ? 4 : tier === 1 ? 5 : 8, { gunner: esRanged, atkRange: alcance });
+    this.initEnemy(e, hp, 18, escala, tier === 0 ? 4 : tier === 1 ? 5 : 6, { gunner: esRanged, atkRange: alcance });
   }
 
   /** Daño al jugador con resistencia aplicada. */
