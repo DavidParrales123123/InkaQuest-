@@ -525,12 +525,27 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   });
 
   private game: Phaser.Game | null = null;
+  private subsNivel: { unsubscribe(): void } | null = null;
   private hudTimer: any;
   private arrancarseMs = 0;
   private intentoId: string | null = null;
 
   ngOnInit(): void {
-    const n = Number(this.route.snapshot.paramMap.get('numero')) || 1;
+    // Carga el nivel de la URL (primera vez)
+    this.inicializarNivel(Number(this.route.snapshot.paramMap.get('numero')) || 1);
+    // Angular REUTILIZA este mismo componente al navegar de /nivel/1 a /nivel/2
+    // (misma ruta): ngOnInit no vuelve a dispararse, así que escuchamos los
+    // cambios del parámetro para re-inicializar el nuevo nivel en el sitio.
+    this.subsNivel = this.route.paramMap.subscribe((p) => {
+      const n = Number(p.get('numero')) || 1;
+      if (n !== this.numero()) this.inicializarNivel(n);
+    });
+  }
+
+  /** Arranca (o reinicia) el combate para el nivel indicado. */
+  private inicializarNivel(n: number): void {
+    if (this.hudTimer) clearInterval(this.hudTimer);
+    if (this.game) { this.game.destroy(true); this.game = null; }
     this.numero.set(n);
     this.esEvaluacion.set([6, 12, 18].includes(n));
     this.detectarTouch();
@@ -540,6 +555,25 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
       const prev = typeof localStorage !== 'undefined' ? localStorage.getItem('guardianes-personaje') : null;
       if (prev) this.ultimoUsado.set(prev);
     } catch { /* ignore */ }
+    // Estado limpio para el combate
+    this.salud.set(100);
+    this.saludMax.set(100);
+    this.xp.set(0);
+    this.enemigosVivos.set(0);
+    this.tiempo.set(0);
+    this.hordaActual.set(1);
+    this.fase.set('intro');
+    this.xpGanado.set(0);
+    this.monedasGanadas.set(0);
+    this.mensajeResultado.set('');
+    this.intentoId = null;
+    this.elegirMejora.set(false);
+    this.preguntaActual.set(null);
+    this.respuestaElegida.set(null);
+    this.respuestaResultado.set(null);
+    this.preguntaExcluidas = [];
+    this.mostrarIntro.set(true);
+    this.juegoListo.set(false);
     void this.cargarProgresoRoster();
     queueMicrotask(() => this.arrancar());
   }
@@ -600,7 +634,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     queueMicrotask(() => this.arrancar());
   }
 
-  ngOnDestroy(): void { this.limpiar(); }
+  ngOnDestroy(): void { this.subsNivel?.unsubscribe(); this.limpiar(); }
 
   protected comenzarPartida(): void {
     // El juego aún no está listo: no ocultamos el intro ni reanudamos un juego inexistente
