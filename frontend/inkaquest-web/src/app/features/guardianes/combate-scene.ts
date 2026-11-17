@@ -275,7 +275,7 @@ export class CombateScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, CombateScene.ARENA_W, CombateScene.ARENA_H);
     this.aplicarGuardian(chosen);
     // Sombra suave bajo el personaje para que no "flote" sobre el arena
-    this.playerShadow = this.add.image(this.player.x, this.player.y + 10, 'player_shadow').setScale(1.3, 0.6).setAlpha(0.55).setDepth(4);
+    this.playerShadow = this.add.image(this.player.x, this.player.y + Math.round(1.15 * 34), 'player_shadow').setScale(1.3, 0.6).setAlpha(0.55).setDepth(4);
 
     // Animaciones de marcha y ataque extraídas de los sprite sheets
     const anims = this.anims as unknown as { create: (cfg: unknown) => void; exists: (k: string) => boolean };
@@ -755,7 +755,7 @@ export class CombateScene extends Phaser.Scene {
       (this.player as unknown as Phaser.GameObjects.Image).setFlipX(mirarIzquierda);
     }
     if (this.playerShadow) {
-      this.playerShadow.setPosition(this.player.x, this.player.y + 10);
+      this.playerShadow.setPosition(this.player.x, this.player.y + 40);
     }
 
     // Animación de movimiento:
@@ -825,7 +825,10 @@ export class CombateScene extends Phaser.Scene {
         sombra?: Phaser.GameObjects.Image;
       };
       // Sombra sigue al enemigo
-      if (spr.sombra) spr.sombra.setPosition(spr.x, spr.y + 14);
+      if (spr.sombra) {
+        const sombraOffset = (spr as unknown as { sombraOffset?: number }).sombraOffset ?? 41;
+        spr.sombra.setPosition(spr.x, spr.y + sombraOffset);
+      }
 
       const dist = Phaser.Math.Distance.Between(spr.x, spr.y, this.player.x, this.player.y);
       const seed = spr.spawnSeed ?? 0;
@@ -1017,6 +1020,7 @@ export class CombateScene extends Phaser.Scene {
     // Marca élite dorado para animación de pulso
     s['esElite'] = opciones.tint === 0xffd24d;
     s['baseScale'] = escala;
+    s['sombraOffset'] = Math.round(escala * 34);
     // Cuerpo levemente más grande que el sprite visible: el golpe se siente justo
     e.setCircle(radio + 3);
     s['hitRadius'] = radio + 8;
@@ -1024,10 +1028,10 @@ export class CombateScene extends Phaser.Scene {
     if (opciones.tint) e.setTint(opciones.tint);
     e.setDepth(20);
     e.setCollideWorldBounds(true, 0, 0, false);
-    // Sombra suave bajo el enemigo
+    // Sombra suave bajo el enemigo (a la altura exacta de sus pies)
     (e as unknown as { sombra?: Phaser.GameObjects.Image }).sombra = this.add
-      .image(e.x, e.y + 14, 'player_shadow')
-      .setScale(escala > 1.4 ? 1.1 : 0.85, escala > 1.4 ? 0.6 : 0.5)
+      .image(e.x, e.y + Math.round(escala * 34), 'player_shadow')
+      .setScale(escala > 1.4 ? 1.15 : 0.9, escala > 1.4 ? 0.6 : 0.5)
       .setAlpha(0.4)
       .setDepth(4);
     this.enemies.push(e);
@@ -1089,7 +1093,7 @@ export class CombateScene extends Phaser.Scene {
       this.initEnemy(e, this.hordaActual >= 7 ? 2 : 1, 17, 1.35, 4, { gunner: true });
       return;
     }
-    // ─── Tiers por horda según bioma ───
+    // ─── Tiers por horda según bioma (tamaños ajustados al contenido visible) ───
     const RANGED = new Set(['enemy_fantasma', 'enemy_mago', 'enemy_moustro', 'enemy_murcielago', 'enemy_escorpion', 'enemy_fuego', 'enemy_hielo', 'enemy_gel']);
     const tier = this.hordaActual <= 3 ? 0 : this.hordaActual <= 6 ? 1 : 2;
     const biomaLocal = this.bioma();
@@ -1099,8 +1103,18 @@ export class CombateScene extends Phaser.Scene {
     const alcance = tier === 0 ? 44 : tier === 1 ? 46 : 50;
     const esRanged = RANGED.has(key);
     const e = this.physics.add.sprite(x, y, key);
+    // Escala por cobertura de contenido (bug: murciélago/allabaelto vs barbaro)
+    // Tamaños pensados para que TODO el mundo se vea consistente en pantalla:
+    const escala =
+      key === 'enemy_murcielago' ? 0.78                           // más bajo que el resto
+    : key === 'enemy_orco' ? 1.2                                   // orco ya es grande
+    : key === 'enemy_gorila' ? 1.18                               // gorila hielo grande
+    : key === 'enemy_yety' ? 1.12                                  // yety también grande
+    : key === 'enemy_red' || key === 'enemy_alien' ? 1.25          // pequeños: agrandarlos levemente
+    : key === 'enemy_vampiro' ? 1.22                              // vampiro pequeño
+    : 1.2;                                                          // resto estándares
     // Tiradores a distancia: IA gunner (mantiene distancia, dispara)
-    this.initEnemy(e, hp, 18, 1.35, tier === 0 ? 4 : tier === 1 ? 5 : 8, { gunner: esRanged, atkRange: alcance });
+    this.initEnemy(e, hp, 18, escala, tier === 0 ? 4 : tier === 1 ? 5 : 8, { gunner: esRanged, atkRange: alcance });
   }
 
   /** Daño al jugador con resistencia aplicada. */
