@@ -15,40 +15,41 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
   imports: [DataPanelComponent, PageHeaderComponent, GuardianesRankingComponent],
   template: `
     <section class="space-y-6">
-      <app-page-header titulo="Rankings" descripcion="Clasificación del videojuego del curso y reputación por temporada. Los nombres no se muestran cuando las políticas de privacidad no lo permiten." />
+      <app-page-header titulo="Rankings" descripcion="Clasificación del videojuego del curso. Los nombres no se muestran para participantes externos cuando las políticas de privacidad no lo permiten." />
 
       @if (accesoJuego() === 'permitido') {
         <app-ranking-guardianes />
       }
 
-      <div class="card card-body">
-        <label class="label" for="temporada">Temporada</label>
-        <select id="temporada" class="select max-w-sm" (change)="onTemporada($any($event.target).value)">
-          <option value="">Selecciona una temporada</option>
-          @for (t of temporadas(); track t.id) {
-            <option [value]="t.id" [selected]="t.id === seleccionada()">{{ t.nombre }}</option>
-          }
-        </select>
-      </div>
+      @if (temporadas().length > 0) {
+        <div class="card card-body">
+          <label class="label" for="temporada">Temporada</label>
+          <select id="temporada" class="select max-w-sm" (change)="onTemporada($any($event.target).value)">
+            <option value="">Selecciona una temporada</option>
+            @for (t of temporadas(); track t.id) {
+              <option [value]="t.id" [selected]="t.id === seleccionada()">{{ t.nombre }}</option>
+            }
+          </select>
+        </div>
 
-      <app-data-panel
-        [cargando]="cargando()"
-        [error]="error()"
-        [vacio]="!seleccionada() || ranking().length === 0"
-        [tituloVacio]="!seleccionada() ? 'Selecciona una temporada' : 'Sin posiciones'"
-        [descripcionVacia]="!seleccionada() ? 'Elige una temporada para ver la tabla de clasificación.' : 'No hay registros de ranking para esta temporada o no son visibles.'"
-        (alReintentar)="cargarRanking()"
-      >
-        <div contenido class="table-wrap">
-          <div class="overflow-x-auto"><table class="table">
-            <thead><tr><th>#</th><th>Usuario</th><th>Puntos</th></tr></thead>
-            <tbody>
-              @for (r of ranking(); track r.id; let i = $index) {
-                <tr [class.bg-brand-50]="esYo(r.usuario_id)">
-                  <td>{{ i + 1 }}</td>
-                  <td>
-                    @if (esYo(r.usuario_id)) { <strong>Tu posicion</strong> } @else { <span class="text-marine-400">Participante</span> }
-                  </td>
+        <app-data-panel
+          [cargando]="cargando()"
+          [error]="error()"
+          [vacio]="!seleccionada() || ranking().length === 0"
+          [tituloVacio]="!seleccionada() ? 'Selecciona una temporada' : 'Sin posiciones'"
+          [descripcionVacia]="!seleccionada() ? 'Elige una temporada para ver la tabla de clasificación.' : 'No hay registros de ranking para esta temporada o no son visibles.'"
+          (alReintentar)="cargarRanking()"
+        >
+          <div contenido class="table-wrap">
+            <div class="overflow-x-auto"><table class="table">
+              <thead><tr><th>#</th><th>Usuario</th><th>Puntos</th></tr></thead>
+              <tbody>
+                @for (r of ranking(); track r.id; let i = $index) {
+                  <tr [class.bg-brand-50]="esYo(r.usuario_id)">
+                    <td>{{ i + 1 }}</td>
+                    <td>
+                      @if (esYo(r.usuario_id)) { <strong>Tu posicion</strong> } @else { <span class="text-marine-400">Participante</span> }
+                    </td>
                   <td class="font-semibold">{{ r.puntos }}</td>
                 </tr>
               }
@@ -57,6 +58,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
           <p class="mt-3 text-xs text-marine-400">Por privacidad/RLS no se exponen nombres de otros usuarios; solo se resalta tu propia posicion cuando aplica.</p>
         </div>
       </app-data-panel>
+      }
     </section>
   `,
 })
