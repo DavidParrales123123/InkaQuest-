@@ -359,6 +359,12 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
                         </svg>
                         <h2 class="mt-4 text-3xl font-extrabold text-gold-400 drop-shadow-[0_3px_0_rgba(0,0,0,0.5)]">¡NIVEL SUPERADO!</h2>
                         <p class="mt-2 text-base font-extrabold text-gold-300">+{{ xpGanado() }} XP · +{{ monedasGanadas() }} monedas</p>
+                        @if (numero() < 18) {
+                          <a [routerLink]="['/estudiante/guardianes/nivel', numero() + 1]" class="btn btn-gold mt-4 inline-flex w-full justify-center gap-2">
+                            Siguiente nivel
+                            <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                          </a>
+                        }
                       } @else {
                         <svg viewBox="0 0 120 120" class="mx-auto h-28 w-24" aria-hidden="true">
                           <path d="M60 8L112 108H8L60 8z" fill="#b3002d" stroke="#2a0510" stroke-width="4" stroke-linejoin="round"/>
