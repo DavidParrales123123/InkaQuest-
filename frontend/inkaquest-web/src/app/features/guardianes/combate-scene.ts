@@ -1093,32 +1093,38 @@ export class CombateScene extends Phaser.Scene {
   }
 
   /** Tabla declarativa de biomas y qué enemigos aparecen por horda. */
-  private bioma(): { min: number; max: number; tier0: string[]; tier1: string[]; tier2: string[]; boss: string; bossHp: [number, number, number]; elite: string; bossDano: number } {
+  private bioma(): { min: number; max: number; tier0: string[]; tier1: string[]; tier2: string[]; boss: string; bossHp: [number, number, number]; elite: string; bossDano: number; ranged: string[] } {
     const n = this.nivelActual;
+    // Tiradores por bioma (2-2-2-3): Templo fantasma+murciélago · Desierto escorpión+fuego ·
+    // Arcano mago+gel · Glacial hielo+moustro+alien. Ningún otro enemigo dispara.
     if (n <= 5) return {
       min: 1, max: 5,
       tier0: ['enemy_red', 'enemy_goblin', 'enemy_murcielago'],
-      tier1: ['enemy_escorpion', 'enemy_orange', 'enemy_hombre_lobo', 'enemy_fantasma'],
+      tier1: ['enemy_fantasma', 'enemy_orange', 'enemy_hombre_lobo'],
       tier2: ['enemy_mantiz', 'enemy_hombre_lobo', 'enemy_barbaro', 'enemy_vampiro'],
-      boss: 'boss', bossHp: [4, 7, 11], elite: 'enemy_zombi', bossDano: 12 };
+      boss: 'boss', bossHp: [4, 7, 11], elite: 'enemy_zombi', bossDano: 12,
+      ranged: ['enemy_fantasma', 'enemy_murcielago'] };
     if (n <= 9) return {
       min: 6, max: 9,
       tier0: ['enemy_goblin', 'enemy_escorpion'],
       tier1: ['enemy_escorpion', 'enemy_magma', 'enemy_hombre_lobo', 'enemy_fuego'],
       tier2: ['enemy_orco', 'enemy_hombre_lobo', 'enemy_barbaro', 'enemy_fuego'],
-      boss: 'enemy_orco', bossHp: [6, 10, 13], elite: 'enemy_hombre_lobo', bossDano: 14 };
+      boss: 'enemy_orco', bossHp: [6, 10, 13], elite: 'enemy_hombre_lobo', bossDano: 14,
+      ranged: ['enemy_escorpion', 'enemy_fuego'] };
     if (n <= 15) return {
       min: 10, max: 15,
-      tier0: ['enemy_fantasma', 'enemy_goblin', 'enemy_murcielago'],
-      tier1: ['enemy_mago', 'enemy_moustro', 'enemy_vampiro', 'enemy_gel'],
-      tier2: ['enemy_magma', 'enemy_fuego', 'enemy_esqueleto_gel'],
-      boss: 'boss_gel', bossHp: [6, 10, 13], elite: 'enemy_mago', bossDano: 14 };
+      tier0: ['enemy_mago', 'enemy_goblin', 'enemy_gel'],
+      tier1: ['enemy_mago', 'enemy_gel', 'enemy_vampiro'],
+      tier2: ['enemy_magma', 'enemy_gel', 'enemy_esqueleto_gel'],
+      boss: 'boss_gel', bossHp: [6, 10, 13], elite: 'enemy_mago', bossDano: 14,
+      ranged: ['enemy_mago', 'enemy_gel'] };
     return {
       min: 16, max: 18,
       tier0: ['enemy_hielo'],
-      tier1: ['enemy_gel', 'enemy_gorila', 'enemy_hombre_lobo', 'enemy_hielo'],
-      tier2: ['enemy_yety', 'enemy_gorila', 'enemy_hielo'],
-      boss: 'boss_hielo', bossHp: [7, 10, 13], elite: 'enemy_gorila', bossDano: 14 };
+      tier1: ['enemy_hielo', 'enemy_gorila', 'enemy_hombre_lobo', 'enemy_moustro'],
+      tier2: ['enemy_yety', 'enemy_gorila', 'enemy_hielo', 'enemy_moustro'],
+      boss: 'boss_hielo', bossHp: [7, 10, 13], elite: 'enemy_gorila', bossDano: 14,
+      ranged: ['enemy_hielo', 'enemy_moustro', 'enemy_alien'] };
   }
 
   private spawnEnemy(): void {
@@ -1141,22 +1147,22 @@ export class CombateScene extends Phaser.Scene {
       this.initEnemy(e, 3, 18, this.escalaEnemigo(bioma.elite, 1), 8, { tint: 0xffd24d, atkRange: 50 });
       return;
     }
-    // ─── Pistolero alienígena (desde horda 4, máx. 2 activos) ───
+    // ─── Pistolero alienígena (solo bioma Glacial 16–18, desde horda 4, máx. 2 activos) ───
     const gunnersVivos = this.enemies.filter((e) => e.active && (e as unknown as { esGunner?: boolean }).esGunner).length;
-    if (this.hordaActual >= 4 && gunnersVivos < 2 && Math.random() < 0.24) {
+    if (bioma.min >= 16 && this.hordaActual >= 4 && gunnersVivos < 2 && Math.random() < 0.24) {
       const e = this.physics.add.sprite(x, y, 'enemy_alien');
       this.initEnemy(e, this.hordaActual >= 7 ? 2 : 1, 17, this.escalaEnemigo('enemy_alien', 1), 4, { gunner: true });
       return;
     }
     // ─── Tiers por horda según bioma (tamaños ajustados al contenido visible) ───
-    const RANGED = new Set(['enemy_fantasma', 'enemy_mago', 'enemy_moustro', 'enemy_murcielago', 'enemy_escorpion', 'enemy_fuego', 'enemy_hielo', 'enemy_gel']);
     const tier = this.hordaActual <= 3 ? 0 : this.hordaActual <= 6 ? 1 : 2;
     const biomaLocal = this.bioma();
     const pool = tier === 0 ? biomaLocal.tier0 : tier === 1 ? biomaLocal.tier1 : biomaLocal.tier2;
     const key = pool[Math.floor(Math.random() * pool.length)];
     const hp = tier === 0 ? 1 : tier === 1 ? 1 : 2;
     const alcance = tier === 0 ? 44 : tier === 1 ? 46 : 50;
-    const esRanged = RANGED.has(key);
+    // Solo los tiradores del bioma actual disparan (Fantasma+Murciélago / Escorpión+Fuego / Mago+Gel / Hielo+Moustro+Alien)
+    const esRanged = biomaLocal.ranged.includes(key);
     const e = this.physics.add.sprite(x, y, key);
     // TODOS los enemigos normales con la misma altura visible (ENEMY_H),
     // sin importar cuánto rellene cada PNG su lienzo de 72×72.
