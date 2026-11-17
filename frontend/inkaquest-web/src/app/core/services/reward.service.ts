@@ -98,6 +98,24 @@ export class RewardService {
     });
   }
 
+  /** Consumir una unidad del inventario (transaccional, anti-abuso). */
+  async consumirItem(tiendaItemId: string): Promise<{ ok: boolean; mensaje: string; cantidad_restante?: number }> {
+    try {
+      const { data, error } = await this.supabase.client.rpc('guardianes_usar_item', { p_item_id: tiendaItemId });
+      if (error) {
+        return { ok: false, mensaje: error.message ?? 'No se pudo usar el ítem.' };
+      }
+      const payload = (data ?? {}) as { ok?: boolean; mensaje?: string; cantidad_restante?: number };
+      return {
+        ok: Boolean(payload.ok),
+        mensaje: String(payload.mensaje ?? (payload.ok ? 'Ítem usado.' : 'No se pudo usar el ítem.')),
+        cantidad_restante: payload.cantidad_restante,
+      };
+    } catch (e) {
+      return { ok: false, mensaje: e instanceof Error ? e.message : 'No se pudo usar el ítem.' };
+    }
+  }
+
   /** Historial de compras virtuales del usuario. */
   async listarCompras(usuarioId: string): Promise<CompraVirtual[]> {
     const { data, error } = await this.supabase.client

@@ -177,6 +177,10 @@ export class CombateScene extends Phaser.Scene {
   private emitHud?: () => void;
   private emitDestroy?: (victoria: boolean, matados: number, tiempo: number) => void;
   private emitUpgradePick?: () => void;
+  private emitVidaExtra?: (matados: number) => void;
+  private muriendo = false;
+  private invulnerableUntil = 0;
+  private congeladoUntil = 0;
 
   hordaActual = 1;
   evaluacionMode = false;
@@ -227,10 +231,11 @@ export class CombateScene extends Phaser.Scene {
     super({ key: 'Combate' });
   }
 
-  init(data: { onUpdate?: () => void; onEnd?: (victoria: boolean, matados: number, tiempo: number) => void; onUpgrade?: () => void } = {}): void {
+  init(data: { onUpdate?: () => void; onEnd?: (victoria: boolean, matados: number, tiempo: number) => void; onUpgrade?: () => void; onVidaExtra?: (matados: number) => void } = {}): void {
     this.emitHud = data.onUpdate;
     this.emitDestroy = data.onEnd;
     this.emitUpgradePick = data.onUpgrade;
+    this.emitVidaExtra = data.onVidaExtra;
   }
 
   preload(): void {
@@ -744,7 +749,7 @@ export class CombateScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number): void {
-    if (!this.player || this.pickingUpgrade || this.gameEnded) {
+    if (!this.player || this.pickingUpgrade || this.gameEnded || this.muriendo) {
       // Overlays (mejora / chequeo académico): congelar al jugador y a los
       // enemigos en su sitio — nada debe desplazarse hasta las paredes.
       if (this.player?.active && this.player.body) {
@@ -866,6 +871,11 @@ export class CombateScene extends Phaser.Scene {
     // ─── Enemigos: IA + caminata (wobble) + ataque con arma + aura élites ───
     for (const e of this.enemies) {
       if (!e?.active) continue;
+      // Hielo del tiempo: los cuerpos se quedan clavados
+      if (this.time.now < this.congeladoUntil) {
+        if ((e as Phaser.Physics.Arcade.Sprite).body) e.setVelocity(0, 0);
+        continue;
+      }
       const spr = e as unknown as Phaser.Physics.Arcade.Sprite & {
         esGunner?: boolean;
         spawnSeed?: number;
@@ -977,8 +987,12 @@ export class CombateScene extends Phaser.Scene {
     this.drawBossHpBar();
 
     // Estado terminal
-    if (this.salud <= 0) {
-      this.finalizar(false);
+    if (this.salud <= 0 && !this.muriendo) {
+      this.muriendo = true;
+      this.physics.pause();
+      for (const b of this.enemyBullets) { if (b?.active) b.setVelocity(0, 0); }
+      this.emitVidaExtra?.(this.kills);
+      this.emitHud?.();
       return;
     }
     this.emitHud?.();
@@ -1171,8 +1185,10 @@ export class CombateScene extends Phaser.Scene {
     this.initEnemy(e, hp, 18, escala, tier === 0 ? 4 : tier === 1 ? 5 : 6, { gunner: esRanged, atkRange: alcance });
   }
 
-  /** Daño al jugador con resistencia aplicada. */
+  /** Daño al jugador con resistencia aplicada y ventana de invulnerabilidad. */
   private hitPlayer(dmg: number): void {
+    if (this.muriendo) return;
+    if (this.invulnerableUntil > this.time.now) return;
     const daño = Math.max(1, Math.round(dmg * (1 - this.resistencia)));
     this.salud = Math.max(0, this.salud - daño);
     this.cameras.main.shake(130, 0.004);
@@ -1404,5 +1420,40 @@ export class CombateScene extends Phaser.Scene {
       this.spawnParticulas(this.player.x, this.player.y, 0xffffff, 12);
     }
     this.emitDestroy?.(victoria, this.kills, t);
+  }
+
+  /* ───────── Consumibles de la mochila (llamados desde Angular) ───────── */
+
+  /** Revive al jugador tras caer: vuelve con la salud máxima en el mismo punto. */
+  public reviveConVida(): void {
+    if (!this.muriendo) return;
+    this.muriendo = false;
+    this.salud = this.saludMax;
+    this.invulnerableUntil = this.time.now + 2000;
+    this.enemyBullets.forEach((b) => { if (b?.active) b.destroy(); });
+    this.physics.resume();
+    this.emitHud?.();
+  }
+
+  /** Finaliza como derrota cuando el jugador no quiere (o no tiene) Vida Extra. */
+  public finalizarMuerte(): void {
+    this.muriendo = false;
+    this.finalizar(false);
+  }
+
+  /** Bomba Total: elimina a TODOS los enemigos activos en pantalla. */
+  public usarBomba(): void {
+    if (this.gameEnded) return;
+    const copia = this.enemies.slice();
+    for (const e of copia) {
+      if (e?.active) this.hitEnemy(e, 999999);
+    }
+    this.emitHud?.();
+  }
+
+  /** Congelar tiempo: clava a los enemigos `ms` milisegundos. */
+  public congelarEnemigos(ms = 4000): void {
+    this.congeladoUntil = this.time.now + ms;
+    this.emitHud?.();
   }
 }

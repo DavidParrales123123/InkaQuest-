@@ -7,8 +7,18 @@ import Phaser from 'phaser';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { AuthService } from '../../core/services/auth.service';
 import { SupabaseService } from '../../core/services/supabase.service';
+import { RewardService } from '../../core/services/reward.service';
 import { CombateScene, MEJORAS_EXTRA, mejoresPara } from './combate-scene';
 import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
+
+interface ItemMochila {
+  tienda_item_id: string;
+  codigo: string;
+  nombre: string;
+  descripcion: string;
+  cantidad: number;
+  tipo: string;
+}
 
 /** Juego completo de supervivencia por hordas con mejoras entre hordas y progreso persistido. */
 @Component({
@@ -250,6 +260,35 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
                     <span class="size-1.5 rounded-full bg-gold-400"></span>Joystick para moverte · disparo automático
                   </div>
                 }
+                <!-- Mochila: botón flotante con los consumibles del inventario -->
+                @if (fase() === 'jugando' && itemsMochila().length > 0) {
+                  <button type="button" class="absolute right-2 top-14 z-20 flex items-center gap-2 rounded-xl border border-gold-500/40 bg-marine-900/85 px-3 py-2 text-[0.68rem] font-extrabold uppercase tracking-[0.18em] text-gold-300 shadow-sm backdrop-blur-sm" (click)="mochilaAbierta.update((v) => !v)" aria-label="Abrir mochila">
+                    🎒 Mochila
+                    <span class="rounded-full bg-gold-500 px-2 py-0.5 text-[0.62rem] font-extrabold text-marine-900">{{ itemsMochila().reduce((a, b) => a + b.cantidad, 0) }}</span>
+                  </button>
+                  @if (mochilaAbierta()) {
+                    <div class="absolute right-2 top-[6.5rem] z-30 w-80 space-y-1.5 rounded-2xl border border-gold-400/50 bg-marine-900/95 p-3 shadow-xl">
+                      <p class="px-1 text-[0.65rem] font-extrabold uppercase tracking-[0.2em] text-gold-400">Mochila</p>
+                      @for (i of itemsMochila(); track i.tienda_item_id) {
+                        <div class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/40 px-2.5 py-2">
+                          <div class="min-w-0">
+                            <p class="text-xs font-bold text-white">{{ i.nombre }} <span class="text-gold-400">×{{ i.cantidad }}</span></p>
+                            <p class="text-[0.6rem] leading-snug text-marine-300">{{ i.descripcion }}</p>
+                          </div>
+                          @if (i.codigo === 'bomba_total' || i.codigo === 'congelar_tiempo') {
+                            <button type="button" class="btn btn-gold btn-xs shrink-0" (click)="i.codigo === 'bomba_total' ? usarBombaTotal() : usarCongelarTiempo()">Usar</button>
+                          } @else if (i.codigo === 'pista' || i.codigo === 'cincuenta_cincuenta' || i.codigo === 'segunda_oportunidad') {
+                            <span class="shrink-0 text-[0.55rem] font-bold uppercase tracking-widest text-marine-400">En chequeo</span>
+                          } @else if (i.codigo === 'vida_extra') {
+                            <span class="shrink-0 text-[0.55rem] font-bold uppercase tracking-widest text-marine-400">Al morir</span>
+                          }
+                        </div>
+                      } @empty {
+                        <p class="px-1 text-xs text-marine-400">Vacía. Compra con tus monedas en la tienda.</p>
+                      }
+                    </div>
+                  }
+                }
                 <!-- Overlay de bienvenida con controles (sólo al inicio) -->
                 @if (mostrarIntro()) {
                   <div class="absolute inset-0 z-20 flex items-center justify-center bg-marine-900/80 p-4 backdrop-blur-sm">
@@ -276,6 +315,23 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
                           Cargando la arena…
                         </div>
                       }
+                    </div>
+                  </div>
+                }
+                <!-- Overlay: Caíste en combate — Vida Extra -->
+                @if (muertoEntra() && fase() === 'jugando') {
+                  <div class="absolute inset-0 z-30 flex items-center justify-center bg-black/80 p-4 text-center backdrop-blur-sm">
+                    <div class="w-full max-w-sm space-y-4 rounded-2xl border-2 border-rose-500/60 bg-marine-950 p-6 text-white shadow-[0_0_60px_-15px_rgba(244,63,94,0.4)]">
+                      <svg viewBox="0 0 24 24" class="mx-auto size-12 text-rose-400" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="10" width="18" height="10" rx="2"/><path d="M12 14v-4M10 11.5h4"/><circle cx="12" cy="15" r="0.8" fill="currentColor" stroke="none"/></svg>
+                      <h2 class="text-2xl font-extrabold leading-tight text-rose-300">¡Caíste en combate!</h2>
+                      <p class="text-sm leading-snug text-marine-200">Puedes levantarte justo aquí. Tu Vida Extra te revive con la salud máxima, donde estabas, conservando la horda y tus mejoras.</p>
+                      @if (contarItem('vida_extra') > 0) {
+                        <p class="text-xs font-bold uppercase tracking-widest text-gold-400">{{ contarItem('vida_extra') }} Vida Extra disponible</p>
+                        <button type="button" class="btn btn-gold w-full justify-center" (click)="usarVidaExtra()">🔋 Usar Vida Extra</button>
+                      } @else {
+                        <p class="text-xs text-marine-400">No tienes Vida Extra. Compra una en la tienda por 200 monedas y úsala aquí la próxima vez.</p>
+                      }
+                      <button type="button" class="btn btn-outline-light w-full justify-center" (click)="aceptarMuerte()">Aceptar derrota</button>
                     </div>
                   </div>
                 }
@@ -325,9 +381,23 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
                         </div>
                         @if (!respuestaResultado()) { <button type="button" class="shrink-0 text-[0.62rem] font-bold uppercase tracking-widest text-marine-300 underline underline-offset-2 transition-colors hover:text-white" (click)="omitirChequeo()">{{ mejoraEnJuego() ? 'Omitir (pierdes la mejora)' : 'Omitir' }}</button> }
                       </div>
+                      <!-- Acciones con ítems de la mochila (solo en este chequeo) -->
+                      @if (!respuestaResultado()) {
+                        <div class="flex flex-wrap items-center gap-2">
+                          @if (tieneItem('pista') && !pistaActual()) {
+                            <button type="button" class="rounded-lg border border-gold-500/40 bg-gold-500/10 px-2.5 py-1 text-[0.62rem] font-extrabold uppercase tracking-widest text-gold-300 transition-colors hover:border-gold-400 hover:text-white" (click)="usarPistaPregunta()">💡 Pista ({{ contarItem('pista') }})</button>
+                          }
+                          @if (tieneItem('cincuenta_cincuenta') && eliminadas().length === 0) {
+                            <button type="button" class="rounded-lg border border-gold-500/40 bg-gold-500/10 px-2.5 py-1 text-[0.62rem] font-extrabold uppercase tracking-widest text-gold-300 transition-colors hover:border-gold-400 hover:text-white" (click)="usarCincuentaYCincuenta()">✂️ 50/50 ({{ contarItem('cincuenta_cincuenta') }})</button>
+                          }
+                        </div>
+                      }
+                      @if (pistaActual(); as pista) {
+                        <p class="rounded-lg border border-sky-400/40 bg-sky-400/10 px-3 py-2 text-xs leading-snug text-sky-200">💡 Pista: <strong>{{ pista }}</strong></p>
+                      }
                       <div class="grid gap-2">
                         @for (op of p.opciones; track op; let i = $index) {
-                          <button type="button" [ngClass]="claseOpcion(op)" (click)="elegirOpcion(op)">
+                          <button type="button" [ngClass]="claseOpcion(op)" [disabled]="esOpcionEliminada(op)" (click)="elegirOpcion(op)">
                             <span class="mr-2 inline-grid size-6 shrink-0 place-items-center rounded-md border border-white/15 bg-white/5 text-[0.7rem] font-extrabold text-gold-300">{{ ['A','B','C','D'][i] }}</span>
                             {{ op }}
                           </button>
@@ -339,6 +409,9 @@ import { GUARDIANES, NIVEL_DESBLOQUEO } from './guardians-catalog';
                           @if (mejoraEnJuego()) { <p class="mt-1 font-bold" [ngClass]="(r.esCorrecta || r.error) ? 'text-gold-300' : 'text-rose-300'">{{ r.error ? 'Error al calificar: conservas tu mejora.' : (r.esCorrecta ? '¡Conservas la mejora que elegiste!' : 'Perdiste la mejora que elegiste.') }}</p> }
                           @if (!r.esCorrecta && r.correcta) { <p class="mt-1 text-marine-100">Respuesta correcta: <strong class="text-emerald-300">{{ r.correcta }}</strong></p> }
                           @if (r.explicacion) { <p class="mt-1 text-[0.8rem] leading-snug text-marine-200">{{ r.explicacion }}</p> }
+                          @if (!r.esCorrecta && tieneItem('segunda_oportunidad')) {
+                            <button type="button" class="btn btn-outline-light btn-sm mt-2 w-full justify-center" (click)="usarSegundaOportunidad()">🔁 Segunda Oportunidad ({{ contarItem('segunda_oportunidad') }})</button>
+                          }
                         </div>
                         <button type="button" class="btn btn-gold w-full justify-center" (click)="continuarTrasChequeo()">{{ (r.esCorrecta || r.error) ? 'Continuar con tu mejora →' : 'Continuar sin la mejora →' }}</button>
                       } @else {
@@ -393,6 +466,17 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly supabase = inject(SupabaseService);
   private readonly auth = inject(AuthService);
+  private readonly rewards = inject(RewardService);
+
+  /** Consumibles del inventario del jugador (mochila). */
+  protected readonly itemsMochila = signal<ItemMochila[]>([]);
+  protected readonly mochilaAbierta = signal(false);
+  /** Overlay "caíste en combate": decide usar Vida Extra o aceptar derrota. */
+  protected readonly muertoEntra = signal(false);
+  /** Pista de la pregunta de chequeo actual. */
+  protected readonly pistaActual = signal<string | null>(null);
+  /** Opciones incorrectas eliminadas con el ítem 50/50. */
+  protected readonly eliminadas = signal<string[]>([]);
 
   /** Dispositivo táctil real (pointer coarse / maxTouchPoints>0). */
   protected readonly esTouch = signal(false);
@@ -531,6 +615,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   private intentoId: string | null = null;
 
   ngOnInit(): void {
+    void this.cargarMochila();
     // Carga el nivel de la URL (primera vez)
     this.inicializarNivel(Number(this.route.snapshot.paramMap.get('numero')) || 1);
     // Angular REUTILIZA este mismo componente al navegar de /nivel/1 a /nivel/2
@@ -574,6 +659,10 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     this.preguntaExcluidas = [];
     this.mostrarIntro.set(true);
     this.juegoListo.set(false);
+    this.pistaActual.set(null);
+    this.eliminadas.set([]);
+    this.muertoEntra.set(false);
+    void this.cargarMochila();
     void this.cargarProgresoRoster();
     queueMicrotask(() => this.arrancar());
   }
@@ -634,6 +723,109 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     queueMicrotask(() => this.arrancar());
   }
 
+  /** Recoge el inventario actual del jugador (la mochila se hidrata aquí). */
+  private async cargarMochila(): Promise<void> {
+    const user = this.auth.usuario();
+    if (!user) { this.itemsMochila.set([]); return; }
+    try {
+      const inv = await this.rewards.listarInventario(user.id).catch(() => [] as any[]);
+      this.itemsMochila.set(
+        ((inv ?? []) as any[])
+          .map((r: any) => {
+            const item = r?.item ?? r?.tienda_item ?? {};
+            return {
+              tienda_item_id: String(r?.tienda_item_id ?? ''),
+              codigo: String(item?.codigo ?? ''),
+              nombre: String(item?.nombre ?? 'Ítem'),
+              descripcion: String(item?.descripcion ?? ''),
+              cantidad: Number(r?.cantidad ?? 0),
+              tipo: String(item?.tipo ?? 'item'),
+            };
+          })
+          .filter((x) => x.cantidad > 0),
+      );
+    } catch {
+      this.itemsMochila.set([]);
+    }
+  }
+
+  protected contarItem(codigo: string): number {
+    return this.itemsMochila().filter((i) => i.codigo === codigo).reduce((a, b) => a + b.cantidad, 0);
+  }
+
+  protected tieneItem(codigo: string): boolean { return this.contarItem(codigo) > 0; }
+
+  /** Consume 1 unidad de un ítem del inventario (vía RPC transaccional). */
+  private async consumirItemCodigo(codigo: string): Promise<{ ok: boolean; mensaje: string }> {
+    const fila = this.itemsMochila().find((i) => i.codigo === codigo && i.cantidad > 0);
+    if (!fila) return { ok: false, mensaje: 'No tienes este ítem.' };
+    const ok = await this.rewards.consumirItem(fila.tienda_item_id);
+    await this.cargarMochila();
+    return ok;
+  }
+
+  /** Bomba Total: elimina a todos los enemigos en pantalla. */
+  protected async usarBombaTotal(): Promise<void> {
+    const ok = await this.consumirItemCodigo('bomba_total');
+    if (!ok.ok) { this.mensajeResultado.set(ok.mensaje); return; }
+    (this.game?.scene?.getScene('Combate') as any)?.usarBomba?.();
+  }
+
+  /** Congelar tiempo: clava a los enemigos 4 segundos. */
+  protected async usarCongelarTiempo(): Promise<void> {
+    const ok = await this.consumirItemCodigo('congelar_tiempo');
+    if (!ok.ok) { this.mensajeResultado.set(ok.mensaje); return; }
+    (this.game?.scene?.getScene('Combate') as any)?.congelarEnemigos?.(4000);
+  }
+
+  /** Muerte con Vida Extra: el motor congela la partida y espera tu decisión. */
+  protected manejarMuertePorVida(): void { this.muertoEntra.set(true); }
+
+  protected async usarVidaExtra(): Promise<void> {
+    const ok = await this.consumirItemCodigo('vida_extra');
+    if (!ok.ok) { this.mensajeResultado.set(ok.mensaje); return; }
+    (this.game?.scene?.getScene('Combate') as any)?.reviveConVida?.();
+    this.muertoEntra.set(false);
+  }
+
+  protected aceptarMuerte(): void {
+    this.muertoEntra.set(false);
+    (this.game?.scene?.getScene('Combate') as any)?.finalizarMuerte?.();
+  }
+
+  /** Pista de la pregunta (ítem: Pista). */
+  protected async usarPistaPregunta(): Promise<void> {
+    const p = this.preguntaActual();
+    if (!p) return;
+    const ok = await this.consumirItemCodigo('pista');
+    if (!ok.ok) { this.mensajeResultado.set(ok.mensaje); return; }
+    const sb = this.supabase.client;
+    const { data, error } = await sb.rpc('guardianes_pista_pregunta', { p_pregunta_id: p.preguntaId });
+    this.pistaActual.set(error ? 'Sigue el algoritmo dominante del tema.' : String(data ?? 'Sigue el algoritmo dominante del tema.'));
+  }
+
+  /** 50/50: marca 2 opciones incorrectas (ítem: 50/50). */
+  protected async usarCincuentaYCincuenta(): Promise<void> {
+    const p = this.preguntaActual();
+    if (!p) return;
+    const ok = await this.consumirItemCodigo('cincuenta_cincuenta');
+    if (!ok.ok) { this.mensajeResultado.set(ok.mensaje); return; }
+    const sb = this.supabase.client;
+    const { data, error } = await sb.rpc('guardianes_eliminar_dos', { p_pregunta_id: p.preguntaId });
+    const opciones = (data as { opciones?: unknown } | null)?.opciones;
+    this.eliminadas.set(error ? [] : Array.isArray(opciones) ? opciones.map(String) : []);
+  }
+
+  /** Segunda oportunidad: te permite volver a responder la pregunta (ítem: Segunda oportunidad). */
+  protected async usarSegundaOportunidad(): Promise<void> {
+    const ok = await this.consumirItemCodigo('segunda_oportunidad');
+    if (!ok.ok) { this.mensajeResultado.set(ok.mensaje); return; }
+    this.respuestaResultado.set(null);
+    this.respuestaElegida.set(null);
+  }
+
+  protected esOpcionEliminada(op: string): boolean { return this.eliminadas().includes(op); }
+
   ngOnDestroy(): void { this.subsNivel?.unsubscribe(); this.limpiar(); }
 
   protected comenzarPartida(): void {
@@ -655,14 +847,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   }
 
   protected reiniciar(): void {
-    this.salud.set(100); this.saludMax.set(100); this.xp.set(0); this.enemigosVivos.set(0); this.tiempo.set(0); this.hordaActual.set(1);
-    this.fase.set('intro'); this.xpGanado.set(0); this.monedasGanadas.set(0); this.mensajeResultado.set(''); this.intentoId = null; this.elegirMejora.set(false);
-    this.preguntaActual.set(null); this.respuestaElegida.set(null); this.respuestaResultado.set(null); this.preguntaExcluidas = [];
-    this.mostrarIntro.set(true);
-    this.juegoListo.set(false);
-    if (this.game) { this.game.destroy(true); this.game = null; }
-    if (this.hudTimer) clearInterval(this.hudTimer);
-    queueMicrotask(() => this.arrancar());
+    this.inicializarNivel(this.numero());
   }
 
   protected aplicarMejora(m: { id: string; nombre: string }): void {
@@ -706,6 +891,8 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
       const opciones = Array.isArray(row.opciones) ? row.opciones.map(String) : [];
       if (opciones.length < 2) { this.resolverMejoraTrasChequeo(true); this.iniciarSiguienteHorda(); return; }
       this.preguntaExcluidas.push(row.pregunta_id);
+      this.pistaActual.set(null);
+      this.eliminadas.set([]);
       this.preguntaActual.set({
         preguntaId: row.pregunta_id,
         enunciado: String(row.enunciado ?? ''),
@@ -725,6 +912,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
 
   protected elegirOpcion(opcion: string): void {
     if (this.respuestaResultado()) return; // ya está calificada
+    if (this.esOpcionEliminada(opcion)) return; // opción eliminada con 50/50
     this.respuestaElegida.set(opcion);
   }
 
@@ -785,6 +973,9 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     const base = 'flex items-center rounded-xl border px-3 py-2.5 text-left text-sm font-semibold leading-snug transition ';
     const r = this.respuestaResultado();
     const sel = this.respuestaElegida();
+    if (this.esOpcionEliminada(op)) {
+      return base + 'cursor-not-allowed opacity-30 border-white/5 bg-white/[0.02] text-marine-500 line-through';
+    }
     if (!r) {
       return base + (sel === op
         ? 'border-gold-400/80 bg-gold-500/15 text-gold-200 shadow-[0_0_0_1px_#f2a54166]'
@@ -879,6 +1070,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
           scene.emitDestroy = (victoria: boolean, matados: number, tiempoSeg: number) => {
             void this.persistirIntento(nivelIdLocal, victoria, matados, tiempoSeg);
           };
+          scene.emitVidaExtra = () => { this.manejarMuertePorVida(); };
         }
       });
 
