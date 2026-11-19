@@ -4,6 +4,7 @@ import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 import { AdminService } from '../../../core/services/admin.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
 import { Notificacion } from '../../../core/models/domain.models';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
@@ -39,9 +40,13 @@ const SEGMENTOS: Array<{ id: Segmento; etiqueta: string; nota: string }> = [
         <app-stat-card etiqueta="Emitidas hoy" [valor]="hoy()" tono="gold" detalle="Según fecha de creación" />
       </div>
 
+      @if (error(); as err) {
+        <p class="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700" role="alert">{{ err }}</p>
+      }
+
       <div class="flex flex-wrap items-center gap-2 border-b border-surface-200" role="tablist" aria-label="Sección de notificaciones">
-        <button type="button" role="tab" [attr.aria-selected]="pestana() === 'enviar'" class="border-b-2 px-4 py-2 text-sm font-semibold transition-colors" [class.border-brand-500]="pestana() === 'enviar'" [class.text-brand-700]="pestana() === 'enviar'" [class.border-transparent]="pestana() !== 'enviar'" [class.text-marine-500]="pestana() !== 'enviar'" (click)="pestana.set('enviar')">Enviar nueva</button>
-        <button type="button" role="tab" [attr.aria-selected]="pestana() === 'registro'" class="border-b-2 px-4 py-2 text-sm font-semibold transition-colors" [class.border-brand-500]="pestana() === 'registro'" [class.text-brand-700]="pestana() === 'registro'" [class.border-transparent]="pestana() !== 'registro'" [class.text-marine-500]="pestana() !== 'registro'" (click)="pestana.set('registro')">Registro de envíos</button>
+        <button type="button" role="tab" [attr.aria-selected]="pestana() === 'enviar'" class="border-b-2 px-4 py-2 text-sm font-semibold transition-colors" [class.border-brand-500]="pestana() === 'enviar'" [class.text-brand-700]="pestana() === 'enviar'" [class.border-transparent]="pestana() !== 'enviar'" [class.text-marine-500]="pestana() !== 'enviar'" (click)="cambiarPestana('enviar')">Enviar nueva</button>
+        <button type="button" role="tab" [attr.aria-selected]="pestana() === 'registro'" class="border-b-2 px-4 py-2 text-sm font-semibold transition-colors" [class.border-brand-500]="pestana() === 'registro'" [class.text-brand-700]="pestana() === 'registro'" [class.border-transparent]="pestana() !== 'registro'" [class.text-marine-500]="pestana() !== 'registro'" (click)="cambiarPestana('registro')">Registro de envíos</button>
       </div>
 
       @if (pestana() === 'enviar') {
@@ -150,6 +155,7 @@ const SEGMENTOS: Array<{ id: Segmento; etiqueta: string; nota: string }> = [
 })
 export class AdminNotificationsComponent implements OnInit {
   private readonly adminService = inject(AdminService);
+  private readonly auth = inject(AuthService);
   private readonly confirm = inject(ConfirmService);
 
   protected readonly segmentos = SEGMENTOS;
@@ -179,6 +185,12 @@ export class AdminNotificationsComponent implements OnInit {
   });
 
   ngOnInit(): void { void this.cargar(); void this.refrescarConteo('todos'); }
+
+  /** Cambia de pestana; el registro de envios se recarga al abrirlo. */
+  protected cambiarPestana(p: Pestana): void {
+    this.pestana.set(p);
+    if (p === 'registro') { void this.cargar(); }
+  }
 
   protected async seleccionarSegmento(s: Segmento): Promise<void> {
     this.segmento.set(s);
@@ -227,6 +239,12 @@ export class AdminNotificationsComponent implements OnInit {
   }
 
   protected async cargar(): Promise<void> {
+    const usuario = this.auth.usuario();
+    if (!usuario) {
+      this.cargando.set(false);
+      this.error.set('Debes iniciar sesión para ver las notificaciones.');
+      return;
+    }
     this.cargando.set(true); this.error.set(null);
     try { this.notificaciones.set(await this.adminService.listarNotificacionesAdmin()); }
     catch (e) { this.error.set(e instanceof Error ? e.message : 'No se pudo cargar el registro de notificaciones.'); }
