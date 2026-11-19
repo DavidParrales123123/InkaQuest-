@@ -33,7 +33,7 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
           @if (curso(); as c) {
             <div class="card overflow-hidden">
               <div class="grid md:grid-cols-[320px_1fr]">
-                <img [src]="imagen()" [alt]="c.titulo" class="h-48 w-full object-cover md:h-full" />
+                <img [src]="imagen()" [alt]="c.titulo" class="h-32 sm:h-48 w-full object-cover md:h-full" />
                 <div class="p-5">
                   <div class="flex flex-wrap items-center gap-2">
                     <h1 class="text-2xl font-bold text-marine-800">{{ c.titulo }}</h1>
