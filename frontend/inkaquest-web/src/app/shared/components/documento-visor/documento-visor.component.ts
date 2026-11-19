@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -27,14 +28,19 @@ const ZOOM_MAX = 3;
  *
  * <p>A diferencia de <iframe>/<object>, no depende del plugin PDF del
  * navegador: funciona también en Safari/iOS y en móvil. La página se dibuja
- * a un zoom legible (no encogida) y se puede recorrer con desplazamiento;
- * los controles +/− permiten acercar sin salir de la vista.</p>
+ * a un zoom legible (no encogida), se puede recorrer con desplazamiento y
+ * ofrece un modo lector a pantalla completa tipo plataforma universitaria.</p>
  */
 @Component({
   selector: 'app-documento-visor',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '(document:keydown.escape)': 'cerrarConEscape()' },
   template: `
-    <div class="w-full overflow-hidden rounded-md border border-surface-200 bg-[#f8f9fa]">
+    <div class="w-full overflow-hidden rounded-md border border-surface-200 bg-[#f8f9fa]"
+      [class.fixed]="pantallaCompleta()" [class.inset-0]="pantallaCompleta()"
+      [class.z-50]="pantallaCompleta()" [class.flex]="pantallaCompleta()"
+      [class.flex-col]="pantallaCompleta()" [class.rounded-none]="pantallaCompleta()"
+      [class.border-0]="pantallaCompleta()" [class.bg-white]="pantallaCompleta()">
       <div class="flex flex-wrap items-center justify-between gap-2 border-b border-surface-200 bg-white px-3 py-2">
         <p class="min-w-0 truncate text-xs font-semibold text-marine-700" [title]="nombre()">{{ nombre() }}</p>
         <div class="flex shrink-0 items-center gap-1.5 text-xs text-marine-600">
@@ -45,6 +51,11 @@ const ZOOM_MAX = 3;
           <button type="button" class="btn btn-outline btn-sm" [disabled]="cargando() || zoom() <= ZOOM_MIN" (click)="cambiarZoom(-0.25)" aria-label="Alejar">−</button>
           <button type="button" class="btn btn-outline btn-sm tabular-nums" [disabled]="cargando()" (click)="restablecerZoom()" title="Restablecer zoom">{{ porcentajeZoom() }}%</button>
           <button type="button" class="btn btn-outline btn-sm" [disabled]="cargando() || zoom() >= ZOOM_MAX" (click)="cambiarZoom(0.25)" aria-label="Acercar">+</button>
+          @if (pantallaCompleta()) {
+            <button type="button" class="btn btn-outline btn-sm" (click)="salirPantallaCompleta()" aria-label="Cerrar lector">✕</button>
+          } @else {
+            <button type="button" class="btn btn-outline btn-sm" (click)="entrarPantallaCompleta()" aria-label="Ver a pantalla completa">⛶</button>
+          }
         </div>
       </div>
 
@@ -54,12 +65,14 @@ const ZOOM_MAX = 3;
         <p class="p-4 text-center text-sm text-danger-600" role="alert">{{ error() }}</p>
       }
 
-      <div class="w-full overflow-auto overscroll-contain">
+      <div class="w-full overflow-auto overscroll-contain" [class.flex-1]="pantallaCompleta()" [class.min-h-0]="pantallaCompleta()">
         <canvas #lienzo class="block"></canvas>
       </div>
-      <p class="border-t border-surface-200 bg-white px-3 py-1.5 text-[0.7rem] text-marine-400">
-        Usa + / − para acercar y desliza para recorrer la página completa.
-      </p>
+      @if (!pantallaCompleta()) {
+        <p class="border-t border-surface-200 bg-white px-3 py-1.5 text-[0.7rem] text-marine-400">
+          Usa + / − para acercar, desliza para recorrer la página o ⛶ para el lector a pantalla completa.
+        </p>
+      }
     </div>
   `,
 })
@@ -72,6 +85,7 @@ export class DocumentoVisorComponent {
 
   private readonly lienzo = viewChild<ElementRef<HTMLCanvasElement>>('lienzo');
   private readonly destroyRef = inject(DestroyRef);
+  private readonly doc = inject(DOCUMENT);
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
@@ -79,9 +93,11 @@ export class DocumentoVisorComponent {
   protected readonly paginaActual = signal(1);
   protected readonly zoom = signal(ZOOM_INICIAL);
   protected readonly porcentajeZoom = computed(() => Math.round(this.zoom() * 100));
+  protected readonly pantallaCompleta = signal(false);
 
   private documento: PDFDocumentProxy | null = null;
   private tarea: RenderTask | null = null;
+  private overflowAnterior = '';
 
   constructor() {
     effect(() => {
@@ -92,7 +108,23 @@ export class DocumentoVisorComponent {
     this.destroyRef.onDestroy(() => {
       void this.documento?.destroy();
       this.documento = null;
+      if (this.pantallaCompleta()) this.doc.body.style.overflow = this.overflowAnterior;
     });
+  }
+
+  protected entrarPantallaCompleta(): void {
+    this.overflowAnterior = this.doc.body.style.overflow;
+    this.doc.body.style.overflow = 'hidden';
+    this.pantallaCompleta.set(true);
+  }
+
+  protected salirPantallaCompleta(): void {
+    this.pantallaCompleta.set(false);
+    this.doc.body.style.overflow = this.overflowAnterior;
+  }
+
+  protected cerrarConEscape(): void {
+    if (this.pantallaCompleta()) this.salirPantallaCompleta();
   }
 
   protected async abrir(url: string): Promise<void> {
@@ -142,8 +174,6 @@ export class DocumentoVisorComponent {
       this.tarea?.cancel();
       const pagina = await doc.getPage(numero);
       const viewport = pagina.getViewport({ scale: this.zoom() });
-      // Doble resolución en pantallas de alta densidad (celulares) para que
-      // el texto se lea nítido al acercar.
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       canvas.width = Math.floor(viewport.width * dpr);
       canvas.height = Math.floor(viewport.height * dpr);
