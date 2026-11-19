@@ -35,7 +35,8 @@ export class StorageService {
   }
 
   async obtenerUrlRecurso(ruta: string, expiraSeg = 3600): Promise<string | null> {
-    const { data, error } = await this.supabase.client.storage.from('recursos').createSignedUrl(ruta, expiraSeg);
+    // inline: fuerza Content-Disposition: inline para que el Navegador muestre el PDF en vez de descargarlo
+    const { data, error } = await this.supabase.client.storage.from('recursos').createSignedUrl(ruta, expiraSeg, { download: false });
     if (error) return null;
     return data?.signedUrl ?? null;
   }
