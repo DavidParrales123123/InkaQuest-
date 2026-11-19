@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { TeacherService } from '../../../core/services/teacher.service';
@@ -44,16 +44,23 @@ interface IntentoFila {
         <app-stat-card etiqueta="Victorias registradas" [valor]="victoriasContadas()" tono="success" />
       </div>
 
-      <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="intentos().length === 0" tituloVacio="Aún no hay intentos jugados" descripcionVacia="Cuando un estudiante empiece a jugar, sus partidas aparecerán aquí." (alReintentar)="cargar()">
+      <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="intentosFiltrados().length === 0" tituloVacio="Aún no hay intentos jugados" descripcionVacio="Cuando un estudiante empiece a jugar, sus partidas aparecerán aquí." (alReintentar)="cargar()">
         <div contenido class="space-y-3">
           <h2 class="text-base font-semibold text-marine-800">Detalle por estudiante · nivel</h2>
+          <input
+            type="search"
+            class="w-full rounded-xl border border-surface-200 bg-white px-4 py-2.5 text-sm text-marine-800 placeholder:text-marine-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200"
+            [value]="filtroIntentos()"
+            (input)="onFiltroChange($event)"
+            placeholder="Filtra por estudiante, nivel, estado o puntaje…"
+          />
           <div class="table-wrap overflow-x-auto rounded-xl border border-surface-200">
             <table class="table">
               <thead>
                 <tr><th scope="col">Estudiante</th><th scope="col">Nivel</th><th scope="col">Estado</th><th scope="col">Hordas</th><th scope="col">Puntaje</th><th scope="col">Tiempo</th><th scope="col">Precisión</th><th scope="col">XP ganada</th></tr>
               </thead>
               <tbody>
-                @for (fila of intentosOrdenados(); track fila.id) {
+                @for (fila of intentosFiltrados(); track fila.id) {
                   <tr>
                     <td class="font-medium text-marine-800">{{ estudianteNombre(fila.estudiante_id) }}</td>
                     <td><span class="font-mono">{{ nivelNumero(fila.nivel_id) }}</span></td>
@@ -68,6 +75,11 @@ interface IntentoFila {
               </tbody>
             </table>
           </div>
+          @if (hayMasIntentos()) {
+            <button type="button" class="w-full rounded-xl border border-surface-200 bg-white px-4 py-2.5 text-sm font-semibold text-marine-800 transition hover:bg-surface-50" (click)="verMas()">
+              Ver más
+            </button>
+          }
           <p class="text-xs text-marine-500">Sólo se muestran intentos de estudiantes matriculados en los cursos que tienes asignados a tu cargo. Los datos son de solo lectura.</p>
         </div>
       </app-data-panel>
@@ -88,7 +100,27 @@ export class TeacherGuardiansComponent implements OnInit {
   protected readonly perfiles = signal<Record<string, { nombre: string; email: string }>>({});
   protected readonly nivelNombres = signal<Record<string, number>>({});
 
+  protected readonly limiteIntentos = signal(20);
+  protected readonly hayMasIntentos = signal(false);
+  protected readonly offsetIntentos = signal(0);
+  protected readonly filtroIntentos = signal('');
+
   protected readonly intentosOrdenados = () => [...this.intentos()].sort((a, b) => a.iniciado_en < b.iniciado_en ? 1 : -1);
+
+  protected readonly intentosFiltrados = computed(() => {
+    const f = this.filtroIntentos().trim().toLowerCase();
+    const lista = this.intentosOrdenados();
+    if (!f) return lista;
+    return lista.filter((i) => {
+      const p = this.perfiles()[i.estudiante_id];
+      const nombre = `${p?.nombre ?? ''} ${p?.email ?? ''}`.toLowerCase();
+      const nivel = String(this.nivelNombres()[i.nivel_id] ?? '');
+      const estado = (i.estado ?? '').toLowerCase();
+      const num = String(i.puntaje ?? '');
+      const hordas = String(i.hordas_completadas ?? '');
+      return nombre.includes(f) || estado.includes(f) || nivel.includes(f) || num.includes(f) || hordas.includes(f);
+    });
+  });
   protected readonly estudiantesConAvance = () => new Set(this.intentos().map((i) => i.estudiante_id)).size;
   protected readonly nivelesCompletados = () => this.intentos().filter((i) => i.estado === 'completado').length;
   protected readonly victoriasContadas = () => this.nivelesCompletados();
@@ -115,7 +147,8 @@ export class TeacherGuardiansComponent implements OnInit {
     return `${Math.round(v)}%`;
   }
 
-  protected async cargar(): Promise<void> {
+  protected async cargar(off: number = 0): Promise<void> {
+    this.offsetIntentos.set(off);
     this.cargando.set(true); this.error.set(null);
     try {
       const user = this.auth.usuario();
@@ -124,7 +157,7 @@ export class TeacherGuardiansComponent implements OnInit {
         .from('guardianes_intento')
         .select('*')
         .order('iniciado_en', { ascending: false })
-        .limit(2000);
+        .range(off, off + this.limiteIntentos() - 1);
       if (error) throw new Error(error.message);
       let filas = (data ?? []) as IntentoFila[];
       const cursos = await this.teacherService.listarMisCursos(user.id);
@@ -139,6 +172,7 @@ export class TeacherGuardiansComponent implements OnInit {
         filas = filas.filter((f) => ids.has(f.estudiante_id));
       }
       this.intentos.set(filas);
+      this.hayMasIntentos.set((data?.length ?? 0) >= this.limiteIntentos());
       const ids = Array.from(new Set(filas.map((i) => i.estudiante_id)));
       if (ids.length) {
         const { data: perfs } = await this.supabase.client.from('perfil').select('id, nombre, email').in('id', ids);
@@ -155,5 +189,14 @@ export class TeacherGuardiansComponent implements OnInit {
       }
     } catch (e) { this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar los datos.'); }
     finally { this.cargando.set(false); }
+  }
+
+  protected async verMas(): Promise<void> {
+    await this.cargar(this.offsetIntentos() + this.limiteIntentos());
+  }
+
+  protected onFiltroChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.filtroIntentos.set(input.value);
   }
 }
