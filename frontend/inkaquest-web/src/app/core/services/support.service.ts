@@ -5,7 +5,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
-import { Ticket } from '../models/domain.models';
+import { Ticket, TicketRespuesta } from '../models/domain.models';
 
 /** Entrada para crear un ticket de soporte. */
 export interface CrearTicketInput {
@@ -20,6 +20,11 @@ export interface CrearTicketResultado {
   ok: boolean;
   mensaje: string;
   ticketId?: string;
+}
+
+/** Ticket con su historial de mensajes (detalle del backend). */
+export interface TicketDetalle extends Ticket {
+  respuestas: TicketRespuesta[];
 }
 
 /** DTO `TicketResponse` que devuelve Spring Boot (`TicketCrearRequest.TicketResponse`). */
@@ -105,12 +110,24 @@ export class SupportService {
     return (res?.data ?? []).map(mapearTicket);
   }
 
-  /** Obtiene el detalle de un ticket. */
-  async obtenerTicket(id: string): Promise<Ticket> {
+  /** Obtiene el detalle de un ticket, incluido su historial de mensajes. */
+  async obtenerTicket(id: string): Promise<TicketDetalle> {
     const res = await firstValueFrom(
       this.http.get<ApiResponse<TicketDto>>(`${this.baseUrl}/tickets/${id}`),
     );
-    return mapearTicket(res.data as TicketDto);
+    const dto = res.data as TicketDto;
+    return {
+      ...mapearTicket(dto),
+      respuestas: (dto?.respuestas ?? []).map((r) => ({
+        id: r.id,
+        ticket_id: dto?.id ?? '',
+        autor_id: r.autorId ?? '',
+        cuerpo: r.cuerpo,
+        es_interna: r.esInterna ?? false,
+        adjunto: null,
+        creado_en: r.creadoEn ?? new Date().toISOString(),
+      })),
+    };
   }
 
   /** Crea un nuevo ticket de soporte. Nunca lanza: devuelve `{ ok, mensaje, ticketId? }`. */
