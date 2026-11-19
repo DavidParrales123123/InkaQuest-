@@ -1,9 +1,7 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { ChangeDetectionStrategy, Component, ElementRef, OnInit, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
@@ -14,13 +12,14 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { imagenDeCurso } from '../../../shared/utilities/curso-imagen.util';
+import { DocumentoVisorComponent } from '../../../shared/components/documento-visor/documento-visor.component';
 
 interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlResuelta?: string | null })[] }
 
 @Component({
   selector: 'app-student-classroom',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, DecimalPipe, ButtonComponent, DataPanelComponent, StatusBadgeComponent],
+  imports: [RouterLink, DecimalPipe, ButtonComponent, DataPanelComponent, StatusBadgeComponent, DocumentoVisorComponent],
   template: `
     <section class="space-y-6">
       <a routerLink="/estudiante/cursos" class="inline-flex items-center gap-1.5 text-sm font-medium text-marine-500 hover:text-brand-600">
@@ -179,17 +178,13 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                                           </div>
                                                           <!-- Visor grande: PDF interactivo / imagen dentro de la lección -->
                                                           @if (urlRecurso(r) && esVistaPrevia(r)) {
-                                                            <div class="relative mt-2 w-full max-w-full overflow-hidden rounded-md border border-surface-200 bg-[#f8f9fa]">
+                                                            <div class="mt-2 w-full max-w-full">
                                                               @if (extensionRecurso(r) === 'pdf') {
-                                                                <object [data]="urlPrevia(urlRecurso(r)!)!" type="application/pdf" class="block h-[70vh] min-h-[320px] max-h-[1000px] w-full bg-white" aria-label="Visor PDF: {{ r.nombre }}">
-                                                                  <p class="p-4 text-sm text-marine-700">Tu navegador no puede mostrar el PDF embebido.</p>
-                                                                  <a class="btn btn-primary btn-sm" [href]="urlRecurso(r)!" target="_blank" rel="noopener noreferrer">Abrir documento</a>
-                                                                </object>
+                                                                <app-documento-visor [url]="urlRecurso(r)!" [nombre]="r.nombre" />
                                                               } @else {
                                                                 <img [src]="urlRecurso(r)!" [alt]="r.nombre" class="max-h-[70vh] min-h-[200px] w-full object-contain bg-surface-100" decoding="async" loading="lazy" />
                                                               }
                                                             </div>
-                                                            <a [href]="urlRecurso(r)!" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100">Abrir documento en una pestaña nueva</a>
                                                           }
                                                         </li>
                                                       }
@@ -225,15 +220,10 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                                     }
                                                   </div>
                                                   @if (urlRecurso(r) && esVistaPrevia(r)) {
-                                                    <div class="relative mt-3 w-full max-w-full overflow-hidden rounded-md border border-surface-200 bg-[#f8f9fa]">
+                                                    <div class="mt-3 w-full max-w-full">
                                                       @if (extensionRecurso(r) === 'pdf') {
-                                                        <object [data]="urlPrevia(urlRecurso(r)!)!" type="application/pdf" class="block h-[70vh] min-h-[320px] max-h-[1000px] w-full bg-white" aria-label="Visor PDF: {{ r.nombre }}">
-                                                           <p class="p-4 text-sm text-marine-700">Tu navegador no puede mostrar el PDF embebido.</p>
-                                                           <a class="btn btn-primary btn-sm" [href]="urlRecurso(r)!" target="_blank" rel="noopener noreferrer">Abrir documento</a>
-                                                         </object>
-                                                        <div class="flex items-center justify-end border-t border-surface-200 bg-surface-50 px-3 py-1.5">
-                                                          <a class="inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-brand-700 underline" [href]="urlRecurso(r)!" target="_blank" rel="noopener noreferrer">Abrir documento en una pestaña nueva</a>
-                                                        </div>
+                                                        <app-documento-visor [url]="urlRecurso(r)!" [nombre]="r.nombre" />
+                                                        
                                                       } @else {
                                                         <img [src]="urlRecurso(r)!" [alt]="r.nombre" class="max-h-[70vh] w-full object-contain bg-surface-100" decoding="async" loading="lazy" />
                                                       }
@@ -271,7 +261,6 @@ export class ClassroomComponent implements OnInit {
   private readonly enrollmentService = inject(EnrollmentService);
   private readonly progressService = inject(ProgressService);
   private readonly storageService = inject(StorageService);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly host = inject(ElementRef<HTMLElement>);
 
   protected readonly cargando = signal(true);
@@ -317,10 +306,6 @@ export class ClassroomComponent implements OnInit {
     return ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
   }
   protected urlRecurso(r: Recurso & { urlResuelta?: string | null }): string | null { return r.urlResuelta || r.url || null; }
-  /** Vista previa incrustada: solo http(s); nunca javascript:/data:/about: */
-  protected urlPrevia(u: string | null): SafeResourceUrl | null {
-    if (!u || !/^https?:\/\//i.test(u.trim())) return null;
-    return this.sanitizer.bypassSecurityTrustResourceUrl(u.trim()); }
   protected adjuntosDe(leccionId: string, contenidoId: string): (Recurso & { urlResuelta?: string | null })[] {
     return (this.detalles()[leccionId]?.recursos ?? []).filter((r) => r.contenido_id === contenidoId);
   }
