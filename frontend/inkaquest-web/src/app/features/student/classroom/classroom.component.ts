@@ -1,8 +1,6 @@
-// @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
@@ -12,6 +10,7 @@ import { StorageService } from '../../../core/services/storage.service';
 import { Contenido, Curso, Leccion, Modulo, ProgresoCurso, ProgresoLeccion, Recurso, Unidad } from '../../../core/models/domain.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
+import { DocumentoVisorComponent } from '../../../shared/components/documento-visor/documento-visor.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { imagenDeCurso } from '../../../shared/utilities/curso-imagen.util';
 
@@ -20,7 +19,7 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
 @Component({
   selector: 'app-student-classroom',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, DecimalPipe, ButtonComponent, DataPanelComponent, StatusBadgeComponent],
+  imports: [RouterLink, DecimalPipe, ButtonComponent, DataPanelComponent, StatusBadgeComponent, DocumentoVisorComponent],
   template: `
     <section class="space-y-6">
       <a routerLink="/estudiante/cursos" class="inline-flex items-center gap-1.5 text-sm font-medium text-marine-500 hover:text-brand-600">
@@ -33,7 +32,7 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
           @if (curso(); as c) {
             <div class="card overflow-hidden">
               <div class="grid md:grid-cols-[320px_1fr]">
-                <img [src]="imagen()" [alt]="c.titulo" class="h-48 w-full object-cover md:h-full" />
+                <img [src]="imagen()" [alt]="c.titulo" class="h-32 sm:h-48 w-full object-cover md:h-full" />
                 <div class="p-5">
                   <div class="flex flex-wrap items-center gap-2">
                     <h1 class="text-2xl font-bold text-marine-800">{{ c.titulo }}</h1>
@@ -41,8 +40,8 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                   </div>
                   <p class="mt-2 text-sm text-marine-600">{{ c.descripcion }}</p>
                   <div class="mt-3 flex flex-wrap gap-2 text-xs text-marine-500">
-                    <span class="badge badge-neutral">{{ unidades().length }} unidad(es) / semanas</span>
-                    <span class="badge badge-neutral">{{ totalLecciones() }} lección(es)</span>
+                    <span class="badge badge-default">{{ unidades().length }} unidad(es) / semanas</span>
+                    <span class="badge badge-default">{{ totalLecciones() }} lección(es)</span>
                     <span class="badge badge-gold">{{ c.xp_total }} XP</span>
                   </div>
                   @if (progreso()) {
@@ -91,7 +90,7 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                         @if (u.descripcion) { <p class="mt-0.5 text-sm text-marine-500 line-clamp-2">{{ u.descripcion }}</p> }
                       </div>
                       <div class="flex shrink-0 items-center gap-2 text-xs text-marine-500">
-                        <span class="badge badge-neutral">{{ contarLecciones(u) }} lección(es)</span>
+                        <span class="badge badge-default">{{ contarLecciones(u) }} lección(es)</span>
                         <span class="badge badge-gold">{{ u.xp_otorgado }} XP</span>
                       </div>
                     </summary>
@@ -127,15 +126,13 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                       <div class="flex shrink-0 items-center gap-2">
                                         <span class="text-xs text-brand-700 font-medium">{{ leccionAbierta() === l.id ? 'Ocultar materiales' : 'Ver materiales' }}</span>
                                         @if (!completada(l.id)) {
-                                          @if (!tieneMateriales(l.id) && cargandoDetalle() !== l.id && detalleCargados(l.id)) {
-                                            <span class="text-xs text-marine-400">Subí primero los materiales del docente; luego podrás marcarla completada.</span>
-                                          }
                                           <span (click)="$event.stopPropagation()">
-                                            <app-button variante="primario" tamano="sm" [deshabilitado]="!puedeMarcar() || marcando() === l.id || !tieneMateriales(l.id)" [cargando]="marcando() === l.id" (alPulsar)="marcar(l.id)">
+                                            <app-button variante="primario" tamano="sm" [deshabilitado]="!puedeMarcar() || marcando() === l.id" [cargando]="marcando() === l.id" (alPulsar)="marcar(l.id)">
                                               Marcar completada
                                             </app-button>
                                           </span>
-                                        }</div>
+                                        }
+                                      </div>
                                     </div>
                                   </button>
 
@@ -157,8 +154,8 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                               @for (ct of det.contenidos; track ct.id) {
                                                 <article class="rounded-lg border border-surface-200 bg-white p-3">
                                                   <div class="flex flex-wrap items-center gap-2">
-                                                    <span class="badge badge-neutral">{{ ct.tipo }}</span>
-                                                    <p class="font-medium text-marine-800">{{ ct.titulo }}</p>
+                                                    <span class="badge badge-default">{{ ct.tipo }}</span>
+                                                    <p class="font-medium text-marine-800">{{ ct.titulo || ('Contenido ' + ct.orden) }}</p>
                                                   </div>
                                                   @if (ct.cuerpo) {
                                                     @if (esEnlace(ct.cuerpo)) {
@@ -167,30 +164,6 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                                       <p class="mt-2 whitespace-pre-wrap text-sm text-marine-700">{{ ct.cuerpo }}</p>
                                                     }
                                                   }
-                                                  @if (adjuntosDe(l.id, ct.id).length) {
-                                                    <ul class="mt-2 space-y-3">
-                                                      @for (r of adjuntosDe(l.id, ct.id); track r.id) {
-                                                        <li class="rounded bg-surface-50 p-2.5">
-                                                          <div class="flex items-center gap-2 text-xs text-marine-600">
-                                                            <span>Adjunto:</span>
-                                                            <span class="min-w-0 truncate font-medium text-marine-800" [title]="r.nombre">{{ r.nombre }}</span>
-                                                            @if (r.tamano_bytes) { <span class="text-marine-400">· {{ (r.tamano_bytes / 1024) | number:'1.0-0' }} KB</span> }
-                                                            @if (urlRecurso(r)) { <a [href]="urlRecurso(r)!" target="_blank" rel="noopener" class="ml-auto text-brand-700 underline" download>Descargar</a> }
-                                                          </div>
-                                                          <!-- Visor grande: PDF interactivo / imagen dentro de la lección -->
-                                                          @if (urlRecurso(r) && esVistaPrevia(r)) {
-                                                            <div class="mx-auto mt-2 max-w-6xl overflow-hidden rounded-md border border-surface-200">
-                                                              @if (extensionRecurso(r) === 'pdf') {
-                                                                <iframe [src]="urlPrevia(urlRecurso(r)!)!" title="Visor PDF: {{ r.nombre }}" class="h-[70vh] w-full bg-white"></iframe>
-                                                              } @else {
-                                                                <img [src]="urlRecurso(r)!" [alt]="r.nombre" class="max-h-[70vh] w-full object-contain bg-surface-100" decoding="async" loading="lazy" />
-                                                              }
-                                                            </div>
-                                                          }
-                                                        </li>
-                                                      }
-                                                    </ul>
-                                                  }
                                                 </article>
                                               }
                                             </div>
@@ -198,43 +171,36 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                         </div>
 
                                         <div>
-                                          @if (recursosSueltos(det).length > 0) {
-                                            <h5 class="text-sm font-semibold text-marine-800">Otros materiales subidos por el docente</h5>
+                                          <h5 class="text-sm font-semibold text-marine-800">Materiales y recursos subidos por el docente</h5>
+                                          @if (det.recursos.length === 0) {
+                                            <p class="mt-1 text-sm text-marine-500">No hay materiales/archivos adjuntos en esta lección.</p>
+                                          } @else {
                                             <ul class="mt-2 grid gap-2 sm:grid-cols-2">
-                                              @for (r of recursosSueltos(det); track r.id) {
-                                                <li class="flex flex-col rounded-lg border border-surface-200 bg-white p-3">
-                                                  <div class="flex items-start justify-between gap-3">
-                                                    <div class="min-w-0">
-                                                      <p class="truncate font-medium text-marine-800">{{ r.nombre }}</p>
-                                                      <p class="text-xs text-marine-500">
-                                                        {{ r.tipo }}
-                                                        @if (r.tamano_bytes) { · {{ (r.tamano_bytes / 1024) | number:'1.0-0' }} KB }
-                                                        @if (r.ruta_storage) { · archivo }
-                                                      </p>
-                                                    </div>
-                                                    @if (urlRecurso(r)) {
-                                                      <a [href]="urlRecurso(r)!" target="_blank" rel="noopener" download class="btn btn-outline btn-sm shrink-0">Descargar</a>
-                                                    } @else if (r.ruta_storage) {
-                                                      <span class="text-xs text-marine-400 shrink-0">Disponible con permisos</span>
-                                                    } @else {
-                                                      <span class="text-xs text-marine-400 shrink-0">Sin enlace</span>
-                                                    }
+                                              @for (r of det.recursos; track r.id) {
+                                                <li class="flex items-center justify-between gap-3 rounded-lg border border-surface-200 bg-white p-3">
+                                                  <div class="min-w-0">
+                                                    <p class="truncate font-medium text-marine-800">{{ r.nombre }}</p>
+                                                    <p class="text-xs text-marine-500">
+                                                      {{ r.tipo }}
+                                                      @if (r.tamano_bytes) { · {{ (r.tamano_bytes / 1024) | number:'1.0-0' }} KB }
+                                                      @if (r.ruta_storage) { · archivo }
+                                                    </p>
                                                   </div>
-                                                  @if (urlRecurso(r) && esVistaPrevia(r)) {
-                                                    <div class="mx-auto mt-3 max-w-6xl overflow-hidden rounded-md border border-surface-200">
-                                                      @if (extensionRecurso(r) === 'pdf') {
-                                                        <iframe [src]="urlPrevia(urlRecurso(r)!)!" title="Visor PDF: {{ r.nombre }}" class="h-[70vh] w-full bg-white"></iframe>
-                                                        <div class="flex items-center justify-end border-t border-surface-200 bg-surface-50 px-3 py-1.5">
-                                                          <a class="text-xs font-semibold text-brand-700 underline" [href]="urlRecurso(r)!" target="_blank" rel="noopener">Abrir el PDF en una pestaña nueva</a>
-                                                        </div>
-                                                      } @else {
-                                                        <img [src]="urlRecurso(r)!" [alt]="r.nombre" class="max-h-[70vh] w-full object-contain bg-surface-100" decoding="async" loading="lazy" />
-                                                      }
-                                                    </div>
+                                                  @if (urlRecurso(r)) {
+                                                    <app-documento-visor
+                                                      [url]="urlRecurso(r)"
+                                                      [mimeType]="r.mime_type"
+                                                      [nombre]="r.nombre"
+                                                    ></app-documento-visor>
+                                                  } @else if (r.ruta_storage) {
+                                                    <span class="text-xs text-marine-400">Disponible con permisos</span>
+                                                  } @else {
+                                                    <span class="text-xs text-marine-400">Sin enlace</span>
                                                   }
                                                 </li>
                                               }
                                             </ul>
+                                            <p class="mt-2 text-xs text-marine-400">El acceso a archivos depende de tu matrícula/permisos y de las políticas de Storage.</p>
                                           }
                                         </div>
                                       }
@@ -264,7 +230,6 @@ export class ClassroomComponent implements OnInit {
   private readonly enrollmentService = inject(EnrollmentService);
   private readonly progressService = inject(ProgressService);
   private readonly storageService = inject(StorageService);
-  private readonly sanitizer = inject(DomSanitizer);
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
@@ -292,33 +257,8 @@ export class ClassroomComponent implements OnInit {
   protected puedeMarcar(): boolean { return this.matriculaActiva() && !!this.curso(); }
   protected contarLecciones(u: Unidad & { modulos: (Modulo & { lecciones: Leccion[] })[] }): number { return u.modulos.reduce((acc, m) => acc + m.lecciones.length, 0); }
   protected detalle(id: string): LeccionDetalle { return this.detalles()[id] ?? { contenidos: [], recursos: [] }; }
-  protected detalleCargados(id: string): boolean { return !!this.detalles()[id]; }
-  protected tieneMateriales(id: string): boolean {
-    const d = this.detalles()[id];
-    if (!d) return false;
-    return (d.contenidos?.length ?? 0) + (d.recursos?.length ?? 0) > 0;
-  }
-  protected extensionRecurso(r: Recurso & { urlResuelta?: string | null }): string {
-    const u = (r.urlResuelta || r.url || r.ruta_storage || '').toLowerCase();
-    const q = u.split('?')[0].split('#')[0];
-    const m = q.match(/\.([a-z0-9]{2,5})$/);
-    return (m?.[1] ?? '').toLowerCase();
-  }
-  protected esVistaPrevia(r: Recurso & { urlResuelta?: string | null }): boolean {
-    const ext = this.extensionRecurso(r);
-    return ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
-  }
   protected urlRecurso(r: Recurso & { urlResuelta?: string | null }): string | null { return r.urlResuelta || r.url || null; }
-  /** Vista previa incrustada: solo http(s); nunca javascript:/data:/about: */
-  protected urlPrevia(u: string | null): SafeResourceUrl | null {
-    if (!u || !/^https?:\/\//i.test(u.trim())) return null;
-    return this.sanitizer.bypassSecurityTrustResourceUrl(u.trim()); }
-  protected adjuntosDe(leccionId: string, contenidoId: string): (Recurso & { urlResuelta?: string | null })[] {
-    return (this.detalles()[leccionId]?.recursos ?? []).filter((r) => r.contenido_id === contenidoId);
-  }
-  protected recursosSueltos(det: LeccionDetalle): (Recurso & { urlResuelta?: string | null })[] {
-    return det.recursos.filter((r) => !r.contenido_id);
-  }
+
   protected esEnlace(texto: string | null | undefined): boolean { return !!texto && /^https?:\/\//i.test(texto.trim()); }
 
   protected async cargar(): Promise<void> {
