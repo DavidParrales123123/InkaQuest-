@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, OnInit, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -113,9 +113,9 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                           } @else {
                             <ul class="space-y-3">
                               @for (l of m.lecciones; track l.id) {
-                                <li class="rounded-xl border border-surface-200 bg-white">
-                                  <button type="button" class="w-full p-4 text-left" (click)="toggleLeccion(l)">
-                                    <div class="flex flex-wrap items-start justify-between gap-3">
+                                <li class="scroll-mt-4 rounded-xl border border-surface-200 bg-white" [attr.data-leccion-abierta]="leccionAbierta() === l.id ? 'true' : null">
+                                  <button type="button" class="flex w-full flex-col items-stretch gap-3 p-4 text-left sm:flex-row sm:items-center" (click)="toggleLeccion(l)">
+                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                       <div class="min-w-0 flex-1">
                                         <div class="flex flex-wrap items-center gap-2">
                                           <p class="font-semibold text-marine-800">{{ l.numero }}. {{ l.titulo }}</p>
@@ -124,7 +124,7 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                         <p class="mt-0.5 text-xs text-marine-500">{{ l.duracion_minutos }} min · {{ l.xp_otorgado }} XP · {{ l.tipo_contenido }}</p>
                                         @if (l.descripcion) { <p class="mt-1 text-sm text-marine-600 line-clamp-2">{{ l.descripcion }}</p> }
                                       </div>
-                                      <div class="flex shrink-0 items-center gap-2">
+                                      <div class="flex shrink-0 flex-row flex-wrap items-center justify-between gap-2 sm:flex-col sm:items-end sm:justify-start">
                                         <span class="text-xs text-brand-700 font-medium">{{ leccionAbierta() === l.id ? 'Ocultar materiales' : 'Ver materiales' }}</span>
                                         @if (!completada(l.id)) {
                                           @if (!tieneMateriales(l.id) && cargandoDetalle() !== l.id && detalleCargados(l.id)) {
@@ -179,13 +179,17 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                                           </div>
                                                           <!-- Visor grande: PDF interactivo / imagen dentro de la lección -->
                                                           @if (urlRecurso(r) && esVistaPrevia(r)) {
-                                                            <div class="mx-auto mt-2 max-w-6xl overflow-hidden rounded-md border border-surface-200">
+                                                            <div class="relative w-full max-w-full overflow-hidden rounded-md border border-surface-200">
                                                               @if (extensionRecurso(r) === 'pdf') {
-                                                                <iframe [src]="urlPrevia(urlRecurso(r)!)!" title="Visor PDF: {{ r.nombre }}" class="h-[70vh] w-full bg-white"></iframe>
+                                                                <iframe [src]="urlPrevia(urlRecurso(r)!)!" title="Visor PDF: {{ r.nombre }}" class="h-[82vh] min-h-[320px] max-h-[1000px] w-full bg-white" loading="lazy"></iframe>
                                                               } @else {
-                                                                <img [src]="urlRecurso(r)!" [alt]="r.nombre" class="max-h-[70vh] w-full object-contain bg-surface-100" decoding="async" loading="lazy" />
+                                                                <img [src]="urlRecurso(r)!" [alt]="r.nombre" class="max-h-[82vh] min-h-[200px] w-full object-contain bg-surface-100" decoding="async" loading="lazy" />
                                                               }
                                                             </div>
+                                                            <a [href]="urlRecurso(r)!" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100">
+                                                              Abrir documento en una pestaña nueva
+                                                              <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 4h6m0 0v6m0-6L10 14M6 6H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                                            </a>
                                                           }
                                                         </li>
                                                       }
@@ -221,16 +225,20 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                                     }
                                                   </div>
                                                   @if (urlRecurso(r) && esVistaPrevia(r)) {
-                                                    <div class="mx-auto mt-3 max-w-6xl overflow-hidden rounded-md border border-surface-200">
+                                                    <div class="relative w-full max-w-full overflow-hidden rounded-md border border-surface-200">
                                                       @if (extensionRecurso(r) === 'pdf') {
-                                                        <iframe [src]="urlPrevia(urlRecurso(r)!)!" title="Visor PDF: {{ r.nombre }}" class="h-[70vh] w-full bg-white"></iframe>
+                                                        <iframe [src]="urlPrevia(urlRecurso(r)!)!" title="Visor PDF: {{ r.nombre }}" class="h-[82vh] min-h-[320px] max-h-[1000px] w-full bg-white" loading="lazy"></iframe>
                                                         <div class="flex items-center justify-end border-t border-surface-200 bg-surface-50 px-3 py-1.5">
                                                           <a class="text-xs font-semibold text-brand-700 underline" [href]="urlRecurso(r)!" target="_blank" rel="noopener">Abrir el PDF en una pestaña nueva</a>
                                                         </div>
                                                       } @else {
-                                                        <img [src]="urlRecurso(r)!" [alt]="r.nombre" class="max-h-[70vh] w-full object-contain bg-surface-100" decoding="async" loading="lazy" />
+                                                        <img [src]="urlRecurso(r)!" [alt]="r.nombre" class="max-h-[82vh] min-h-[200px] w-full object-contain bg-surface-100" decoding="async" loading="lazy" />
                                                       }
                                                     </div>
+                                                    <a [href]="urlRecurso(r)!" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100 sm:hidden">
+                                                      Abrir documento en una pestaña nueva
+                                                      <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 4h6m0 0v6m0-6L10 14M6 6H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                                    </a>
                                                   }
                                                 </li>
                                               }
@@ -265,6 +273,7 @@ export class ClassroomComponent implements OnInit {
   private readonly progressService = inject(ProgressService);
   private readonly storageService = inject(StorageService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly host = inject(ElementRef<HTMLElement>);
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
@@ -355,6 +364,19 @@ export class ClassroomComponent implements OnInit {
   protected async toggleLeccion(l: Leccion): Promise<void> {
     if (this.leccionAbierta() === l.id) { this.leccionAbierta.set(null); return; }
     this.leccionAbierta.set(l.id);
+
+    // Auto-scroll al panel abierto: el estudiante ve los materiales al instante
+    // sin tener que buscar la lección en la pantalla.
+    queueMicrotask(() => {
+      try {
+        const host: HTMLElement = this.host.nativeElement;
+        const target = host.querySelector('[data-leccion-abierta="true"]') as HTMLElement | null;
+        if (target && typeof target.scrollIntoView === 'function') {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      } catch { /* scroll no-op */ }
+    });
+
     if (this.detalles()[l.id]) return;
     this.cargandoDetalle.set(l.id);
     this.errorDetalle.update((m) => ({ ...m, [l.id]: '' }));
