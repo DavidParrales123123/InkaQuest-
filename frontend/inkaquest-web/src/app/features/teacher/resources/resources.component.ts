@@ -74,7 +74,7 @@ type Modo = 'archivo' | 'enlace';
         <div class="grid gap-6 xl:grid-cols-5">
           <!-- ════ SUBIR MATERIAL ════ -->
           <div class="card card-body space-y-3 xl:col-span-2">
-            <div class="flex items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
               <h2 class="text-base font-extrabold text-marine-800">Agregar material</h2>
               @if (leccionSel()) {
                 <span class="rounded-full bg-brand-50 px-2 py-0.5 text-[0.7rem] font-bold text-brand-700">1 lección</span>
