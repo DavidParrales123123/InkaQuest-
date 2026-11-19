@@ -179,9 +179,12 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                                           </div>
                                                           <!-- Visor grande: PDF interactivo / imagen dentro de la lección -->
                                                           @if (urlRecurso(r) && esVistaPrevia(r)) {
-                                                            <div class="relative w-full max-w-full overflow-hidden rounded-md border border-surface-200">
+                                                            <div class="relative w-full max-w-full overflow-hidden rounded-md border border-surface-200 bg-[#f8f9fa]">
                                                               @if (extensionRecurso(r) === 'pdf') {
-                                                                <iframe [src]="urlPrevia(urlRecurso(r)!)!" title="Visor PDF: {{ r.nombre }}" class="h-[82vh] min-h-[320px] max-h-[1000px] w-full bg-white" loading="lazy"></iframe>
+                                                                <object [data]="urlRecurso(r)!" type="application/pdf" width="100%" class="block h-[82vh] min-h-[320px] max-h-[1000px] w-full bg-white" aria-label="Visor PDF: {{ r.nombre }}">
+                                                                  <p class="p-4 text-sm text-marine-700">Tu navegador no puede mostrar el PDF embebido.</p>
+                                                                  <a class="btn btn-primary btn-sm" [href]="urlRecurso(r)!" target="_blank" rel="noopener noreferrer">Abrir documento</a>
+                                                                </object>
                                                               } @else {
                                                                 <img [src]="urlRecurso(r)!" [alt]="r.nombre" class="max-h-[82vh] min-h-[200px] w-full object-contain bg-surface-100" decoding="async" loading="lazy" />
                                                               }
@@ -225,12 +228,12 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                                                     }
                                                   </div>
                                                   @if (urlRecurso(r) && esVistaPrevia(r)) {
-                                                    <div class="relative w-full max-w-full overflow-hidden rounded-md border border-surface-200">
+                                                    <div class="relative w-full max-w-full overflow-hidden rounded-md border border-surface-200 bg-[#f8f9fa]">
                                                       @if (extensionRecurso(r) === 'pdf') {
-                                                        <iframe [src]="urlPrevia(urlRecurso(r)!)!" title="Visor PDF: {{ r.nombre }}" class="h-[82vh] min-h-[320px] max-h-[1000px] w-full bg-white" loading="lazy"></iframe>
-                                                        <div class="flex items-center justify-end border-t border-surface-200 bg-surface-50 px-3 py-1.5">
-                                                          <a class="text-xs font-semibold text-brand-700 underline" [href]="urlRecurso(r)!" target="_blank" rel="noopener">Abrir el PDF en una pestaña nueva</a>
-                                                        </div>
+                                                        <object [data]="urlRecurso(r)!" type="application/pdf" width="100%" class="block h-[82vh] min-h-[320px] max-h-[1000px] w-full bg-white" aria-label="Visor PDF: {{ r.nombre }}">
+                                                          <p class="p-4 text-sm text-marine-700">Tu navegador no puede mostrar el PDF embebido.</p>
+                                                          <a class="btn btn-primary btn-sm" [href]="urlRecurso(r)!" target="_blank" rel="noopener noreferrer">Abrir documento</a>
+                                                        </object>
                                                       } @else {
                                                         <img [src]="urlRecurso(r)!" [alt]="r.nombre" class="max-h-[82vh] min-h-[200px] w-full object-contain bg-surface-100" decoding="async" loading="lazy" />
                                                       }
@@ -318,10 +321,6 @@ export class ClassroomComponent implements OnInit {
     return ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
   }
   protected urlRecurso(r: Recurso & { urlResuelta?: string | null }): string | null { return r.urlResuelta || r.url || null; }
-  /** Vista previa incrustada: solo http(s); nunca javascript:/data:/about: */
-  protected urlPrevia(u: string | null): SafeResourceUrl | null {
-    if (!u || !/^https?:\/\//i.test(u.trim())) return null;
-    return this.sanitizer.bypassSecurityTrustResourceUrl(u.trim()); }
   protected adjuntosDe(leccionId: string, contenidoId: string): (Recurso & { urlResuelta?: string | null })[] {
     return (this.detalles()[leccionId]?.recursos ?? []).filter((r) => r.contenido_id === contenidoId);
   }
