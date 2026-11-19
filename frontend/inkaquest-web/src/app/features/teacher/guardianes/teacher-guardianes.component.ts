@@ -124,23 +124,33 @@ export class TeacherGuardiansComponent implements OnInit {
         .from('guardianes_intento')
         .select('*')
         .order('iniciado_en', { ascending: false })
-        .limit(500);
+        .limit(2000);
       if (error) throw new Error(error.message);
-      this.intentos.set((data ?? []) as IntentoFila[]);
-      // Cargar perfiles
-      const ids = Array.from(new Set((data ?? []).map((i: any) => i.estudiante_id)));
+      let filas = (data ?? []) as IntentoFila[];
+      const cursos = await this.teacherService.listarMisCursos(user.id);
+      if (cursos.length > 0) {
+        const estudiantesPorCurso = await this.teacherService.listarEstudiantesPorCurso(user.id);
+        const ids = new Set<string>();
+        for (const { estudiantes } of estudiantesPorCurso) {
+          for (const est of estudiantes) {
+            if (est && est.id) ids.add(est.id);
+          }
+        }
+        filas = filas.filter((f) => ids.has(f.estudiante_id));
+      }
+      this.intentos.set(filas);
+      const ids = Array.from(new Set(filas.map((i) => i.estudiante_id)));
       if (ids.length) {
         const { data: perfs } = await this.supabase.client.from('perfil').select('id, nombre, email').in('id', ids);
         const map: Record<string, { nombre: string; email: string }> = {};
-        (perfs ?? []).forEach((p: any) => { map[p.id] = { nombre: p.nombre ?? '', email: p.email ?? '' }; });
+        (perfs ?? []).forEach((p) => { map[p.id] = { nombre: p.nombre ?? '', email: p.email ?? '' }; });
         this.perfiles.set(map);
       }
-      // Cargar numers de nivel
-      const nivelIds = Array.from(new Set((data ?? []).map((i: any) => i.nivel_id)));
+      const nivelIds = Array.from(new Set(filas.map((i) => i.nivel_id)));
       if (nivelIds.length) {
         const { data: nvl } = await this.supabase.client.from('guardianes_nivel').select('id, numero').in('id', nivelIds);
         const map: Record<string, number> = {};
-        (nvl ?? []).forEach((n: any) => { map[n.id] = n.numero; });
+        (nvl ?? []).forEach((n) => { map[n.id] = n.numero; });
         this.nivelNombres.set(map);
       }
     } catch (e) { this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar los datos.'); }
