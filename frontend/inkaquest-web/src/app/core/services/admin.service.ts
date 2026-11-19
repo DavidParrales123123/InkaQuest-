@@ -348,7 +348,19 @@ export class AdminService {
     if (error) {
       throw new Error(error.message);
     }
-    return (data ?? []) as SolicitudDocente[];
+    const solicitudes = (data ?? []) as SolicitudDocente[];
+    // Se adjuntan los perfiles de los solicitantes para que el admin pueda
+    // identificarlos al revisar la solicitud.
+    const ids = Array.from(new Set(solicitudes.map((s) => s.usuario_id).filter((id) => Boolean(id))));
+    const perfiles = new Map<string, Perfil>();
+    if (ids.length > 0) {
+      const { data: perfilesData } = await this.supabase.client
+        .from(this.supabase.tabla.perfil)
+        .select('id, nombre, apellido, email, documento')
+        .in('id', ids);
+      (perfilesData ?? []).forEach((p) => perfiles.set(p.id, p));
+    }
+    return solicitudes.map((s) => ({ ...s, usuario: perfiles.get(s.usuario_id) ?? null }));
   }
 
   /**

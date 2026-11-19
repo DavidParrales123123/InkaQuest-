@@ -62,6 +62,8 @@ export interface Perfil {
 export interface SolicitudDocente {
   id: string;
   usuario_id: string;
+  /** Perfil del solicitante, adjuntado al listar para que el admin lo identifique. */
+  usuario?: Perfil | null;
   estado: EstadoSolicitudDocente;
   institucion: string | null;
   especialidad: string | null;

@@ -50,6 +50,12 @@ const MOTIVOS_SUGERIDOS = [
                     <app-status-badge [estado]="s.estado" />
                   </div>
                   <p class="text-sm text-marine-600"><strong>Institución:</strong> {{ s.institucion || 'Sin institución' }} · <strong>Especialidad:</strong> {{ s.especialidad || 'Sin especialidad' }}</p>
+                  @if (s.usuario) {
+                    <p class="text-sm text-marine-600">
+                      <strong>Solicitante:</strong> {{ nombreSolicitante(s) }}
+                      @if (s.usuario?.email) { <span> · {{ s.usuario?.email }}</span> }
+                    </p>
+                  }
                   <p class="text-sm leading-relaxed text-marine-700"><strong>Motivo del solicitante:</strong><br /><span class="text-marine-600">{{ s.motivo }}</span></p>
                   @if (s.motivo_revision) { <p class="text-sm text-marine-600"><strong>Revisión:</strong> {{ s.motivo_revision }}</p> }
                   <p class="text-xs text-marine-400">Recibida: {{ s.creado_en | date: 'medium' }} · ID {{ s.id.slice(0, 8) }}…</p>
@@ -112,6 +118,14 @@ export class TeacherRequestsComponent implements OnInit {
   }
   protected setMotivoTexto(id: string, texto: string): void {
     this.motivos.set({ ...this.motivos(), [id]: texto });
+  }
+
+  /** Nombre legible del solicitante (perfil adjuntado a la solicitud). */
+  protected nombreSolicitante(s: SolicitudDocente): string {
+    const u = s.usuario;
+    if (!u) return '—';
+    const nombre = `${u.nombre ?? ''} ${u.apellido ?? ''}`.trim();
+    return nombre || u.email || '—';
   }
 
   private estadosFiltro(): EstadoSolicitudDocente[] {
