@@ -124,7 +124,7 @@ const SEGMENTOS: Array<{ id: Segmento; etiqueta: string; nota: string }> = [
       }
 
       @if (pestana() === 'registro') {
-        <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="notificaciones().length === 0"
+        <app-data-panel [cargando]="cargando()" [vacio]="notificaciones().length === 0 && !error()"
           tituloVacio="Aún no hay notificaciones emitidas"
           descripcionVacia="Cuando envíes la primera desde la pestaña «Enviar nueva», aparecerá aquí."
           (alReintentar)="cargar()">
