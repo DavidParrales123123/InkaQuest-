@@ -18,39 +18,44 @@ import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 // Worker local servido como asset de Angular (sin CDN externo).
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/assets/pdfjs/pdf.worker.min.mjs';
 
-/** Zoom inicial legible: a 1.5x un texto de 10 pt se ve ~15 px en pantalla. */
-const ZOOM_INICIAL = 1.5;
-const ZOOM_MIN = 0.75;
+const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 3;
 
 /**
- * Visor de PDF en el mismo apartado, renderizado en canvas (PDF.js).
+ * Visor profesional de PDF renderizado en canvas (PDF.js).
  *
- * <p>A diferencia de <iframe>/<object>, no depende del plugin PDF del
- * navegador: funciona también en Safari/iOS y en móvil. La página se dibuja
- * a un zoom legible (no encogida), se puede recorrer con desplazamiento y
- * ofrece un modo lector a pantalla completa tipo plataforma universitaria.</p>
+ * <p>Responsivo de verdad: por defecto la página se ajusta al ancho del
+ * contenedor (ni recortada ni diminuta), con un límite de altura para que no
+ * deforme el layout. El zoom es controlado (+/−, pellizco y reinicio a
+ * "Ajustar") y el modo lector ocupa la pantalla completa en móvil. No depende
+ * del plugin nativo, así que funciona también en Safari/iOS.</p>
  */
 @Component({
   selector: 'app-documento-visor',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:keydown.escape)': 'cerrarConEscape()' },
   template: `
-    <div class="w-full overflow-hidden rounded-md border border-surface-200 bg-[#f8f9fa]"
-      [class.fixed]="pantallaCompleta()" [class.inset-0]="pantallaCompleta()"
+    <div class="w-full overflow-hidden rounded-lg border border-surface-200 bg-white"
+      [class.shadow-sm]="!pantallaCompleta()" [class.shadow-none]="pantallaCompleta()"      [class.fixed]="pantallaCompleta()" [class.inset-0]="pantallaCompleta()"
       [class.z-50]="pantallaCompleta()" [class.flex]="pantallaCompleta()"
       [class.flex-col]="pantallaCompleta()" [class.rounded-none]="pantallaCompleta()"
-      [class.border-0]="pantallaCompleta()" [class.bg-white]="pantallaCompleta()">
-      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-surface-200 bg-white px-3 py-2">
-        <p class="min-w-0 truncate text-xs font-semibold text-marine-700" [title]="nombre()">{{ nombre() }}</p>
-        <div class="flex shrink-0 items-center gap-1.5 text-xs text-marine-600">
+      [class.border-0]="pantallaCompleta()" [class.shadow-none]="pantallaCompleta()">
+      <!-- Barra de herramientas -->
+      <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-surface-200 bg-surface-50 px-3 py-2">
+        <p class="hidden min-w-0 truncate text-xs font-semibold text-marine-700 sm:block sm:max-w-[45%]" [title]="nombre()">
+          {{ nombre() }}
+        </p>
+        <div class="flex shrink-0 items-center gap-1 text-xs text-marine-600">
           <button type="button" class="btn btn-outline btn-sm" [disabled]="cargando() || paginaActual() <= 1" (click)="cambiarPagina(-1)" aria-label="Página anterior">‹</button>
-          <span class="tabular-nums">{{ paginaActual() }} / {{ paginas() || '—' }}</span>
+          <span class="min-w-12 text-center tabular-nums">{{ paginaActual() }} / {{ paginas() || '—' }}</span>
           <button type="button" class="btn btn-outline btn-sm" [disabled]="cargando() || paginas() === 0 || paginaActual() >= paginas()" (click)="cambiarPagina(1)" aria-label="Página siguiente">›</button>
-          <span class="mx-0.5 h-4 w-px bg-surface-200"></span>
-          <button type="button" class="btn btn-outline btn-sm" [disabled]="cargando() || zoom() <= ZOOM_MIN" (click)="cambiarZoom(-0.25)" aria-label="Alejar">−</button>
-          <button type="button" class="btn btn-outline btn-sm tabular-nums" [disabled]="cargando()" (click)="restablecerZoom()" title="Restablecer zoom">{{ porcentajeZoom() }}%</button>
-          <button type="button" class="btn btn-outline btn-sm" [disabled]="cargando() || zoom() >= ZOOM_MAX" (click)="cambiarZoom(0.25)" aria-label="Acercar">+</button>
+        </div>
+        <div class="flex shrink-0 items-center gap-1 text-xs text-marine-600 sm:ml-auto">
+          <button type="button" class="btn btn-outline btn-sm" [disabled]="cargando() || zoom() <= ZOOM_MIN" (click)="alejar()" aria-label="Alejar">−</button>
+          <button type="button" class="btn btn-outline btn-sm min-w-14 tabular-nums" [disabled]="cargando()" (click)="ajustarAncho()" [title]="autoAjuste() ? 'Ajustado al ancho' : 'Ajustar al ancho'">
+            {{ autoAjuste() ? 'Ajustar' : porcentajeZoom() + '%' }}
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" [disabled]="cargando() || zoom() >= ZOOM_MAX" (click)="acercar()" aria-label="Acercar">+</button>
           @if (pantallaCompleta()) {
             <button type="button" class="btn btn-outline btn-sm" (click)="salirPantallaCompleta()" aria-label="Cerrar lector">✕</button>
           } @else {
@@ -60,17 +65,26 @@ const ZOOM_MAX = 3;
       </div>
 
       @if (cargando()) {
-        <p class="p-4 text-center text-sm text-marine-500">Cargando documento…</p>
+        <div class="flex min-h-48 items-center justify-center px-4 py-10">
+          <p class="text-sm text-marine-500">Cargando documento…</p>
+        </div>
       } @else if (error()) {
-        <p class="p-4 text-center text-sm text-danger-600" role="alert">{{ error() }}</p>
+        <div class="flex min-h-32 items-center justify-center px-4 py-8 text-center">
+          <p class="text-sm text-danger-600" role="alert">{{ error() }}</p>
+        </div>
       }
 
-      <div class="w-full overflow-auto overscroll-contain" [class.flex-1]="pantallaCompleta()" [class.min-h-0]="pantallaCompleta()">
-        <canvas #lienzo class="block"></canvas>
+      <div #contenedor class="w-full overflow-auto overscroll-contain bg-[#f8f9fa]"
+        [style.maxHeight]="pantallaCompleta() ? 'none' : '70vh'" [class.flex-1]="pantallaCompleta()" [class.min-h-0]="pantallaCompleta()"
+        (touchstart)="alTocar($event)" (touchmove)="alMover($event)" (touchend)="alSoltar()">
+        <div class="flex w-full justify-center py-2">
+          <canvas #lienzo class="block rounded-sm bg-white shadow-sm"></canvas>
+        </div>
       </div>
+
       @if (!pantallaCompleta()) {
         <p class="border-t border-surface-200 bg-white px-3 py-1.5 text-[0.7rem] text-marine-400">
-          Usa + / − para acercar, desliza para recorrer la página o ⛶ para el lector a pantalla completa.
+          Ajustado al ancho · usa + / − o pellizca para acercar · ⛶ para leer a pantalla completa
         </p>
       }
     </div>
@@ -84,6 +98,7 @@ export class DocumentoVisorComponent {
   protected readonly ZOOM_MAX = ZOOM_MAX;
 
   private readonly lienzo = viewChild<ElementRef<HTMLCanvasElement>>('lienzo');
+  private readonly contenedor = viewChild<ElementRef<HTMLElement>>('contenedor');
   private readonly destroyRef = inject(DestroyRef);
   private readonly doc = inject(DOCUMENT);
 
@@ -91,13 +106,18 @@ export class DocumentoVisorComponent {
   protected readonly error = signal<string | null>(null);
   protected readonly paginas = signal(0);
   protected readonly paginaActual = signal(1);
-  protected readonly zoom = signal(ZOOM_INICIAL);
+  protected readonly zoom = signal(1);
+  protected readonly autoAjuste = signal(true);
   protected readonly porcentajeZoom = computed(() => Math.round(this.zoom() * 100));
   protected readonly pantallaCompleta = signal(false);
 
   private documento: PDFDocumentProxy | null = null;
   private tarea: RenderTask | null = null;
   private overflowAnterior = '';
+  private timeoutResize: number | null = null;
+  private distanciaInicial = 0;
+  private ultimaDistancia = 0;
+  private zoomInicial = 1;
 
   constructor() {
     effect(() => {
@@ -105,22 +125,36 @@ export class DocumentoVisorComponent {
       if (url) void this.abrir(url);
     });
 
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', this.alRedimensionar);
+    }
     this.destroyRef.onDestroy(() => {
+      if (typeof window !== 'undefined') window.removeEventListener('resize', this.alRedimensionar);
+      if (this.timeoutResize !== null) window.clearTimeout(this.timeoutResize);
       void this.documento?.destroy();
       this.documento = null;
       if (this.pantallaCompleta()) this.doc.body.style.overflow = this.overflowAnterior;
     });
   }
 
+  private readonly alRedimensionar = (): void => {
+    if (this.timeoutResize !== null) window.clearTimeout(this.timeoutResize);
+    this.timeoutResize = window.setTimeout(() => {
+      if (this.documento && !this.cargando() && this.autoAjuste()) void this.pintar(this.paginaActual());
+    }, 200);
+  };
+
   protected entrarPantallaCompleta(): void {
     this.overflowAnterior = this.doc.body.style.overflow;
     this.doc.body.style.overflow = 'hidden';
     this.pantallaCompleta.set(true);
+    void this.pintar(this.paginaActual());
   }
 
   protected salirPantallaCompleta(): void {
     this.pantallaCompleta.set(false);
     this.doc.body.style.overflow = this.overflowAnterior;
+    void this.pintar(this.paginaActual());
   }
 
   protected cerrarConEscape(): void {
@@ -132,7 +166,7 @@ export class DocumentoVisorComponent {
     this.error.set(null);
     this.paginas.set(0);
     this.paginaActual.set(1);
-    this.zoom.set(ZOOM_INICIAL);
+    this.autoAjuste.set(true);
     try {
       this.tarea?.cancel();
       void this.documento?.destroy();
@@ -151,19 +185,54 @@ export class DocumentoVisorComponent {
     if (destino < 1 || destino > this.paginas() || this.cargando()) return;
     this.paginaActual.set(destino);
     await this.pintar(destino);
+    this.contenedor()?.nativeElement.scrollTo(0, 0);
   }
 
-  protected async cambiarZoom(delta: number): Promise<void> {
-    const nuevo = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round((this.zoom() + delta) * 100) / 100));
-    if (nuevo === this.zoom()) return;
-    this.zoom.set(nuevo);
+  protected async acercar(): Promise<void> {
+    await this.aplicarZoom(Math.min(ZOOM_MAX, Math.round(this.zoom() * 1.25 * 100) / 100));
+  }
+
+  protected async alejar(): Promise<void> {
+    await this.aplicarZoom(Math.max(ZOOM_MIN, Math.round(this.zoom() / 1.25 * 100) / 100));
+  }
+
+  protected async ajustarAncho(): Promise<void> {
+    this.autoAjuste.set(true);
     await this.pintar(this.paginaActual());
   }
 
-  protected async restablecerZoom(): Promise<void> {
-    if (this.zoom() === ZOOM_INICIAL) return;
-    this.zoom.set(ZOOM_INICIAL);
+  private async aplicarZoom(valor: number): Promise<void> {
+    this.autoAjuste.set(false);
+    this.zoom.set(valor);
     await this.pintar(this.paginaActual());
+  }
+
+  protected alTocar(e: TouchEvent): void {
+    if (e.touches.length !== 2) return;
+    this.distanciaInicial = this.distancia(e.touches);
+    this.ultimaDistancia = this.distanciaInicial;
+    this.zoomInicial = this.zoom();
+  }
+
+  protected alMover(e: TouchEvent): void {
+    if (e.touches.length !== 2) return;
+    e.preventDefault();
+    this.ultimaDistancia = this.distancia(e.touches);
+  }
+
+  protected async alSoltar(): Promise<void> {
+    if (this.distanciaInicial <= 0 || this.ultimaDistancia <= 0) return;
+    const ratio = this.ultimaDistancia / this.distanciaInicial;
+    this.distanciaInicial = 0;
+    this.ultimaDistancia = 0;
+    if (Math.abs(ratio - 1) < 0.08) return;
+    await this.aplicarZoom(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(this.zoomInicial * ratio * 100) / 100)));
+  }
+
+  private distancia(touches: TouchList): number {
+    const a = touches[0];
+    const b = touches[1];
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
   }
 
   private async pintar(numero: number): Promise<void> {
@@ -173,7 +242,14 @@ export class DocumentoVisorComponent {
     try {
       this.tarea?.cancel();
       const pagina = await doc.getPage(numero);
-      const viewport = pagina.getViewport({ scale: this.zoom() });
+      const base = pagina.getViewport({ scale: 1 });
+      const ancho = this.contenedor()?.nativeElement.clientWidth ?? window.innerWidth;
+      const escala = this.autoAjuste()
+        ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(((ancho - 16) / base.width) * 100) / 100))
+        : this.zoom();
+      this.zoom.set(escala);
+      const viewport = pagina.getViewport({ scale: escala });
+      // Doble resolución en pantallas de alta densidad para texto nítido.
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       canvas.width = Math.floor(viewport.width * dpr);
       canvas.height = Math.floor(viewport.height * dpr);
