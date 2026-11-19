@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  computed,
   effect,
   inject,
   input,
@@ -16,12 +17,18 @@ import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 // Worker local servido como asset de Angular (sin CDN externo).
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/assets/pdfjs/pdf.worker.min.mjs';
 
+/** Zoom inicial legible: a 1.5x un texto de 10 pt se ve ~15 px en pantalla. */
+const ZOOM_INICIAL = 1.5;
+const ZOOM_MIN = 0.75;
+const ZOOM_MAX = 3;
+
 /**
  * Visor de PDF en el mismo apartado, renderizado en canvas (PDF.js).
  *
  * <p>A diferencia de <iframe>/<object>, no depende del plugin PDF del
- * navegador: funciona también en Safari/iOS y en móvil. Las páginas se
- * escalan al ancho disponible y se pueden recorrer sin salir de la vista.</p>
+ * navegador: funciona también en Safari/iOS y en móvil. La página se dibuja
+ * a un zoom legible (no encogida) y se puede recorrer con desplazamiento;
+ * los controles +/− permiten acercar sin salir de la vista.</p>
  */
 @Component({
   selector: 'app-documento-visor',
@@ -30,10 +37,14 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/assets/pdfjs/pdf.worker.min.mjs';
     <div class="w-full overflow-hidden rounded-md border border-surface-200 bg-[#f8f9fa]">
       <div class="flex flex-wrap items-center justify-between gap-2 border-b border-surface-200 bg-white px-3 py-2">
         <p class="min-w-0 truncate text-xs font-semibold text-marine-700" [title]="nombre()">{{ nombre() }}</p>
-        <div class="flex shrink-0 items-center gap-2 text-xs text-marine-600">
+        <div class="flex shrink-0 items-center gap-1.5 text-xs text-marine-600">
           <button type="button" class="btn btn-outline btn-sm" [disabled]="cargando() || paginaActual() <= 1" (click)="cambiarPagina(-1)" aria-label="Página anterior">‹</button>
           <span class="tabular-nums">{{ paginaActual() }} / {{ paginas() || '—' }}</span>
           <button type="button" class="btn btn-outline btn-sm" [disabled]="cargando() || paginas() === 0 || paginaActual() >= paginas()" (click)="cambiarPagina(1)" aria-label="Página siguiente">›</button>
+          <span class="mx-0.5 h-4 w-px bg-surface-200"></span>
+          <button type="button" class="btn btn-outline btn-sm" [disabled]="cargando() || zoom() <= ZOOM_MIN" (click)="cambiarZoom(-0.25)" aria-label="Alejar">−</button>
+          <button type="button" class="btn btn-outline btn-sm tabular-nums" [disabled]="cargando()" (click)="restablecerZoom()" title="Restablecer zoom">{{ porcentajeZoom() }}%</button>
+          <button type="button" class="btn btn-outline btn-sm" [disabled]="cargando() || zoom() >= ZOOM_MAX" (click)="cambiarZoom(0.25)" aria-label="Acercar">+</button>
         </div>
       </div>
 
@@ -43,15 +54,21 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/assets/pdfjs/pdf.worker.min.mjs';
         <p class="p-4 text-center text-sm text-danger-600" role="alert">{{ error() }}</p>
       }
 
-      <div class="w-full overflow-x-auto">
-        <canvas #lienzo class="mx-auto block max-w-full"></canvas>
+      <div class="w-full overflow-auto overscroll-contain">
+        <canvas #lienzo class="block"></canvas>
       </div>
+      <p class="border-t border-surface-200 bg-white px-3 py-1.5 text-[0.7rem] text-marine-400">
+        Usa + / − para acercar y desliza para recorrer la página completa.
+      </p>
     </div>
   `,
 })
 export class DocumentoVisorComponent {
   readonly url = input.required<string>();
   readonly nombre = input('Documento');
+
+  protected readonly ZOOM_MIN = ZOOM_MIN;
+  protected readonly ZOOM_MAX = ZOOM_MAX;
 
   private readonly lienzo = viewChild<ElementRef<HTMLCanvasElement>>('lienzo');
   private readonly destroyRef = inject(DestroyRef);
@@ -60,10 +77,11 @@ export class DocumentoVisorComponent {
   protected readonly error = signal<string | null>(null);
   protected readonly paginas = signal(0);
   protected readonly paginaActual = signal(1);
+  protected readonly zoom = signal(ZOOM_INICIAL);
+  protected readonly porcentajeZoom = computed(() => Math.round(this.zoom() * 100));
 
   private documento: PDFDocumentProxy | null = null;
   private tarea: RenderTask | null = null;
-  private timeoutResize: number | null = null;
 
   constructor() {
     effect(() => {
@@ -71,29 +89,18 @@ export class DocumentoVisorComponent {
       if (url) void this.abrir(url);
     });
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('resize', this.alRedimensionar);
-      this.destroyRef.onDestroy(() => {
-        window.removeEventListener('resize', this.alRedimensionar);
-        if (this.timeoutResize !== null) window.clearTimeout(this.timeoutResize);
-        void this.documento?.destroy();
-        this.documento = null;
-      });
-    }
+    this.destroyRef.onDestroy(() => {
+      void this.documento?.destroy();
+      this.documento = null;
+    });
   }
-
-  private readonly alRedimensionar = (): void => {
-    if (this.timeoutResize !== null) window.clearTimeout(this.timeoutResize);
-    this.timeoutResize = window.setTimeout(() => {
-      if (this.documento && !this.cargando()) void this.pintar(this.paginaActual());
-    }, 200);
-  };
 
   protected async abrir(url: string): Promise<void> {
     this.cargando.set(true);
     this.error.set(null);
     this.paginas.set(0);
     this.paginaActual.set(1);
+    this.zoom.set(ZOOM_INICIAL);
     try {
       this.tarea?.cancel();
       void this.documento?.destroy();
@@ -114,6 +121,19 @@ export class DocumentoVisorComponent {
     await this.pintar(destino);
   }
 
+  protected async cambiarZoom(delta: number): Promise<void> {
+    const nuevo = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round((this.zoom() + delta) * 100) / 100));
+    if (nuevo === this.zoom()) return;
+    this.zoom.set(nuevo);
+    await this.pintar(this.paginaActual());
+  }
+
+  protected async restablecerZoom(): Promise<void> {
+    if (this.zoom() === ZOOM_INICIAL) return;
+    this.zoom.set(ZOOM_INICIAL);
+    await this.pintar(this.paginaActual());
+  }
+
   private async pintar(numero: number): Promise<void> {
     const doc = this.documento;
     const canvas = this.lienzo()?.nativeElement;
@@ -121,14 +141,17 @@ export class DocumentoVisorComponent {
     try {
       this.tarea?.cancel();
       const pagina = await doc.getPage(numero);
-      const base = pagina.getViewport({ scale: 1 });
-      const ancho = (canvas.parentElement?.clientWidth ?? window.innerWidth) - 8;
-      const escala = Math.min(2, Math.max(0.35, ancho / base.width));
-      const viewport = pagina.getViewport({ scale: escala });
-      canvas.width = Math.floor(viewport.width);
-      canvas.height = Math.floor(viewport.height);
+      const viewport = pagina.getViewport({ scale: this.zoom() });
+      // Doble resolución en pantallas de alta densidad (celulares) para que
+      // el texto se lea nítido al acercar.
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = Math.floor(viewport.width * dpr);
+      canvas.height = Math.floor(viewport.height * dpr);
+      canvas.style.width = `${Math.floor(viewport.width)}px`;
+      canvas.style.height = `${Math.floor(viewport.height)}px`;
       const contexto = canvas.getContext('2d');
       if (!contexto) return;
+      contexto.setTransform(dpr, 0, 0, dpr, 0, 0);
       this.tarea = pagina.render({ canvasContext: contexto, viewport });
       await this.tarea.promise;
     } catch (e) {
