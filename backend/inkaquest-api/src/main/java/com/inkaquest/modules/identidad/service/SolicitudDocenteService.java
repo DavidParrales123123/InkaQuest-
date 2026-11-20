@@ -20,6 +20,8 @@ import com.inkaquest.shared.exception.ResourceNotFoundException;
 import com.inkaquest.shared.security.RlsExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +34,8 @@ import java.util.UUID;
  */
 @Service
 public class SolicitudDocenteService {
+
+    private static final Logger LOG = Logger.getLogger(SolicitudDocenteService.class.getName());
 
     private final SolicitudDocenteRepository solicitudDocenteRepository;
     private final PerfilRepository perfilRepository;
@@ -124,11 +128,7 @@ public class SolicitudDocenteService {
     /** Aprueba una solicitud de docente: cambio de rol del perfil + marca solicitud como aprobada. */
     public SolicitudDocenteResponse aprobar(UUID revisorId, UUID solicitudId,
                                             SolicitudDocenteRevisionRequest request) {
-        return rlsExecutor.executeAsSystem(() -> {
-            // El trigger trg_perfil_no_escalable exige contexto de administrador
-            // o la marca de escritura del sistema para cambiar el rol. El
-            // backend no envía el JWT de admin a la BD, así que activamos el
-            // flag del motor (transaction-local) antes de promover a docente.
+        ResultadoRevision resultado = rlsExecutor.executeAsSystem(() -> {
             jdbc.execute("select public.fn_activar_escritura_sistema()");
             try {
             SolicitudDocente s = solicitudDocenteRepository.findById(solicitudId)
@@ -138,7 +138,7 @@ public class SolicitudDocenteService {
                 throw new BadRequestException("Solo las solicitudes pendientes pueden aprobarse.");
             }
 
-            com.inkaquest.modules.identidad.entity.Perfil perfil = s.getUsuarioId();
+            Perfil perfil = s.getUsuarioId();
             perfil.setRol(RolUsuario.docente);
 
             s.setEstado(EstadoSolicitudDocente.aprobada);
@@ -154,18 +154,20 @@ public class SolicitudDocenteService {
                     Map.of("rol", "estudiante"),
                     Map.of("rol", "docente"),
                     true, null);
-            notificarResolucion(perfil, s.getRevisadoPor(), true, request.motivoRevision(), solicitudId);
-            return SolicitudDocenteResponse.from(solicitudDocenteRepository.save(s));
+            SolicitudDocenteResponse respuesta = SolicitudDocenteResponse.from(solicitudDocenteRepository.save(s));
+            return new ResultadoRevision(respuesta, perfil.getId(), s.getRevisadoPor().getId(), solicitudId, request.motivoRevision());
             } finally {
                 jdbc.execute("select public.fn_desactivar_escritura_sistema()");
             }
         });
+        notificarSeguro(resultado, true);
+        return resultado.respuesta();
     }
 
     /** Rechaza una solicitud con motivo. */
     public SolicitudDocenteResponse rechazar(UUID revisorId, UUID solicitudId,
                                              SolicitudDocenteRevisionRequest request) {
-        return rlsExecutor.executeAsSystem(() -> {
+        ResultadoRevision resultado = rlsExecutor.executeAsSystem(() -> {
             SolicitudDocente s = solicitudDocenteRepository.findById(solicitudId)
                     .orElseThrow(() -> new ResourceNotFoundException("Solicitud no encontrada."));
 
@@ -185,9 +187,26 @@ public class SolicitudDocenteService {
                     null,
                     Map.of("motivo", request.motivoRevision().trim()),
                     true, null);
-            notificarResolucion(s.getUsuarioId(), s.getRevisadoPor(), false, request.motivoRevision(), solicitudId);
-            return SolicitudDocenteResponse.from(solicitudDocenteRepository.save(s));
+            SolicitudDocenteResponse respuesta = SolicitudDocenteResponse.from(solicitudDocenteRepository.save(s));
+            return new ResultadoRevision(respuesta, s.getUsuarioId().getId(), s.getRevisadoPor().getId(), solicitudId, request.motivoRevision());
         });
+        notificarSeguro(resultado, false);
+        return resultado.respuesta();
+    }
+
+    /** Datos de la resolución ya confirmada, para notificar fuera de la transacción. */
+    private record ResultadoRevision(SolicitudDocenteResponse respuesta, UUID estudianteId,
+                                     UUID revisorId, UUID solicitudId, String motivo) {}
+
+    /** La notificación es best-effort: nunca debe hacer fallar una aprobación/rechazo. */
+    private void notificarSeguro(ResultadoRevision resultado, boolean aprobada) {
+        try {
+            notificarResolucion(resultado.estudianteId(), resultado.revisorId(), aprobada,
+                    resultado.motivo(), resultado.solicitudId());
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "No se pudo notificar la resolución de la solicitud "
+                    + resultado.solicitudId() + ": " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -195,7 +214,7 @@ public class SolicitudDocenteService {
      * incluyendo el mensaje (motivo) de la revisión. El destinatario queda
      * explícito en la notificación para que la RLS de lectura le permita verla.
      */
-    private void notificarResolucion(Perfil destinatario, Perfil revisor,
+    private void notificarResolucion(UUID destinatarioId, UUID revisorId,
                                      boolean aprobada, String motivo, UUID solicitudId) {
         String observacion = motivo == null ? "" : motivo.trim();
         Notificacion notificacion = new Notificacion();
@@ -208,17 +227,17 @@ public class SolicitudDocenteService {
                 + (observacion.isEmpty() ? "" : " Observación del administrador: " + observacion));
         notificacion.setVariables(Map.of());
         notificacion.setCanal(CanalNotificacion.in_app);
-        notificacion.setDestinatarioId(destinatario);
+        notificacion.setDestinatarioId(perfilRepository.getReferenceById(destinatarioId));
         notificacion.setEntidadTipo("solicitud_docente");
         notificacion.setEntidadId(solicitudId);
         notificacion.setEnviadaEn(Instant.now());
         notificacion.setClaveIdempotencia("solicitud-docente-" + solicitudId + (aprobada ? "-aprobada" : "-rechazada"));
-        notificacion.setCreadoPor(revisor);
+        notificacion.setCreadoPor(perfilRepository.getReferenceById(revisorId));
         Notificacion guardada = notificacionRepository.save(notificacion);
 
         NotificacionDestinatario entrega = new NotificacionDestinatario();
         entrega.setNotificacionId(guardada);
-        entrega.setUsuarioId(destinatario);
+        entrega.setUsuarioId(perfilRepository.getReferenceById(destinatarioId));
         entrega.setCanal(CanalNotificacion.in_app);
         entrega.setEstado(EstadoNotificacion.enviada);
         entrega.setEnviadaEn(Instant.now());
