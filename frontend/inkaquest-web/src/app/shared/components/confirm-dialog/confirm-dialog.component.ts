@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { ChangeDetectionStrategy, Component, HostListener, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, HostListener, effect, inject } from '@angular/core';
 
 import { ConfirmService } from '../../../core/services/confirm.service';
 
@@ -48,6 +48,38 @@ import { ConfirmService } from '../../../core/services/confirm.service';
 })
 export class ConfirmDialogComponent {
   protected readonly confirm = inject(ConfirmService);
+  private readonly host = inject(ElementRef<HTMLElement>);
+  private focoAnterior: HTMLElement | null = null;
+
+  constructor() {
+    effect(() => {
+      const abierto = Boolean(this.confirm.state());
+      if (abierto) {
+        this.focoAnterior = typeof document !== 'undefined' ? (document.activeElement as HTMLElement) : null;
+        queueMicrotask(() => this.host.nativeElement.querySelector<HTMLElement>('button')?.focus());
+      } else if (this.focoAnterior) {
+        const anterior = this.focoAnterior;
+        this.focoAnterior = null;
+        queueMicrotask(() => anterior.focus());
+      }
+    });
+  }
+
+  @HostListener('document:keydown.tab', ['$event'])
+  protected atraparFoco(evento: KeyboardEvent): void {
+    if (!this.confirm.state()) return;
+    const botones = Array.from(this.host.nativeElement.querySelectorAll<HTMLElement>('button:not([disabled])'));
+    if (botones.length === 0) return;
+    const primero = botones[0];
+    const ultimo = botones[botones.length - 1];
+    if (evento.shiftKey && document.activeElement === primero) {
+      evento.preventDefault();
+      ultimo.focus();
+    } else if (!evento.shiftKey && document.activeElement === ultimo) {
+      evento.preventDefault();
+      primero.focus();
+    }
+  }
 
   @HostListener('document:keydown.escape')
   protected onEscape(): void {
