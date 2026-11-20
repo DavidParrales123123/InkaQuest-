@@ -17,7 +17,7 @@ import { SkeletonComponent } from '../skeleton/skeleton.component';
   imports: [EmptyStateComponent, SkeletonComponent],
   template: `
     @if (cargando()) {
-      <div class="grid gap-4" [style.grid-template-columns]="columnas()">
+      <div class="grid gap-4" aria-busy="true" [style.grid-template-columns]="columnas()">
         @for (i of esqueletos(); track i) {
           <div class="card p-5">
             <app-skeleton alto="1rem" ancho="45%" />
