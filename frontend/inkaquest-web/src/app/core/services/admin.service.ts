@@ -364,13 +364,11 @@ export class AdminService {
   }
 
   /**
-   * Aprueba una solicitud docente.
+   * Aprueba una solicitud docente mediante la RPC segura de la BD.
    *
-   * <p>El flujo completo lo ejecuta el backend Spring
-   * ({@code POST /api/v1/admin/solicitud-docente/{id}/aprobar}): marca la
-   * solicitud como aprobada, promueve el rol del usuario a docente y lo
-   * reactiva, todo dentro de una transacción RLS. La acción se registra en
-   * {@code public.registro_accion} vía {@code AuditoriaService}.</p>
+   * <p>La función valida al administrador, cambia el rol, actualiza la
+   * solicitud, registra la auditoría y notifica al estudiante en una sola
+   * transacción, sin depender del flujo Java del backend.</p>
    */
   async aprobarSolicitud(
     solicitudId: string,
@@ -379,38 +377,37 @@ export class AdminService {
     const motivoLimpio =
       (motivo ?? '').trim() || 'Solicitud aprobada tras revisión del administrador.';
     try {
-      const url = `${this.backendUrl}/admin/solicitud-docente/${encodeURIComponent(solicitudId)}/aprobar`;
-      const { message } = await firstValueFrom(
-        this.http.post<ApiResponse>(url, { motivoRevision: motivoLimpio }),
-      );
-      return {
-        ok: true,
-        mensaje: message || 'Solicitud aprobada. El usuario ya es docente.',
-      };
+      const { error } = await this.supabase.client.rpc('aprobar_solicitud_docente', {
+        p_solicitud_id: solicitudId,
+        p_motivo: motivoLimpio,
+      });
+      if (error) return { ok: false, mensaje: error.message };
+      return { ok: true, mensaje: 'Solicitud aprobada. El usuario ya es docente.' };
     } catch (e) {
       return {
         ok: false,
-        mensaje: mensajeErrorApi(e, 'No se pudo aprobar la solicitud.'),
+        mensaje: e instanceof Error ? e.message : 'No se pudo aprobar la solicitud.',
       };
     }
   }
 
-  /** Rechaza una solicitud docente con su motivo. */
+  /** Rechaza una solicitud docente mediante la RPC segura de la BD. */
   async rechazarSolicitud(
     solicitudId: string,
     motivo: string,
   ): Promise<{ ok: boolean; mensaje: string }> {
     const motivoLimpio = motivo.trim() || 'Solicitud rechazada por el administrador.';
     try {
-      const url = `${this.backendUrl}/admin/solicitud-docente/${encodeURIComponent(solicitudId)}/rechazar`;
-      const { message } = await firstValueFrom(
-        this.http.post<ApiResponse>(url, { motivoRevision: motivoLimpio }),
-      );
-      return { ok: true, mensaje: message || 'Solicitud rechazada.' };
+      const { error } = await this.supabase.client.rpc('rechazar_solicitud_docente', {
+        p_solicitud_id: solicitudId,
+        p_motivo: motivoLimpio,
+      });
+      if (error) return { ok: false, mensaje: error.message };
+      return { ok: true, mensaje: 'Solicitud rechazada.' };
     } catch (e) {
       return {
         ok: false,
-        mensaje: mensajeErrorApi(e, 'No se pudo rechazar la solicitud.'),
+        mensaje: e instanceof Error ? e.message : 'No se pudo rechazar la solicitud.',
       };
     }
   }
