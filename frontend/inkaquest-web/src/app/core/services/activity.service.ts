@@ -509,65 +509,32 @@ export class ActivityService {
     return rows.filter((r) => (r as any).estado === estado).map((r) => ({ ...r, estadoEntrega: (r as any).estado })) as unknown as EntregaResponse[];
   }
 
-  /** Califica una entrega: marca la entrega como revisada y registra la calificación (docente del curso). */
+  /**
+   * Califica una entrega usando el backend (POST /api/v1/entregas/{id}/calificar).
+   *
+   * El cliente NO puede insertar en `calificacion`: las migraciones de
+   * endurecimiento revocaron INSERT a `authenticated` a propósito. El backend
+   * valida que el docente pertenezca al curso, calcula `aprobado` y escribe
+   * entrega + calificación en una sola transacción con su contexto RLS.
+   */
   async calificarEntrega(entregaId: string, nota: number, comentario?: string, notaMaxima?: number): Promise<{ ok: boolean; mensaje: string }> {
-    const { data: { user } } = await this.client.auth.getUser();
-
-    const { data: entrega, error: entregaError } = await this.client
-      .from(this.supabase.tabla.entrega)
-      .select('id, estudiante_id, tarea_id')
-      .eq('id', entregaId)
-      .maybeSingle();
-
-    if (entregaError) return { ok: false, mensaje: entregaError.message };
-    if (!entrega) return { ok: false, mensaje: 'No se encontró la entrega.' };
-
     const notaNum = Number.isFinite(nota) ? Number(nota) : 0;
     const max = notaMaxima && notaMaxima > 0 ? notaMaxima : 20;
-    const notaClamped = Math.max(0, Math.min(notaNum, max));
-    const notaMaximaFinal = max;
-    const ahora = new Date().toISOString();
-
-    const { error: updateError } = await this.client
-      .from(this.supabase.tabla.entrega)
-      .update({ nota: notaClamped, estado: 'revisada', revisada_en: ahora })
-      .eq('id', entregaId);
-
-    if (updateError) {
-      console.error('[InkaQuest] Error calificando la entrega:', updateError.message);
-      return { ok: false, mensaje: updateError.message };
+    try {
+      await firstValueFrom(
+        this.http.post<ApiResponse<EntregaResponse>>(
+          `${environment.apiUrl}/entregas/${entregaId}/calificar`,
+          { nota: Math.max(0, Math.min(notaNum, max)), comentario: (comentario ?? '').trim() || null },
+        ),
+      );
+      return { ok: true, mensaje: 'Calificación registrada.' };
+    } catch (e: any) {
+      const cuerpo = e?.error;
+      const mensaje = (typeof cuerpo === 'string' && cuerpo.trim())
+        ? cuerpo
+        : (cuerpo?.message ?? e?.message ?? 'No se pudo registrar la calificación.');
+      console.error('[InkaQuest] Error calificando la entrega:', mensaje);
+      return { ok: false, mensaje };
     }
-
-    const payload = {
-      entrega_id: entregaId,
-      estudiante_id: entrega.estudiante_id,
-      docente_id: user?.id ?? null,
-      nota: notaClamped,
-      nota_maxima: notaMaximaFinal,
-      aprobado: null,
-      comentario: (comentario ?? '').trim() || null,
-      calificado_en: ahora,
-    };
-
-    const { data: existente, error: consultaError } = await this.client
-      .from(this.supabase.tabla.calificacion)
-      .select('id')
-      .eq('entrega_id', entregaId)
-      .maybeSingle();
-
-    if (consultaError) {
-      console.error('[InkaQuest] Error en la calificación previa:', consultaError.message);
-      return { ok: false, mensaje: consultaError.message };
-    }
-
-    const escritura = existente
-      ? await this.client.from(this.supabase.tabla.calificacion).update(payload).eq('id', existente.id)
-      : await this.client.from(this.supabase.tabla.calificacion).insert(payload);
-
-    if (escritura.error) {
-      console.error('[InkaQuest] Error guardando la calificación:', escritura.error.message);
-      return { ok: false, mensaje: escritura.error.message };
-    }
-    return { ok: true, mensaje: 'Calificación registrada.' };
   }
 }
