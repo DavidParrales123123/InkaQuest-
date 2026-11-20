@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { ChangeDetectionStrategy, Component, ElementRef, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -9,6 +9,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
+import { FeedbackMessageComponent } from '../../../shared/components/feedback-message/feedback-message.component';
 
 /**
  * Perfil del estudiante.
@@ -16,7 +17,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
 @Component({
   selector: 'app-student-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, ButtonComponent, DataPanelComponent, PageHeaderComponent, StatCardComponent],
+  imports: [ReactiveFormsModule, RouterLink, ButtonComponent, DataPanelComponent, PageHeaderComponent, StatCardComponent, FeedbackMessageComponent],
   template: `
     <section class="space-y-6">
       <app-page-header titulo="Mi perfil" descripcion="Consulta y actualiza la información básica de tu cuenta." />
@@ -60,9 +61,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
                   }
                 </div>
                 <p class="text-xs text-marine-500">Formatos: JPG, PNG o WebP. Recomendado: imagen cuadrada. Se guardará en tu perfil.</p>
-                @if (mensajeAvatar()) {
-                  <p class="text-sm" [class.text-success-600]="exitoAvatar()" [class.text-danger-600]="!exitoAvatar()">{{ mensajeAvatar() }}</p>
-                }
+                <app-feedback-message [mensaje]="mensajeAvatar()" [exito]="exitoAvatar()" />
               </div>
             </div>
 
@@ -130,9 +129,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
                 <label class="label" for="email">Correo</label>
                 <input id="email" class="input" [value]="auth.perfil()?.email ?? auth.usuario()?.email ?? ''" disabled />
               </div>
-              @if (mensaje()) {
-                <p class="text-sm" [class.text-success-600]="exito()" [class.text-danger-600]="!exito()">{{ mensaje() }}</p>
-              }
+              <app-feedback-message [mensaje]="mensaje()" [exito]="exito()" />
               <app-button tipo="submit" variante="primario" [cargando]="guardando()" [deshabilitado]="guardando()">Guardar cambios</app-button>
               <p class="text-xs text-marine-400">Algunos campos (correo, rol) son gestionados por el sistema y no pueden modificarse aquí.</p>
             </form>

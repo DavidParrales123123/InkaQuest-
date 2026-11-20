@@ -11,19 +11,18 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { FeedbackMessageComponent } from '../../../shared/components/feedback-message/feedback-message.component';
 
 @Component({
   selector: 'app-admin-users',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, ReactiveFormsModule, ButtonComponent, DataPanelComponent, PageHeaderComponent, StatusBadgeComponent],
+  imports: [DatePipe, ReactiveFormsModule, ButtonComponent, DataPanelComponent, PageHeaderComponent, StatusBadgeComponent, FeedbackMessageComponent],
   template: `
     <section class="space-y-6">
       <app-page-header titulo="Usuarios" descripcion="Listado de cuentas registradas y su estado." [acciones]="true">
         <div acciones><app-button variante="contorno" tamano="sm" (alPulsar)="cargar()">Actualizar</app-button></div>
       </app-page-header>
-      @if (mensaje()) {
-        <p class="text-sm" [class.text-success-600]="exito()" [class.text-danger-600]="!exito()">{{ mensaje() }}</p>
-      }
+      <app-feedback-message [mensaje]="mensaje()" [exito]="exito()" />
       <div class="card card-body">
         <form class="grid gap-4 md:grid-cols-4" [formGroup]="filtros">
           <div class="md:col-span-2"><label class="label" for="busqueda">Búsqueda</label><input id="busqueda" class="input" formControlName="busqueda" placeholder="Nombre o correo" /></div>
