@@ -278,8 +278,8 @@ export class PanelLayoutComponent implements OnInit {
     const fin = e.changedTouches[0]?.clientX ?? 0;
     if (this.xDeslizInicial - fin > 60) this.cerrarMenu();
   }
-  /** Numero de notificaciones no leidas. */
-  protected readonly noLeidas = signal(0);
+  /** Contador compartido con el servicio: se actualiza al marcar como leídas. */
+  protected readonly noLeidas = this.notifications.noLeidas;
   /** Numero de mensajes de chat no leidos. */
   protected readonly mensajesNoLeidos = signal(0);
   /** Muestra el botón "volver arriba" tras cierto scroll. */
@@ -381,9 +381,9 @@ export class PanelLayoutComponent implements OnInit {
       return;
     }
     try {
-      this.noLeidas.set(await this.notifications.contarNoLeidas(usuario.id));
+      await this.notifications.contarNoLeidas(usuario.id);
     } catch {
-      this.noLeidas.set(0);
+      this.notifications.noLeidas.set(0);
     }
   }
 

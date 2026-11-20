@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 
 import { SupabaseService } from './supabase.service';
 import { Notificacion, NotificacionDestinatario } from '../models/domain.models';
@@ -37,6 +37,9 @@ export interface NotificacionCompleta extends Notificacion {
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
   private readonly supabase = inject(SupabaseService);
+
+  /** Contador reactivo de no leídas: lo consumen la campana y cualquier vista. */
+  readonly noLeidas = signal(0);
 
   /**
    * Notificaciones del usuario con su estado de lectura.
@@ -101,8 +104,10 @@ export class NotificationService {
       .is('leida_en', null);
 
     if (error) {
+      this.noLeidas.set(0);
       return 0;
     }
+    this.noLeidas.set(count ?? 0);
     return count ?? 0;
   }
 
@@ -117,6 +122,7 @@ export class NotificationService {
       if (error) {
         return { ok: false, mensaje: error.message };
       }
+      this.noLeidas.update((n) => Math.max(0, n - 1));
       return { ok: true, mensaje: 'Notificación marcada como leída.' };
     } catch (e) {
       return {
@@ -138,6 +144,7 @@ export class NotificationService {
       if (error) {
         return { ok: false, mensaje: error.message };
       }
+      this.noLeidas.set(0);
       return { ok: true, mensaje: 'Todas las notificaciones fueron marcadas como leídas.' };
     } catch (e) {
       return {
