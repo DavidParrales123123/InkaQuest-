@@ -13,7 +13,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
   template: `
     <div class="state-block">
       @if (icono()) {
-        <div class="flex size-14 items-center justify-center rounded-full bg-surface-100 text-brand-500">
+        <div class="flex size-14 items-center justify-center rounded-full bg-brand-50 text-brand-500 ring-8 ring-brand-50/40">
           <ng-content select="[icono]" />
         </div>
       }

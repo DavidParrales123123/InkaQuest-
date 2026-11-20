@@ -68,7 +68,7 @@ import { imagenDeCurso } from '../../utilities/curso-imagen.util';
           }
         </div>
 
-        <h3 class="text-lg leading-snug font-extrabold text-marine-700 transition-colors group-hover:text-brand-600">
+        <h3 class="line-clamp-2 text-lg leading-snug font-extrabold text-marine-700 transition-colors group-hover:text-brand-600">
           {{ curso().titulo }}
         </h3>
 

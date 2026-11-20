@@ -32,14 +32,13 @@ import { ConfirmService } from '../../../core/services/confirm.service';
             </div>
           </div>
           <div class="mt-5 flex justify-end gap-2">
-            <button type="button" class="btn btn-outline btn-sm" (click)="confirm.responder(false)">Cancelar</button>
+            <button type="button" class="btn btn-outline btn-sm" (click)="confirm.responder(false)" autofocus>Cancelar</button>
             <button
               type="button"
               class="btn btn-sm"
               [class.btn-danger]="state.variante !== 'primario'"
               [class.btn-primary]="state.variante === 'primario'"
               (click)="confirm.responder(true)"
-              autofocus
             >{{ state.textoConfirmar ?? 'Eliminar' }}</button>
           </div>
         </div>
