@@ -27,7 +27,7 @@ type Modo = 'archivo' | 'enlace';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, RouterLink, DatePipe, PageHeaderComponent],
   styles: [`
-    .tipo-btn { display:flex; align-items:center; gap:.5rem; border-radius:.6rem; border:1px solid var(--color-surface-200,#d5e6e4); padding:.45rem .75rem; font-size:.78rem; font-weight:600; color:var(--color-marine-700,#113331); transition:all .15s ease; }
+    .tipo-btn { display:flex; align-items:center; justify-content:center; gap:.5rem; min-height:2.75rem; border-radius:.6rem; border:1px solid var(--color-surface-200,#d5e6e4); padding:.45rem .75rem; font-size:.78rem; font-weight:600; color:var(--color-marine-700,#113331); transition:all .15s ease; }
     .tipo-btn:hover { border-color:#12736b; background:#e8f6f4; }
     .tipo-btn.active { border-color:#12736b; background:#e8f6f4; color:#0f5d57; }
   `],
@@ -52,7 +52,7 @@ type Modo = 'archivo' | 'enlace';
       } @else {
         <!-- ════ Selector curso / lección ════ -->
         <div class="card card-body grid gap-3 sm:grid-cols-2">
-          <div>
+          <div class="min-w-0">
             <label class="label" for="rec-curso">Curso</label>
             <select id="rec-curso" class="select" [value]="cursoSel()" (change)="cambiarCurso($any($event.target).value)">
               @for (c of cursos(); track c.curso.id) {
@@ -60,7 +60,7 @@ type Modo = 'archivo' | 'enlace';
               }
             </select>
           </div>
-          <div>
+          <div class="min-w-0">
             <label class="label" for="rec-lec">Lección</label>
             <select id="rec-lec" class="select" [value]="leccionSel()" (change)="cambiarLeccion($any($event.target).value)">
               <option value="">— Todas las lecciones del curso —</option>
@@ -89,9 +89,9 @@ type Modo = 'archivo' | 'enlace';
             </div>
 
             @if (modo() === 'archivo') {
-              <div class="rounded-xl border border-dashed border-brand-300 bg-brand-50/40 p-5 text-center">
+              <div class="rounded-xl border border-dashed border-brand-300 bg-brand-50/40 p-4 text-center sm:p-5">
                 <p class="text-3xl">📎</p>
-                <p class="mt-1 text-sm text-marine-700">Word, PDF, Excel, PowerPoint, imágenes o ZIP.</p>
+                <p class="mt-1 text-xs text-marine-700 sm:text-sm">Word, PDF, Excel, PowerPoint, imágenes o ZIP.</p>
                 <p class="text-xs text-marine-500">Máx. 50 MB por archivo.</p>
                 <input #fileUpload type="file" multiple class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.zip,.png,.jpg,.jpeg,.webp,.gif,.svg,.txt,.json,.mp4,.webm,.mov" [disabled]="!leccionSel() || subiendo()" (change)="subirArchivos(fileUpload)" />
                 <button type="button" class="btn btn-primary mt-3 w-full sm:w-auto" [disabled]="!leccionSel() || subiendo()" (click)="fileUpload.click()">
@@ -160,16 +160,18 @@ type Modo = 'archivo' | 'enlace';
               <p class="text-xs text-marine-500">{{ recursosFiltrados().length }} de {{ recursos().length }} recursos</p>
               <ul class="space-y-2">
                 @for (r of recursosFiltrados(); track r.id) {
-                  <li class="card card-body flex flex-wrap items-center gap-3 py-3">
-                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-xl" aria-hidden="true">{{ iconoTipo(r.tipo) }}</span>
-                    <div class="min-w-0 grow">
-                      <p class="truncate font-semibold text-marine-800" [title]="r.nombre">{{ r.nombre }}</p>
-                      <p class="mt-0.5 text-xs text-marine-500">
-                        {{ leccionDe(r.leccion_id)?.titulo ?? 'Lección' }} · {{ etiquetaTipo(r.tipo) }}
-                        @if (r.tamano_bytes) { · {{ tamanoKb(r.tamano_bytes) }} } · {{ r.creado_en | date:'mediumDate' }}
-                      </p>
+                  <li class="card flex flex-col gap-2 rounded-xl border border-surface-200 bg-white p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-4">
+                    <div class="flex min-w-0 flex-1 items-start gap-3">
+                      <span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-xl" aria-hidden="true">{{ iconoTipo(r.tipo) }}</span>
+                      <div class="min-w-0 flex-1">
+                        <p class="break-words text-sm font-semibold text-marine-800" [title]="r.nombre">{{ r.nombre }}</p>
+                        <p class="mt-1 break-words text-xs leading-relaxed text-marine-500">
+                          {{ leccionDe(r.leccion_id)?.titulo ?? 'Lección' }} · {{ etiquetaTipo(r.tipo) }}
+                          @if (r.tamano_bytes) { · {{ tamanoKb(r.tamano_bytes) }} } · {{ r.creado_en | date:'mediumDate' }}
+                        </p>
+                      </div>
                     </div>
-                    <div class="flex w-full flex-wrap gap-1.5 sm:w-auto">
+                    <div class="flex w-full gap-1.5 sm:w-auto">
                       @if (r.ruta_storage) {
                         <button type="button" class="btn btn-outline btn-sm grow sm:grow-0" (click)="abrirRecurso(r)">Descargar</button>
                       } @else if (r.url) {
