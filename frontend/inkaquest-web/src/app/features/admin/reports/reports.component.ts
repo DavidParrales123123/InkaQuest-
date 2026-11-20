@@ -37,7 +37,7 @@ interface FilaCurso {
       </app-page-header>
 
       <!-- Métricas globales -->
-      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div class="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
         <app-stat-card etiqueta="Usuarios" [valor]="perfiles().length" tono="brand" [icono]="true">
           <span icono><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
         </app-stat-card>
@@ -71,7 +71,7 @@ interface FilaCurso {
               <a routerLink="/admin/cursos" class="btn btn-outline btn-sm">Administrar cursos</a>
             </div>
             <div class="table-wrap overflow-x-auto rounded-xl border border-surface-200">
-              <table class="table">
+              <table class="table table-responsive">
                 <thead>
                   <tr>
                     <th scope="col">Curso</th>
@@ -85,12 +85,12 @@ interface FilaCurso {
                 <tbody>
                   @for (fila of filasCurso(); track fila.id) {
                     <tr>
-                      <td class="font-medium text-marine-800">{{ fila.titulo }}</td>
-                      <td><app-status-badge [estado]="fila.estado" /></td>
-                      <td>{{ fila.matriculados }}</td>
-                      <td>{{ fila.completadas }}</td>
-                      <td>{{ fila.pendientes }}</td>
-                      <td>{{ fila.porcentaje_pago }}%</td>
+                      <td class="font-medium text-marine-800" data-label="Curso">{{ fila.titulo }}</td>
+                      <td data-label="Estado"><app-status-badge [estado]="fila.estado" /></td>
+                      <td data-label="Matriculados">{{ fila.matriculados }}</td>
+                      <td data-label="Completados">{{ fila.completadas }}</td>
+                      <td data-label="Abandonadas">{{ fila.pendientes }}</td>
+                      <td data-label="% aprobado">{{ fila.porcentaje_pago }}%</td>
                     </tr>
                   }
                 </tbody>
