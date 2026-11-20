@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
@@ -42,7 +42,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       </app-page-header>
 
       <div class="grid gap-6 pt-1 sm:grid-cols-2 xl:grid-cols-4 lg:gap-8">
-        <app-stat-card etiqueta="Cursos matriculados" [valor]="matriculas().length" detalle="Matrículas registradas" [icono]="true" tono="brand">
+        <app-stat-card etiqueta="Cursos matriculados" enlace="/estudiante/cursos" [valor]="matriculas().length" detalle="Matrículas registradas" [icono]="true" tono="brand">
           <span icono><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/></svg></span>
         </app-stat-card>
         <app-stat-card etiqueta="XP total" [valor]="xp()" detalle="Experiencia acumulada" [icono]="true" tono="gold">
@@ -51,7 +51,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
         <app-stat-card etiqueta="Racha" [valor]="racha()" detalle="Días consecutivos" [icono]="true" tono="danger">
           <span icono><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3s4 3 4 7-2 5-2 5 3 1 3 4a5 5 0 0 1-10 0c0-4 5-6 5-10 0-3 0-6 0-6z"/></svg></span>
         </app-stat-card>
-        <app-stat-card etiqueta="Notificaciones" [valor]="noLeidas()" detalle="Sin leer" [icono]="true" tono="info">
+        <app-stat-card etiqueta="Notificaciones" enlace="/estudiante/notificaciones" [valor]="noLeidas()" detalle="Sin leer" [icono]="true" tono="info">
           <span icono><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"/><path d="M10.3 20a2 2 0 0 0 3.4 0"/></svg></span>
         </app-stat-card>
       </div>
@@ -98,7 +98,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                 <ul class="mt-4 space-y-3">
                   @for (p of progresos().slice(0, 5); track p.id) {
                     <li class="rounded-button border border-surface-200 p-3">
-                      <div class="flex items-center justify-between gap-3">
+                      <div class="flex flex-wrap items-center justify-between gap-3">
                         <a [routerLink]="['/estudiante/aula', p.curso_id]" class="text-sm font-medium text-marine-700 hover:text-brand-600">{{ tituloCurso(p.curso_id) }}</a>
                         <app-status-badge [estado]="p.estado" />
                       </div>
