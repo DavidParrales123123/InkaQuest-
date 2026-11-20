@@ -20,10 +20,10 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
           </span>
         }
         <div class="min-w-0">
-          <p class="text-xs font-extrabold tracking-[0.12em] text-marine-500 uppercase">{{ etiqueta() }}</p>
-          <p class="mt-1 text-2xl font-extrabold text-marine-700 md:text-3xl">{{ valor() }}</p>
+          <p class="text-xs font-extrabold tracking-[0.12em] text-marine-500 uppercase truncate">{{ etiqueta() }}</p>
+          <p class="mt-1 text-2xl font-extrabold tabular-nums text-marine-700 md:text-3xl">{{ valor() }}</p>
           @if (detalle()) {
-            <p class="mt-1 text-xs font-medium text-marine-400">{{ detalle() }}</p>
+            <p class="mt-1 text-xs font-medium text-marine-400 line-clamp-2">{{ detalle() }}</p>
           }
         </div>
       </div>

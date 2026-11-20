@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  HostListener,
   OnInit,
   computed,
   inject,
@@ -219,6 +220,11 @@ export interface SeccionPanel {
         </main>
         <!-- Asistente IA flotante (conectado con Gemini vía backend seguro) -->
         <app-chatbot-widget />
+        @if (mostrarArriba()) {
+          <button type="button" class="fixed bottom-5 left-4 z-30 inline-grid size-10 place-items-center rounded-full border border-surface-200 bg-white text-marine-600 shadow-lg transition-transform hover:-translate-y-0.5 sm:bottom-6 sm:left-6" (click)="irArriba()" aria-label="Volver arriba">
+            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+          </button>
+        }
       </div>
     </div>
   `,
@@ -248,6 +254,17 @@ export class PanelLayoutComponent implements OnInit {
   protected readonly noLeidas = signal(0);
   /** Numero de mensajes de chat no leidos. */
   protected readonly mensajesNoLeidos = signal(0);
+  /** Muestra el botón "volver arriba" tras cierto scroll. */
+  protected readonly mostrarArriba = signal(false);
+
+  @HostListener('window:scroll')
+  protected alDesplazarse(): void {
+    this.mostrarArriba.set(typeof window !== 'undefined' && window.scrollY > 400);
+  }
+
+  protected irArriba(): void {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   /** Nombre visible del usuario. */
   protected readonly nombreUsuario = computed(() => {

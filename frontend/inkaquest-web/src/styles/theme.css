@@ -135,6 +135,8 @@
            focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none disabled:bg-surface-50 disabled:text-marine-300;
   }
   .input-error { @apply border-danger-500 focus:border-danger-500 focus:ring-danger-500/20; }
+  .input:hover:not(:disabled), .select:hover:not(:disabled), .textarea:hover:not(:disabled) { @apply border-brand-300; }
+  .input::placeholder, .textarea::placeholder { @apply text-marine-300; }
   .select {
     @apply w-full rounded-xl border border-surface-300 bg-white px-3.5 py-2.5 text-sm text-marine-800 transition-colors min-h-11
            focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none
