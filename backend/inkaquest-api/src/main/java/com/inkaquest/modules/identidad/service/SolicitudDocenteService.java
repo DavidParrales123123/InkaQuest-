@@ -11,6 +11,7 @@ import com.inkaquest.shared.enums.RolUsuario;
 import com.inkaquest.shared.exception.BadRequestException;
 import com.inkaquest.shared.exception.ResourceNotFoundException;
 import com.inkaquest.shared.security.RlsExecutor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.List;
@@ -29,15 +30,18 @@ public class SolicitudDocenteService {
     private final PerfilRepository perfilRepository;
     private final com.inkaquest.modules.auditoria.service.AuditoriaService auditoriaService;
     private final RlsExecutor rlsExecutor;
+    private final JdbcTemplate jdbc;
 
     public SolicitudDocenteService(SolicitudDocenteRepository solicitudDocenteRepository,
                                    PerfilRepository perfilRepository,
                                    com.inkaquest.modules.auditoria.service.AuditoriaService auditoriaService,
-                                   RlsExecutor rlsExecutor) {
+                                   RlsExecutor rlsExecutor,
+                                   JdbcTemplate jdbc) {
         this.solicitudDocenteRepository = solicitudDocenteRepository;
         this.perfilRepository = perfilRepository;
         this.auditoriaService = auditoriaService;
         this.rlsExecutor = rlsExecutor;
+        this.jdbc = jdbc;
     }
 
     /** Crea una nueva solicitud de docente para el usuario autenticado. */
@@ -108,6 +112,12 @@ public class SolicitudDocenteService {
     public SolicitudDocenteResponse aprobar(UUID revisorId, UUID solicitudId,
                                             SolicitudDocenteRevisionRequest request) {
         return rlsExecutor.executeAsSystem(() -> {
+            // El trigger trg_perfil_no_escalable exige contexto de administrador
+            // o la marca de escritura del sistema para cambiar el rol. El
+            // backend no envía el JWT de admin a la BD, así que activamos el
+            // flag del motor (transaction-local) antes de promover a docente.
+            jdbc.execute("select public.fn_activar_escritura_sistema()");
+            try {
             SolicitudDocente s = solicitudDocenteRepository.findById(solicitudId)
                     .orElseThrow(() -> new ResourceNotFoundException("Solicitud no encontrada."));
 
@@ -132,6 +142,9 @@ public class SolicitudDocenteService {
                     Map.of("rol", "docente"),
                     true, null);
             return SolicitudDocenteResponse.from(solicitudDocenteRepository.save(s));
+            } finally {
+                jdbc.execute("select public.fn_desactivar_escritura_sistema()");
+            }
         });
     }
 
