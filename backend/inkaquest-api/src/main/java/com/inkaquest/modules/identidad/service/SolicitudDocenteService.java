@@ -18,7 +18,8 @@ import com.inkaquest.shared.enums.RolUsuario;
 import com.inkaquest.shared.exception.BadRequestException;
 import com.inkaquest.shared.exception.ResourceNotFoundException;
 import com.inkaquest.shared.security.RlsExecutor;
-import org.springframework.jdbc.core.JdbcTemplate;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Service;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,7 +42,8 @@ public class SolicitudDocenteService {
     private final PerfilRepository perfilRepository;
     private final com.inkaquest.modules.auditoria.service.AuditoriaService auditoriaService;
     private final RlsExecutor rlsExecutor;
-    private final JdbcTemplate jdbc;
+    @PersistenceContext
+    private EntityManager entityManager;
     private final NotificacionRepository notificacionRepository;
     private final NotificacionDestinatarioRepository notificacionDestinatarioRepository;
 
@@ -49,14 +51,12 @@ public class SolicitudDocenteService {
                                    PerfilRepository perfilRepository,
                                    com.inkaquest.modules.auditoria.service.AuditoriaService auditoriaService,
                                    RlsExecutor rlsExecutor,
-                                   JdbcTemplate jdbc,
                                    NotificacionRepository notificacionRepository,
                                    NotificacionDestinatarioRepository notificacionDestinatarioRepository) {
         this.solicitudDocenteRepository = solicitudDocenteRepository;
         this.perfilRepository = perfilRepository;
         this.auditoriaService = auditoriaService;
         this.rlsExecutor = rlsExecutor;
-        this.jdbc = jdbc;
         this.notificacionRepository = notificacionRepository;
         this.notificacionDestinatarioRepository = notificacionDestinatarioRepository;
     }
@@ -129,7 +129,7 @@ public class SolicitudDocenteService {
     public SolicitudDocenteResponse aprobar(UUID revisorId, UUID solicitudId,
                                             SolicitudDocenteRevisionRequest request) {
         ResultadoRevision resultado = rlsExecutor.executeAsSystem(() -> {
-            jdbc.execute("select public.fn_activar_escritura_sistema()");
+            escribirFlagSistema(true);
             try {
             SolicitudDocente s = solicitudDocenteRepository.findById(solicitudId)
                     .orElseThrow(() -> new ResourceNotFoundException("Solicitud no encontrada."));
@@ -157,7 +157,7 @@ public class SolicitudDocenteService {
             SolicitudDocenteResponse respuesta = SolicitudDocenteResponse.from(solicitudDocenteRepository.save(s));
             return new ResultadoRevision(respuesta, perfil.getId(), s.getRevisadoPor().getId(), solicitudId, request.motivoRevision());
             } finally {
-                jdbc.execute("select public.fn_desactivar_escritura_sistema()");
+                escribirFlagSistema(false);
             }
         });
         notificarSeguro(resultado, true);
@@ -197,6 +197,18 @@ public class SolicitudDocenteService {
     /** Datos de la resolución ya confirmada, para notificar fuera de la transacción. */
     private record ResultadoRevision(SolicitudDocenteResponse respuesta, UUID estudianteId,
                                      UUID revisorId, UUID solicitudId, String motivo) {}
+
+    /**
+     * Activa/desactiva el flag de escritura del sistema en la MISMA conexión
+     * de la transacción JPA. JdbcTemplate abriría otra conexión (JpaTransactionManager)
+     * y el trigger no vería el flag.
+     */
+    private void escribirFlagSistema(boolean activar) {
+        String sql = activar
+                ? "select public.fn_activar_escritura_sistema()"
+                : "select public.fn_desactivar_escritura_sistema()";
+        entityManager.createNativeQuery(sql).getSingleResult();
+    }
 
     /** La notificación es best-effort: nunca debe hacer fallar una aprobación/rechazo. */
     private void notificarSeguro(ResultadoRevision resultado, boolean aprobada) {
