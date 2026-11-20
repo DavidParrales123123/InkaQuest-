@@ -4,6 +4,7 @@ import { RouterOutlet } from '@angular/router';
 
 import { GlobalErrorBannerComponent } from './shared/components/global-error-banner/global-error-banner.component';
 import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
+import { NavigationProgressComponent } from './shared/components/navigation-progress/navigation-progress.component';
 
 /**
  * Componente raíz de la aplicación.
@@ -14,8 +15,8 @@ import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confi
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, GlobalErrorBannerComponent, ConfirmDialogComponent],
+  imports: [RouterOutlet, GlobalErrorBannerComponent, ConfirmDialogComponent, NavigationProgressComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: '<app-global-error-banner />\n<app-confirm-dialog />\n<router-outlet />',
+  template: '<app-navigation-progress />\n<app-global-error-banner />\n<app-confirm-dialog />\n<router-outlet />',
 })
 export class App {}

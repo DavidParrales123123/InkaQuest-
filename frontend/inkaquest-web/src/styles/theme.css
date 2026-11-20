@@ -93,6 +93,11 @@
   h3 { @apply text-2xl leading-snug; }
   h4 { @apply text-xl leading-snug; }
   :focus-visible { @apply outline-2 outline-offset-2 outline-gold-500; }
+  /* El header de los paneles es sticky: los anclajes no deben quedar tapados */
+  [id] { scroll-margin-top: 5.5rem; }
+  /* Quita el retardo de 300 ms al tocar en móvil (sin quitar el pellizco) */
+  a, button, summary, [role='button'] { touch-action: manipulation; }
+  ::selection { @apply bg-brand-100 text-marine-900; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
@@ -102,7 +107,7 @@
   .container-app { @apply mx-auto w-full max-w-[76rem] px-4 sm:px-6 lg:px-8; }
   .section { @apply py-12 md:py-16 lg:py-20; }
 
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-[0.85rem] font-extrabold transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500 disabled:pointer-events-none disabled:opacity-60; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-[0.85rem] font-extrabold transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500 disabled:pointer-events-none disabled:opacity-60 active:scale-[0.98]; }
   .btn-primary { @apply bg-marine-700 text-white hover:bg-brand-500 hover:-translate-y-0.5 shadow-sm; }
   .btn-secondary { @apply bg-brand-500 text-white hover:bg-brand-600 hover:-translate-y-0.5; }
   .btn-outline { @apply border border-marine-300 text-marine-700 hover:bg-marine-700 hover:text-white bg-white; }
@@ -120,19 +125,19 @@
 
   .label { @apply mb-1.5 block text-sm font-bold text-marine-700; }
   .input {
-    @apply w-full rounded-xl border border-surface-300 bg-white px-3.5 py-2.5 text-sm text-marine-800 placeholder:text-marine-300
+    @apply w-full rounded-xl border border-surface-300 bg-white px-3.5 py-2.5 text-sm text-marine-800 placeholder:text-marine-300 transition-colors
            focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none disabled:bg-surface-50 disabled:text-marine-300;
   }
   .input-error { @apply border-danger-500 focus:border-danger-500 focus:ring-danger-500/20; }
   .select {
-    @apply w-full rounded-xl border border-surface-300 bg-white px-3.5 py-2.5 text-sm text-marine-800
+    @apply w-full rounded-xl border border-surface-300 bg-white px-3.5 py-2.5 text-sm text-marine-800 transition-colors
            focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none
            disabled:bg-surface-50 disabled:text-marine-300 appearance-none bg-no-repeat pr-10;
     background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%235d729a' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-size: 1.1rem; background-position: right 0.75rem center;
   }
   .textarea {
-    @apply w-full rounded-xl border border-surface-300 bg-white px-3.5 py-2.5 text-sm text-marine-800 placeholder:text-marine-300
+    @apply w-full rounded-xl border border-surface-300 bg-white px-3.5 py-2.5 text-sm text-marine-800 placeholder:text-marine-300 transition-colors
            focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none disabled:bg-surface-50 disabled:text-marine-300 min-h-28 resize-y;
   }
   .field-error { @apply flex items-center gap-1 text-sm text-danger-600; min-height: 1.25rem; margin-top: 0.15rem; line-height: 1.25rem; }
