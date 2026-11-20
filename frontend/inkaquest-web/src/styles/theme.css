@@ -180,7 +180,7 @@
   .progress-track { @apply h-2 w-full overflow-hidden rounded-full bg-surface-200; }
   .progress-fill { @apply h-full rounded-full bg-brand-500 transition-all duration-500; }
 
-  .table-wrap { @apply overscroll-contain overflow-x-auto rounded-2xl border border-surface-200 bg-white; }
+  .table-wrap { @apply overflow-x-auto rounded-2xl border border-surface-200 bg-white; }
   .table { @apply w-full text-left text-sm; min-width: min(100%, 40rem); }
   .table thead th { @apply whitespace-nowrap border-b border-surface-200 bg-surface-50 px-4 py-3 text-xs font-bold uppercase tracking-wider text-marine-600; }
   .table tbody td { @apply border-b border-surface-100 px-4 py-3.5 align-middle text-marine-700; }
