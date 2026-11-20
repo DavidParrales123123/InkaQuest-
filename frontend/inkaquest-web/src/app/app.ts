@@ -5,6 +5,7 @@ import { RouterOutlet } from '@angular/router';
 import { GlobalErrorBannerComponent } from './shared/components/global-error-banner/global-error-banner.component';
 import { ConfirmDialogComponent } from './shared/components/confirm-dialog/confirm-dialog.component';
 import { NavigationProgressComponent } from './shared/components/navigation-progress/navigation-progress.component';
+import { FormA11yComponent } from './shared/components/form-a11y/form-a11y.component';
 
 /**
  * Componente raíz de la aplicación.
@@ -15,10 +16,11 @@ import { NavigationProgressComponent } from './shared/components/navigation-prog
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, GlobalErrorBannerComponent, ConfirmDialogComponent, NavigationProgressComponent],
+  imports: [RouterOutlet, GlobalErrorBannerComponent, ConfirmDialogComponent, NavigationProgressComponent, FormA11yComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<a href="#contenido-principal" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[300] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-marine-800 focus:shadow-lg">Saltar al contenido principal</a>
 <app-navigation-progress />
+<app-form-a11y />
 <app-global-error-banner />
 <app-confirm-dialog />
 <router-outlet />`,
