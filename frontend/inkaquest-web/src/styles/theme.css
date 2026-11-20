@@ -121,7 +121,7 @@
   .btn-danger { @apply bg-danger-600 text-white hover:bg-danger-700; }
   .btn-gold { @apply bg-gold-500 text-marine-900 hover:bg-gold-400 hover:-translate-y-0.5 font-extrabold; }
   .btn-outline-light { @apply border border-white/50 text-white hover:bg-white/10 bg-transparent; }
-  .btn-sm { @apply px-3 py-1.5 text-sm; }
+  .btn-sm { @apply px-3 py-1.5 text-sm min-h-9; }
   .btn-md { @apply px-5 py-2.5 text-sm; }
   .btn-lg { @apply px-7 py-3.5 text-base; }
 
@@ -131,12 +131,12 @@
 
   .label { @apply mb-1.5 block text-sm font-bold text-marine-700; }
   .input {
-    @apply w-full rounded-xl border border-surface-300 bg-white px-3.5 py-2.5 text-sm text-marine-800 placeholder:text-marine-300 transition-colors
+    @apply w-full rounded-xl border border-surface-300 bg-white px-3.5 py-2.5 text-sm text-marine-800 placeholder:text-marine-300 transition-colors min-h-11
            focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none disabled:bg-surface-50 disabled:text-marine-300;
   }
   .input-error { @apply border-danger-500 focus:border-danger-500 focus:ring-danger-500/20; }
   .select {
-    @apply w-full rounded-xl border border-surface-300 bg-white px-3.5 py-2.5 text-sm text-marine-800 transition-colors
+    @apply w-full rounded-xl border border-surface-300 bg-white px-3.5 py-2.5 text-sm text-marine-800 transition-colors min-h-11
            focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none
            disabled:bg-surface-50 disabled:text-marine-300 appearance-none bg-no-repeat pr-10;
     background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%235d729a' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E");

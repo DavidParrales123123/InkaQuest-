@@ -18,7 +18,7 @@ import { SkeletonComponent } from '../skeleton/skeleton.component';
   template: `
     @if (cargando()) {
       <div class="grid gap-4" [style.grid-template-columns]="columnas()">
-        @for (i of [].constructor(placeholders()); track i) {
+        @for (i of esqueletos(); track i) {
           <div class="card p-5">
             <app-skeleton alto="1rem" ancho="45%" />
             <div class="mt-3 space-y-2">
@@ -89,4 +89,7 @@ export class DataPanelComponent {
   readonly alReintentar = output<void>();
   /** Evento de la accion del estado vacio. */
   readonly alAccionVacia = output<void>();
+
+  /** Posiciones de los esqueletos durante la carga. */
+  esqueletos(): number[] { return Array.from({ length: this.placeholders() }, (_, i) => i); }
 }

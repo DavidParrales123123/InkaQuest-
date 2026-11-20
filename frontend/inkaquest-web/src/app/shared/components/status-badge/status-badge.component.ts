@@ -25,8 +25,12 @@ export class StatusBadgeComponent {
   /** Si se muestra el punto de color. */
   readonly punto = input(true);
 
-  /** Etiqueta legible. */
-  protected readonly texto = computed(() => ETIQUETAS[this.estado()] ?? this.estado());
+  /** Etiqueta legible: estado conocido o normalizado (sin guiones bajos). */
+  protected readonly texto = computed(() => {
+    const estado = this.estado().trim();
+    if (!estado) return '—';
+    return ETIQUETAS[estado] ?? estado.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  });
 
   /** Clases CSS del estado. */
   protected readonly clases = computed(() => {
@@ -55,6 +59,19 @@ export class StatusBadgeComponent {
       // Curso
       publicado: 'badge-success',
       archivado: 'badge-neutral',
+      // Solicitudes
+      pendiente: 'badge-warning',
+      aprobada: 'badge-success',
+      rechazada: 'badge-danger',
+      // Tickets
+      abierto: 'badge-info',
+      en_progreso: 'badge-warning',
+      esperando_usuario: 'badge-warning',
+      resuelto: 'badge-success',
+      cerrado: 'badge-neutral',
+      // Progreso
+      completado: 'badge-success',
+      incompleto: 'badge-warning',
       // Cuenta
       pendiente_verificacion: 'badge-warning',
       activo: 'badge-success',
@@ -86,6 +103,16 @@ const ETIQUETAS: Record<string, string> = {
   devuelta: 'Devuelta',
   publicado: 'Publicado',
   archivado: 'Archivado',
+  pendiente: 'Pendiente',
+  aprobada: 'Aprobada',
+  rechazada: 'Rechazada',
+  abierto: 'Abierto',
+  en_progreso: 'En progreso',
+  esperando_usuario: 'Esperando usuario',
+  resuelto: 'Resuelto',
+  cerrado: 'Cerrado',
+  completado: 'Completado',
+  incompleto: 'Incompleto',
   pendiente_verificacion: 'Por verificar',
   activo: 'Activo',
   suspendido: 'Suspendido',
