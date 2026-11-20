@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 
 import { SupabaseService } from '../../core/services/supabase.service';
@@ -63,24 +63,23 @@ interface MejorTiempoFila {
               <p class="mt-2 text-sm text-marine-500">Aún nadie ha vencido la horda 9. Sé el primero en aparecer aquí.</p>
             } @else {
               <div class="mt-2 overflow-x-auto">
-                <table class="table text-sm">
+                <table class="table table-responsive text-sm">
                   <thead>
                     <tr><th>#</th><th>Jugador</th><th>Nivel más alto</th><th>Victorias</th><th>XP juego</th></tr>
                   </thead>
                   <tbody>
                     @for (r of ranking(); track r.estudiante_id; let i = $index) {
                       <tr [class.bg-gold-50]="r.es_yo">
-                        <td class="font-extrabold">{{ i + 1 }}</td>
-                        <td>
-                          <span class="flex items-center gap-2">
+                        <td class="font-extrabold" data-label="#">{{ i + 1 }}</td>
+                        <td data-label="Jugador"><span class="flex items-center gap-2">
                             <span class="grid size-8 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold uppercase text-gold-300">{{ iniciales(r) }}</span>
                             <span class="font-semibold text-marine-800">{{ nombre(r) }}</span>
                             @if (r.es_yo) { <span class="rounded-full bg-gold-500 px-2 py-0.5 text-[0.55rem] font-extrabold uppercase tracking-wider text-marine-900">Tú</span> }
                           </span>
                         </td>
-                        <td class="font-bold text-marine-800">Nv. {{ r.nivel_max }}</td>
-                        <td>{{ r.victorias }}</td>
-                        <td>{{ r.xp_total }}</td>
+                        <td class="font-bold text-marine-800" data-label="Nivel">Nv. {{ r.nivel_max }}</td>
+                        <td data-label="Victorias">{{ r.victorias }}</td>
+                        <td data-label="XP">{{ r.xp_total }}</td>
                       </tr>
                     }
                   </tbody>

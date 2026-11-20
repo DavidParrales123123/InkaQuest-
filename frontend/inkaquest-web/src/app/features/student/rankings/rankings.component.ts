@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 
 import { AuthService } from '../../../core/services/auth.service';
@@ -41,16 +41,15 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
           (alReintentar)="cargarRanking()"
         >
           <div contenido class="table-wrap">
-            <div class="overflow-x-auto"><table class="table">
+            <div class="overflow-x-auto"><table class="table table-responsive">
               <thead><tr><th>#</th><th>Usuario</th><th>Puntos</th></tr></thead>
               <tbody>
                 @for (r of ranking(); track r.id; let i = $index) {
                   <tr [class.bg-brand-50]="esYo(r.usuario_id)">
-                    <td>{{ i + 1 }}</td>
-                    <td>
-                      @if (esYo(r.usuario_id)) { <strong>Tu posicion</strong> } @else { <span class="text-marine-400">Participante</span> }
+                    <td data-label="#">{{ i + 1 }}</td>
+                    <td data-label="Usuario">@if (esYo(r.usuario_id)) { <strong>Tu posicion</strong> } @else { <span class="text-marine-400">Participante</span> }
                     </td>
-                  <td class="font-semibold">{{ r.puntos }}</td>
+                  <td class="font-semibold" data-label="Puntos">{{ r.puntos }}</td>
                 </tr>
               }
             </tbody>
