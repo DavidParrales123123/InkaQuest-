@@ -86,6 +86,9 @@
   body {
     @apply bg-[#f6f8f5] font-sans text-marine-700 antialiased;
     min-height: 100vh;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
   }
   h1,h2,h3,h4 { font-family: var(--font-display); @apply font-extrabold tracking-tight text-marine-700; }
   h1 { @apply text-4xl md:text-5xl leading-[1.05]; }
@@ -100,6 +103,10 @@
   ::selection { @apply bg-brand-100 text-marine-900; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+  @media (prefers-contrast: more) {
+    .card, .input, .select, .textarea, .btn-outline, .table-wrap { border-width: 2px !important; }
+    .text-marine-400, .text-marine-500 { color: #1b2a4a !important; }
   }
   @media print {
     nav, .btn, app-chatbot-widget, app-confirm-dialog, app-global-error-banner, app-navigation-progress { display: none !important; }
