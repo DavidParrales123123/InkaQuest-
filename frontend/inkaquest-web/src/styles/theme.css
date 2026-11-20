@@ -4,6 +4,8 @@
  * Tipografía única: Inter (cargada en index.html). Monoespacio del sistema para código.
  */
 
+@keyframes brillo-skeleton { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
 @theme {
   --color-marine-50: #f2f5fa;
   --color-marine-100: #e2e8f3;
@@ -101,6 +103,10 @@
   /* Quita el retardo de 300 ms al tocar en móvil (sin quitar el pellizco) */
   a, button, summary, [role='button'] { touch-action: manipulation; }
   ::selection { @apply bg-brand-100 text-marine-900; }
+  a { text-underline-offset: 0.2em; }
+  @media (hover: none) {
+    .btn-primary:hover, .btn-secondary:hover, .btn-gold:hover, .card-hover:hover { transform: none !important; }
+  }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
@@ -184,7 +190,7 @@
   .table tbody tr:focus-within { @apply bg-brand-50; }
 
   .state-block { @apply flex flex-col items-center justify-center gap-3 px-6 py-14 text-center; }
-  .skeleton { @apply animate-pulse rounded-md bg-surface-200; }
+  .skeleton { @apply rounded-md; background: linear-gradient(90deg, #eaf3f2 25%, #f7fbfa 50%, #eaf3f2 75%); background-size: 200% 100%; animation: brillo-skeleton 1.6s linear infinite; }
   .link { @apply font-semibold text-brand-600 underline-offset-2 hover:text-brand-700 hover:underline; }
 
   /* Auth (diseño referencia) */
