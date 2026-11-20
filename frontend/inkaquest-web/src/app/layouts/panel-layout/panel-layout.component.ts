@@ -108,6 +108,7 @@ export interface SeccionPanel {
                       [routerLink]="elemento.ruta"
                       routerLinkActive="!bg-white/12 !text-white ring-1 ring-white/10 shadow-[inset_3px_0_0_#f2a541]"
                       [routerLinkActiveOptions]="{ exact: elemento.exacto ?? false }"
+                      ariaCurrentWhenActive="page"
                       class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-marine-100 transition-all hover:bg-white/8 hover:text-white"
                       (click)="cerrarMenu()"
                     >
@@ -211,7 +212,7 @@ export interface SeccionPanel {
           </div>
         </header>
 
-        <main class="flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-12">
+        <main id="contenido-principal" class="flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-12">
           <div class="mx-auto w-full max-w-7xl">
             <router-outlet />
           </div>

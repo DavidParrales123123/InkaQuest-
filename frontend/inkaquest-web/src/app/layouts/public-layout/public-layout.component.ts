@@ -18,7 +18,7 @@ import { NavbarComponent } from './navbar/navbar.component';
   template: `
     <div class="flex min-h-screen flex-col bg-white">
       <app-navbar />
-      <main class="flex-1">
+      <main id="contenido-principal" class="flex-1">
         <router-outlet />
       </main>
       <app-footer />

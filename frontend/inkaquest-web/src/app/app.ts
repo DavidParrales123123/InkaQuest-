@@ -17,6 +17,10 @@ import { NavigationProgressComponent } from './shared/components/navigation-prog
   selector: 'app-root',
   imports: [RouterOutlet, GlobalErrorBannerComponent, ConfirmDialogComponent, NavigationProgressComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: '<app-navigation-progress />\n<app-global-error-banner />\n<app-confirm-dialog />\n<router-outlet />',
+  template: `<a href="#contenido-principal" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[300] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-marine-800 focus:shadow-lg">Saltar al contenido principal</a>
+<app-navigation-progress />
+<app-global-error-banner />
+<app-confirm-dialog />
+<router-outlet />`,
 })
 export class App {}

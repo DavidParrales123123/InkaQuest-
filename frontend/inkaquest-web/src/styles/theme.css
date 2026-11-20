@@ -101,6 +101,12 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
+  @media print {
+    nav, .btn, app-chatbot-widget, app-confirm-dialog, app-global-error-banner, app-navigation-progress { display: none !important; }
+    body { background: #fff !important; color: #000 !important; }
+    .card, .table-wrap { box-shadow: none !important; break-inside: avoid; }
+    a[href]::after { content: ''; }
+  }
 }
 
 @layer components {
