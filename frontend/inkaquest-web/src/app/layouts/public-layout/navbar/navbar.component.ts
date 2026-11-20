@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter } from 'rxjs';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { LogoComponent } from '../../../shared/components/logo/logo.component';
@@ -174,8 +176,17 @@ import { LogoComponent } from '../../../shared/components/logo/logo.component';
   `,
 })
 export class NavbarComponent {
+  private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
   protected readonly menuAbierto = signal(false);
+
+  constructor() {
+    // El menú móvil se cierra siempre que cambie de ruta (incluye
+    // navegación del navegador hacia atrás/adelante).
+    this.router.events
+      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd), takeUntilDestroyed())
+      .subscribe(() => this.cerrarMenu());
+  }
 
   protected readonly enlaces = [
     { texto: 'Inicio', ruta: '/', exacto: true },

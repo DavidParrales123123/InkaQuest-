@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  effect,
   HostListener,
   OnInit,
   computed,
@@ -64,6 +65,7 @@ export interface SeccionPanel {
         class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-white/10 bg-marine-gradient text-white shadow-2xl transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0"
         [class.-translate-x-full]="!menuAbierto()"
         [class.translate-x-0]="menuAbierto()"
+        (touchstart)="alIniciarDesliz($event)" (touchend)="alTerminarDesliz($event)"
       >
         <div class="relative flex h-[4.5rem] shrink-0 items-center justify-center border-b border-white/10 px-5">
           <a [routerLink]="rutaInicio()" class="flex items-center gap-2.5" aria-label="InkaQuest">
@@ -250,6 +252,32 @@ export class PanelLayoutComponent implements OnInit {
 
   /** Estado del menu movil. */
   protected readonly menuAbierto = signal(false);
+  private xDeslizInicial = 0;
+  private overflowPrevio = '';
+
+  constructor() {
+    effect(() => {
+      if (typeof document === 'undefined') return;
+      if (this.menuAbierto()) {
+        this.overflowPrevio = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = this.overflowPrevio;
+      }
+    });
+    this.destroyRef.onDestroy(() => {
+      if (typeof document !== 'undefined') document.body.style.overflow = this.overflowPrevio;
+    });
+  }
+
+  protected alIniciarDesliz(e: TouchEvent): void {
+    this.xDeslizInicial = e.touches[0]?.clientX ?? 0;
+  }
+
+  protected alTerminarDesliz(e: TouchEvent): void {
+    const fin = e.changedTouches[0]?.clientX ?? 0;
+    if (this.xDeslizInicial - fin > 60) this.cerrarMenu();
+  }
   /** Numero de notificaciones no leidas. */
   protected readonly noLeidas = signal(0);
   /** Numero de mensajes de chat no leidos. */
