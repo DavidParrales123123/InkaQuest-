@@ -20,6 +20,16 @@ interface ItemMochila {
   tipo: string;
 }
 
+/** Entrada del resumen de preguntas que se muestra al ganar o perder. */
+interface RespuestaHistorial {
+  preguntaId: string;
+  enunciado: string;
+  tema: string;
+  elegida: string | null;
+  correcta: string | null;
+  esCorrecta: boolean;
+}
+
 /** Juego completo de supervivencia por hordas con mejoras entre hordas y progreso persistido. */
 @Component({
   selector: 'app-guardians-jugar',
@@ -422,8 +432,8 @@ interface ItemMochila {
                 }
                 <!-- Resultado -->
                 @if (fase() === 'victoria' || fase() === 'derrota') {
-                  <div class="absolute inset-0 z-30 flex items-center justify-center bg-marine-900/85 backdrop-blur-sm">
-                    <div class="relative w-full max-w-md p-6 text-center text-white">
+                  <div class="absolute inset-0 z-30 flex items-center justify-center overflow-y-auto bg-marine-900/85 p-3 backdrop-blur-sm">
+                    <div class="relative my-auto w-full max-w-md p-4 text-center text-white sm:p-6">
                       @if (fase() === 'victoria') {
                         <svg viewBox="0 0 120 120" class="mx-auto h-28 w-28 drop-shadow-[0_0_30px_rgba(242,165,65,0.7)]" aria-hidden="true">
                           <circle cx="60" cy="60" r="52" fill="#f2a541" stroke="#3d2600" stroke-width="4"/>
@@ -446,6 +456,33 @@ interface ItemMochila {
                         <h2 class="mt-4 text-3xl font-extrabold text-rose-400 drop-shadow-[0_3px_0_rgba(0,0,0,0.5)]">NIVEL PERDIDO</h2>
                       }
                       <p class="mt-3 text-[0.65rem] uppercase tracking-widest text-marine-400">{{ mensajeResultado() }}</p>
+
+                      @if (historial().length > 0) {
+                        <div class="mt-4 text-left">
+                          <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                            <p class="text-[0.7rem] font-extrabold uppercase tracking-widest text-gold-300">Historial de preguntas</p>
+                            <p class="text-[0.65rem] font-bold">
+                              <span class="text-emerald-400">{{ aciertos() }} aciertos</span>
+                              <span class="mx-1 text-marine-500">·</span>
+                              <span class="text-rose-400">{{ errores() }} errores</span>
+                            </p>
+                          </div>
+                          <ul class="max-h-40 space-y-1.5 overflow-y-auto rounded-xl border border-white/10 bg-black/30 p-2">
+                            @for (h of historial(); track $index) {
+                              <li class="flex gap-2 rounded-lg bg-white/5 p-2 text-[0.7rem] leading-snug">
+                                <span class="shrink-0 font-extrabold" [class.text-emerald-400]="h.esCorrecta" [class.text-rose-400]="!h.esCorrecta">{{ h.esCorrecta ? '✓' : '✗' }}</span>
+                                <div class="min-w-0">
+                                  <p class="line-clamp-2 font-semibold text-white">{{ h.enunciado }}</p>
+                                  @if (!h.esCorrecta && h.correcta) {
+                                    <p class="mt-0.5 text-emerald-300">Correcta: {{ h.correcta }}</p>
+                                  }
+                                </div>
+                              </li>
+                            }
+                          </ul>
+                        </div>
+                      }
+
                       <div class="mt-5 flex flex-wrap justify-center gap-2">
                         <a routerLink="/estudiante/guardianes" class="btn btn-outline-light">Volver a la campaña</a>
                         <button type="button" class="btn btn-gold" (click)="reiniciar()">Reintentar</button>
@@ -595,6 +632,10 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected readonly preguntaActual = signal<{ preguntaId: string; enunciado: string; opciones: string[]; tema: string; dificultad: string } | null>(null);
   protected readonly respuestaElegida = signal<string | null>(null);
   protected readonly respuestaResultado = signal<{ esCorrecta: boolean; error?: boolean; correcta?: string; explicacion?: string; xp: number; monedas: number } | null>(null);
+  /** Resumen de aciertos/errores de la partida para la pantalla final. */
+  protected readonly historial = signal<RespuestaHistorial[]>([]);
+  protected readonly aciertos = computed(() => this.historial().filter((h) => h.esCorrecta).length);
+  protected readonly errores = computed(() => this.historial().filter((h) => !h.esCorrecta).length);
   private preguntaExcluidas: string[] = [];
   private nivelId: string | null = null;
   private preguntaDesde = 0;
@@ -656,6 +697,7 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     this.preguntaActual.set(null);
     this.respuestaElegida.set(null);
     this.respuestaResultado.set(null);
+    this.historial.set([]);
     this.preguntaExcluidas = [];
     this.mostrarIntro.set(true);
     this.juegoListo.set(false);
@@ -936,6 +978,23 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
         explicacion: res.explicacion ?? undefined,
         xp: res.xp ?? 0,
         monedas: res.monedas ?? 0,
+      });
+      const entrada: RespuestaHistorial = {
+        preguntaId: pregunta.preguntaId,
+        enunciado: pregunta.enunciado,
+        tema: pregunta.tema,
+        elegida: sel,
+        correcta: res.correcta ?? null,
+        esCorrecta: Boolean(res.es_correcta),
+      };
+      // Con "Segunda oportunidad" la misma pregunta se responde dos veces:
+      // se reemplaza la entrada para que el resumen muestre el resultado final.
+      this.historial.update((h) => {
+        const i = h.findIndex((x) => x.preguntaId === entrada.preguntaId);
+        if (i < 0) return [...h, entrada];
+        const copia = [...h];
+        copia[i] = entrada;
+        return copia;
       });
       if (res.es_correcta) {
         const scene = this.game?.scene?.getScene('Combate') as any;
