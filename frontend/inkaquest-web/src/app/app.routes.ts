@@ -815,7 +815,7 @@ export const routes: Routes = [
         path: 'notificaciones',
         loadComponent: () =>
           import('./features/admin/notifications/notifications.component').then(
-            (m) => m.NotificationsComponent,
+            (m) => m.AdminNotificationsComponent,
           ),
         title: 'Notificaciones · InkaQuest',
       },
