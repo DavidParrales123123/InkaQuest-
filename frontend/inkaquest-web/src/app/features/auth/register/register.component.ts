@@ -143,7 +143,7 @@ import { ESTILO_HONEYPOT, crearEstadoAntiSpam, envioHumano } from '../../../core
             <div class="grid gap-2 sm:grid-cols-2 sm:items-start">
               <div class="auth-field">
                 <label for="password">Contraseña</label>
-                <input id="password" type="password" autocomplete="new-password" formControlName="password" placeholder="Mínimo 8 caracteres y una mayúscula" [attr.aria-invalid]="campoInvalido('password') ? true : null" [class.border-danger-500]="campoInvalido('password')" />
+                <input id="password" type="password" autocomplete="new-password" formControlName="password" placeholder="Mínimo 8 caracteres, una mayúscula y un carácter especial" [attr.aria-invalid]="campoInvalido('password') ? true : null" [class.border-danger-500]="campoInvalido('password')" />
                 <p class="field-error min-h-[2.5rem]" aria-live="polite">{{ campoInvalido('password') ? errorControl('password') : '\u00A0' }}</p>
               </div>
               <div class="auth-field">
