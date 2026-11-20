@@ -94,7 +94,7 @@ type Modo = 'archivo' | 'enlace';
                 <p class="mt-1 text-sm text-marine-700">Word, PDF, Excel, PowerPoint, imágenes o ZIP.</p>
                 <p class="text-xs text-marine-500">Máx. 50 MB por archivo.</p>
                 <input #fileUpload type="file" multiple class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.zip,.png,.jpg,.jpeg,.webp,.gif,.svg,.txt,.json,.mp4,.webm,.mov" [disabled]="!leccionSel() || subiendo()" (change)="subirArchivos(fileUpload)" />
-                <button type="button" class="btn btn-primary mt-3" [disabled]="!leccionSel() || subiendo()" (click)="fileUpload.click()">
+                <button type="button" class="btn btn-primary mt-3 w-full sm:w-auto" [disabled]="!leccionSel() || subiendo()" (click)="fileUpload.click()">
                   {{ subiendo() ? 'Subiendo…' : 'Seleccionar archivos' }}
                 </button>
               </div>
@@ -123,7 +123,7 @@ type Modo = 'archivo' | 'enlace';
                   <label class="label" for="e-url">URL</label>
                   <input id="e-url" type="url" class="input" formControlName="url" placeholder="https://…" />
                 </div>
-                <button type="submit" class="btn btn-primary" [disabled]="formEnlace.invalid || !leccionSel() || guardando()">{{ guardando() ? 'Guardando…' : 'Agregar enlace' }}</button>
+                <button type="submit" class="btn btn-primary w-full sm:w-auto" [disabled]="formEnlace.invalid || !leccionSel() || guardando()">{{ guardando() ? 'Guardando…' : 'Agregar enlace' }}</button>
               </form>
             }
           </div>
@@ -131,9 +131,9 @@ type Modo = 'archivo' | 'enlace';
           <!-- ════ LISTA DE RECURSOS ════ -->
           <div class="space-y-4 xl:col-span-3">
             <div class="flex flex-wrap items-center justify-between gap-2">
-              <h2 class="text-base font-extrabold text-marine-800">Recursos de {{ cursoActual()?.titulo ?? 'este curso' }}</h2>
-              <div class="flex flex-wrap items-center gap-2">
-                <select class="select w-auto" [value]="filtroTipo()" (change)="filtroTipo.set($any($event.target).value)" aria-label="Filtrar por tipo">
+              <h2 class="min-w-0 break-words text-base font-extrabold text-marine-800">Recursos de {{ cursoActual()?.titulo ?? 'este curso' }}</h2>
+              <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                <select class="select w-full sm:w-auto" [value]="filtroTipo()" (change)="filtroTipo.set($any($event.target).value)" aria-label="Filtrar por tipo">
                   <option value="">Todos los tipos</option>
                   <option value="documento">Documento</option>
                   <option value="imagen">Imagen</option>
@@ -142,7 +142,7 @@ type Modo = 'archivo' | 'enlace';
                   <option value="enlace">Enlace</option>
                   <option value="otro">Otro</option>
                 </select>
-                <input type="search" class="input w-44 sm:w-56" [value]="busqueda()" (input)="busqueda.set($any($event.target).value)" placeholder="Buscar…" aria-label="Buscar recurso" />
+                <input type="search" class="input w-full sm:w-56" [value]="busqueda()" (input)="busqueda.set($any($event.target).value)" placeholder="Buscar…" aria-label="Buscar recurso" />
               </div>
             </div>
 
@@ -169,13 +169,13 @@ type Modo = 'archivo' | 'enlace';
                         @if (r.tamano_bytes) { · {{ tamanoKb(r.tamano_bytes) }} } · {{ r.creado_en | date:'mediumDate' }}
                       </p>
                     </div>
-                    <div class="flex flex-wrap gap-1.5">
+                    <div class="flex w-full flex-wrap gap-1.5 sm:w-auto">
                       @if (r.ruta_storage) {
-                        <button type="button" class="btn btn-outline btn-sm" (click)="abrirRecurso(r)">Descargar</button>
+                        <button type="button" class="btn btn-outline btn-sm grow sm:grow-0" (click)="abrirRecurso(r)">Descargar</button>
                       } @else if (r.url) {
-                        <a class="btn btn-outline btn-sm" [href]="r.url" target="_blank" rel="noopener">Abrir</a>
+                        <a class="btn btn-outline btn-sm grow sm:grow-0" [href]="r.url" target="_blank" rel="noopener">Abrir</a>
                       }
-                      <button type="button" class="btn btn-outline btn-sm text-danger-700" (click)="eliminarRecurso(r)">Eliminar</button>
+                      <button type="button" class="btn btn-outline btn-sm grow text-danger-700 sm:grow-0" (click)="eliminarRecurso(r)">Eliminar</button>
                     </div>
                   </li>
                 }
