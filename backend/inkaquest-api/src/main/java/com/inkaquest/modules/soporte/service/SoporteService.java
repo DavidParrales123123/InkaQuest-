@@ -3,10 +3,16 @@ package com.inkaquest.modules.soporte.service;
 import com.inkaquest.modules.identidad.entity.Perfil;
 import com.inkaquest.modules.identidad.repository.PerfilRepository;
 import com.inkaquest.modules.soporte.dto.TicketCrearRequest;
+import com.inkaquest.modules.soporte.entity.Notificacion;
+import com.inkaquest.modules.soporte.entity.NotificacionDestinatario;
 import com.inkaquest.modules.soporte.entity.Ticket;
 import com.inkaquest.modules.soporte.entity.TicketRespuesta;
+import com.inkaquest.modules.soporte.repository.NotificacionDestinatarioRepository;
+import com.inkaquest.modules.soporte.repository.NotificacionRepository;
 import com.inkaquest.modules.soporte.repository.TicketRepository;
 import com.inkaquest.modules.soporte.repository.TicketRespuestaRepository;
+import com.inkaquest.shared.enums.CanalNotificacion;
+import com.inkaquest.shared.enums.EstadoNotificacion;
 import com.inkaquest.shared.enums.EstadoTicket;
 import com.inkaquest.shared.exception.BadRequestException;
 import com.inkaquest.shared.exception.ResourceNotFoundException;
@@ -35,17 +41,23 @@ public class SoporteService {
     private final PerfilRepository perfilRepository;
     private final CheckRoleService checkRoleService;
     private final RlsExecutor rlsExecutor;
+    private final NotificacionRepository notificacionRepository;
+    private final NotificacionDestinatarioRepository notificacionDestinatarioRepository;
 
     public SoporteService(TicketRepository ticketRepository,
                           TicketRespuestaRepository respuestaRepository,
                           PerfilRepository perfilRepository,
                           CheckRoleService checkRoleService,
-                          RlsExecutor rlsExecutor) {
+                          RlsExecutor rlsExecutor,
+                          NotificacionRepository notificacionRepository,
+                          NotificacionDestinatarioRepository notificacionDestinatarioRepository) {
         this.ticketRepository = ticketRepository;
         this.respuestaRepository = respuestaRepository;
         this.perfilRepository = perfilRepository;
         this.checkRoleService = checkRoleService;
         this.rlsExecutor = rlsExecutor;
+        this.notificacionRepository = notificacionRepository;
+        this.notificacionDestinatarioRepository = notificacionDestinatarioRepository;
     }
 
     /** Crea un ticket de soporte. */
@@ -115,6 +127,9 @@ public class SoporteService {
                 ticket.setEstado(EstadoTicket.en_progreso);
                 ticketRepository.save(ticket);
             }
+            if (esAdmin(actorId) && !ticket.getUsuarioId().getId().equals(actorId)) {
+                notificarRespuestaAdmin(ticket.getUsuarioId(), actor, ticket, respuesta);
+            }
             return TicketCrearRequest.RespuestaResponse.from(respuesta);
         });
     }
@@ -148,6 +163,32 @@ public class SoporteService {
             throw new UnauthorizedException("No tienes permiso para ver este ticket.");
         }
         return ticket;
+    }
+
+    /** Notifica al autor del ticket cuando el administrador publica una respuesta. */
+    private void notificarRespuestaAdmin(Perfil destinatario, Perfil administrador,
+                                         Ticket ticket, TicketRespuesta respuesta) {
+        Notificacion notificacion = new Notificacion();
+        notificacion.setTitulo("Respuesta de soporte: " + ticket.getAsunto());
+        notificacion.setMensaje("El administrador respondió a tu solicitud de soporte: "
+                + respuesta.getCuerpo());
+        notificacion.setVariables(Map.of());
+        notificacion.setCanal(CanalNotificacion.in_app);
+        notificacion.setDestinatarioId(destinatario);
+        notificacion.setEntidadTipo("ticket");
+        notificacion.setEntidadId(ticket.getId());
+        notificacion.setEnviadaEn(Instant.now());
+        notificacion.setClaveIdempotencia("ticket-respuesta-" + respuesta.getId());
+        notificacion.setCreadoPor(administrador);
+        Notificacion guardada = notificacionRepository.save(notificacion);
+
+        NotificacionDestinatario entrega = new NotificacionDestinatario();
+        entrega.setNotificacionId(guardada);
+        entrega.setUsuarioId(destinatario);
+        entrega.setCanal(CanalNotificacion.in_app);
+        entrega.setEstado(EstadoNotificacion.enviada);
+        entrega.setEnviadaEn(Instant.now());
+        notificacionDestinatarioRepository.save(entrega);
     }
 
     private boolean esAdmin(UUID actorId) {

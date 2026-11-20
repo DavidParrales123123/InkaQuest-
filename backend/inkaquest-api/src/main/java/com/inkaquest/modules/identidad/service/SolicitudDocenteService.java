@@ -4,8 +4,15 @@ import com.inkaquest.modules.identidad.dto.SolicitudDocenteRequest;
 import com.inkaquest.modules.identidad.dto.SolicitudDocenteResponse;
 import com.inkaquest.modules.identidad.dto.SolicitudDocenteRevisionRequest;
 import com.inkaquest.modules.identidad.entity.SolicitudDocente;
+import com.inkaquest.modules.identidad.entity.Perfil;
 import com.inkaquest.modules.identidad.repository.PerfilRepository;
 import com.inkaquest.modules.identidad.repository.SolicitudDocenteRepository;
+import com.inkaquest.modules.soporte.entity.Notificacion;
+import com.inkaquest.modules.soporte.entity.NotificacionDestinatario;
+import com.inkaquest.modules.soporte.repository.NotificacionDestinatarioRepository;
+import com.inkaquest.modules.soporte.repository.NotificacionRepository;
+import com.inkaquest.shared.enums.CanalNotificacion;
+import com.inkaquest.shared.enums.EstadoNotificacion;
 import com.inkaquest.shared.enums.EstadoSolicitudDocente;
 import com.inkaquest.shared.enums.RolUsuario;
 import com.inkaquest.shared.exception.BadRequestException;
@@ -31,17 +38,23 @@ public class SolicitudDocenteService {
     private final com.inkaquest.modules.auditoria.service.AuditoriaService auditoriaService;
     private final RlsExecutor rlsExecutor;
     private final JdbcTemplate jdbc;
+    private final NotificacionRepository notificacionRepository;
+    private final NotificacionDestinatarioRepository notificacionDestinatarioRepository;
 
     public SolicitudDocenteService(SolicitudDocenteRepository solicitudDocenteRepository,
                                    PerfilRepository perfilRepository,
                                    com.inkaquest.modules.auditoria.service.AuditoriaService auditoriaService,
                                    RlsExecutor rlsExecutor,
-                                   JdbcTemplate jdbc) {
+                                   JdbcTemplate jdbc,
+                                   NotificacionRepository notificacionRepository,
+                                   NotificacionDestinatarioRepository notificacionDestinatarioRepository) {
         this.solicitudDocenteRepository = solicitudDocenteRepository;
         this.perfilRepository = perfilRepository;
         this.auditoriaService = auditoriaService;
         this.rlsExecutor = rlsExecutor;
         this.jdbc = jdbc;
+        this.notificacionRepository = notificacionRepository;
+        this.notificacionDestinatarioRepository = notificacionDestinatarioRepository;
     }
 
     /** Crea una nueva solicitud de docente para el usuario autenticado. */
@@ -141,6 +154,7 @@ public class SolicitudDocenteService {
                     Map.of("rol", "estudiante"),
                     Map.of("rol", "docente"),
                     true, null);
+            notificarResolucion(perfil, s.getRevisadoPor(), true, request.motivoRevision(), solicitudId);
             return SolicitudDocenteResponse.from(solicitudDocenteRepository.save(s));
             } finally {
                 jdbc.execute("select public.fn_desactivar_escritura_sistema()");
@@ -171,8 +185,44 @@ public class SolicitudDocenteService {
                     null,
                     Map.of("motivo", request.motivoRevision().trim()),
                     true, null);
+            notificarResolucion(s.getUsuarioId(), s.getRevisadoPor(), false, request.motivoRevision(), solicitudId);
             return SolicitudDocenteResponse.from(solicitudDocenteRepository.save(s));
         });
+    }
+
+    /**
+     * Notifica al estudiante solicitante la resolución del administrador,
+     * incluyendo el mensaje (motivo) de la revisión. El destinatario queda
+     * explícito en la notificación para que la RLS de lectura le permita verla.
+     */
+    private void notificarResolucion(Perfil destinatario, Perfil revisor,
+                                     boolean aprobada, String motivo, UUID solicitudId) {
+        String observacion = motivo == null ? "" : motivo.trim();
+        Notificacion notificacion = new Notificacion();
+        notificacion.setTitulo(aprobada
+                ? "Solicitud de docente aprobada"
+                : "Solicitud de docente rechazada");
+        notificacion.setMensaje((aprobada
+                ? "Tu solicitud para ser docente fue aprobada. Ya tienes acceso al panel docente."
+                : "Tu solicitud para ser docente fue rechazada.")
+                + (observacion.isEmpty() ? "" : " Observación del administrador: " + observacion));
+        notificacion.setVariables(Map.of());
+        notificacion.setCanal(CanalNotificacion.in_app);
+        notificacion.setDestinatarioId(destinatario);
+        notificacion.setEntidadTipo("solicitud_docente");
+        notificacion.setEntidadId(solicitudId);
+        notificacion.setEnviadaEn(Instant.now());
+        notificacion.setClaveIdempotencia("solicitud-docente-" + solicitudId + (aprobada ? "-aprobada" : "-rechazada"));
+        notificacion.setCreadoPor(revisor);
+        Notificacion guardada = notificacionRepository.save(notificacion);
+
+        NotificacionDestinatario entrega = new NotificacionDestinatario();
+        entrega.setNotificacionId(guardada);
+        entrega.setUsuarioId(destinatario);
+        entrega.setCanal(CanalNotificacion.in_app);
+        entrega.setEstado(EstadoNotificacion.enviada);
+        entrega.setEnviadaEn(Instant.now());
+        notificacionDestinatarioRepository.save(entrega);
     }
 
     private static String blankToNull(String s) {
