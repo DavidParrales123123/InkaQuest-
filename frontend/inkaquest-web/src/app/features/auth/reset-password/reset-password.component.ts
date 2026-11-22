@@ -44,7 +44,13 @@ import { mensajeErrorContrasena, validarContrasenaSegura } from '../../../core/v
               <div class="auth-field">
                 <label for="password">Nueva contraseña</label>
                 <input id="password" type="password" autocomplete="new-password" formControlName="password" placeholder="Mínimo 8 caracteres, una mayúscula y un símbolo" [attr.aria-invalid]="campoInvalido('password') ? true : null" [class.border-danger-500]="campoInvalido('password')" />
-                <p class="field-error" aria-live="polite">{{ campoInvalido('password') ? mensajeContrasena() : 'Mín. 8 caracteres · 1 mayúscula · 1 símbolo (!, @, #, $, …)' }}</p>
+                @if (campoInvalido('password')) {
+                  <p class="field-error" aria-live="polite">{{ mensajeContrasena() }}</p>
+                } @else {
+                  <!-- Pista informativa: NO debe usar field-error (es rojo y
+                       parecia un aviso de requisitos incumplidos). -->
+                  <p class="mt-1 min-h-5 text-xs text-marine-400" aria-live="polite">Mín. 8 caracteres · 1 mayúscula · 1 símbolo (!, @, #, $, …)</p>
+                }
               </div>
               <div class="auth-field">
                 <label for="confirmar">Repite la contraseña</label>
