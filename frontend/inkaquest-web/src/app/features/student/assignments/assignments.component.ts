@@ -57,7 +57,24 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
             <button type="button" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'pendientes'" [class.text-white]="tab() === 'pendientes'" [class.text-marine-600]="tab() !== 'pendientes'" (click)="tab.set('pendientes')">Pendientes ({{ contarTab('pendientes') }})</button>
             <button type="button" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'entregadas'" [class.text-white]="tab() === 'entregadas'" [class.text-marine-600]="tab() !== 'entregadas'" (click)="tab.set('entregadas')">Entregadas ({{ contarTab('entregadas') }})</button>
             <button type="button" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'calificadas'" [class.text-white]="tab() === 'calificadas'" [class.text-marine-600]="tab() !== 'calificadas'" (click)="tab.set('calificadas')">Calificadas ({{ contarTab('calificadas') }})</button>
+            @if (contarTab('vencidas') > 0) {
+              <button type="button" class="rounded-lg px-3 py-1.5" [class.bg-danger-600]="tab() === 'vencidas'" [class.text-white]="tab() === 'vencidas'" [class.text-danger-700]="tab() !== 'vencidas'" [class.bg-danger-50]="tab() !== 'vencidas'" (click)="tab.set('vencidas')">Fecha límite superado ({{ contarTab('vencidas') }})</button>
+            }
           </div>
+
+          @if (tab() === 'vencidas') {
+            <div class="rounded-2xl border border-danger-200 bg-danger-50/70 p-4 sm:p-5">
+              <div class="flex items-start gap-3">
+                <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-danger-100 text-danger-600" aria-hidden="true">
+                  <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </span>
+                <div>
+                  <h2 class="text-base font-extrabold text-danger-700">Fecha límite superado</h2>
+                  <p class="mt-1 text-sm text-danger-700/80">Estas tareas ya no aceptan entregas ni cambios porque su plazo terminó. Si necesitas una regularización, comunícate con tu docente por los canales oficiales.</p>
+                </div>
+              </div>
+            </div>
+          }
 
           <div>
             <h2 class="text-lg font-semibold text-marine-800">Tareas por curso</h2>
@@ -66,11 +83,14 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
             } @else if (tareasVisibles().length === 0) {
               <p class="mt-2 text-sm text-marine-500">No hay tareas en este filtro. Prueba «Todas» u otro curso.</p>
             } @else {
-              <div class="mt-3 space-y-4">                @for (t of tareasVisibles(); track t.id) {
-                  <article class="card card-body space-y-3">
-                    <div class="flex flex-wrap items-start justify-between gap-2">
-                      <div class="min-w-0">
-                        <p class="font-semibold text-marine-800">{{ t.actividad.titulo }}</p>
+              <div class="mt-3 space-y-4">                  @for (t of tareasVisibles(); track t.id) {
+                    <article class="card card-body space-y-3" [class.border-danger-200]="vencida(t)" [class.bg-danger-50/30]="vencida(t)">
+                      <div class="flex flex-wrap items-start justify-between gap-2">
+                        <div class="min-w-0">
+                          <div class="flex flex-wrap items-center gap-2">
+                            <p class="font-semibold text-marine-800">{{ t.actividad.titulo }}</p>
+                            @if (vencida(t)) { <span class="badge badge-danger">Fecha superada</span> }
+                          </div>
                         <p class="mt-1 text-sm text-marine-500">{{ t.actividad.descripcion || t.actividad.instrucciones || 'Sin instrucciones adicionales.' }}</p>
                         <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-marine-500">
                           <span>Entrega:</span>
@@ -183,26 +203,34 @@ export class AssignmentsComponent implements OnInit {
     const f = this.filtroCurso();
     return f ? this.tareas().filter((t) => t.actividad.curso_id === f) : this.tareas();
   });
+  protected readonly vencidas = computed(() => this.tareasFiltradas().filter((x) => this.vencida(x)));
   protected readonly tareasVisibles = computed(() => {
     const base = this.tareasFiltradas();
+    const vencidas = base.filter((x) => this.vencida(x));
+    const activas = base.filter((x) => !this.vencida(x));
     const t = this.tab();
-    if (t === 'pendientes') return base.filter((x) => !x.entrega);
-    if (t === 'entregadas') return base.filter((x) => !!x.entrega);
-    if (t === 'calificadas') return base.filter((x) => x.entrega?.nota !== null && x.entrega?.nota !== undefined);
-    return base;
+    if (t === 'vencidas') return vencidas;
+    // El resto de pestañas nunca debe mostrar tareas vencidas.
+    if (t === 'pendientes') return activas.filter((x) => !x.entrega);
+    if (t === 'entregadas') return activas.filter((x) => !!x.entrega);
+    if (t === 'calificadas') return activas.filter((x) => x.entrega?.nota !== null && x.entrega?.nota !== undefined);
+    return activas;
   });
-  protected readonly contarTab = (t: 'todas' | 'pendientes' | 'entregadas' | 'calificadas'): number => {
+  protected readonly contarTab = (t: 'todas' | 'pendientes' | 'entregadas' | 'calificadas' | 'vencidas'): number => {
     const base = this.tareasFiltradas();
-    if (t === 'pendientes') return base.filter((x) => !x.entrega).length;
-    if (t === 'entregadas') return base.filter((x) => !!x.entrega).length;
-    if (t === 'calificadas') return base.filter((x) => x.entrega?.nota !== null && x.entrega?.nota !== undefined).length;
-    return base.length;
+    const vencidas = base.filter((x) => this.vencida(x));
+    const activas = base.filter((x) => !this.vencida(x));
+    if (t === 'vencidas') return vencidas.length;
+    if (t === 'pendientes') return activas.filter((x) => !x.entrega).length;
+    if (t === 'entregadas') return activas.filter((x) => !!x.entrega).length;
+    if (t === 'calificadas') return activas.filter((x) => x.entrega?.nota !== null && x.entrega?.nota !== undefined).length;
+    return activas.length;
   };
   protected readonly contarPorCurso = (id: string): number => {
     return this.tareas().filter((t) => t.actividad.curso_id === id).length;
   };
   protected readonly filtroCurso = signal<string | null>(null);
-  protected readonly tab = signal<'todas' | 'pendientes' | 'entregadas' | 'calificadas'>('todas');
+  protected readonly tab = signal<'todas' | 'pendientes' | 'entregadas' | 'calificadas' | 'vencidas'>('todas');
   protected readonly misCursos = signal<import('../../../core/models/domain.models').Curso[]>([]);
   private readonly borradores = signal<Record<string, string>>({});
   private readonly msgs = signal<Record<string, string>>({});
