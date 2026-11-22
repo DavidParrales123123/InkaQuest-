@@ -7,6 +7,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.validation.annotation.Validated;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.UUID;
@@ -39,8 +40,10 @@ public class ProgresoController {
     @PostMapping("/lecciones/{leccionId}/completar")
     public ApiResponse<com.inkaquest.modules.progreso.dto.LeccionCompletadaResponse> completar(
             @AuthenticationPrincipal Jwt jwt,
-            @PathVariable UUID leccionId) {
-        return ApiResponse.ok(progresoService.completarLeccion(authId(jwt), leccionId),
+            @PathVariable UUID leccionId,
+            @Valid @RequestBody(required = false) com.inkaquest.modules.progreso.dto.CompletarLeccionRequest request) {
+        Integer minutos = request == null ? null : request.minutosEstudiados();
+        return ApiResponse.ok(progresoService.completarLeccion(authId(jwt), leccionId, minutos),
                 "Leccion completada.");
     }
 

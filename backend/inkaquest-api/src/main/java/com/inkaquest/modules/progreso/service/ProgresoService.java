@@ -85,7 +85,7 @@ public class ProgresoService {
      * Es idempotente: completar dos veces no duplica XP.
      */
     @Transactional
-    public LeccionCompletadaResponse completarLeccion(UUID estudianteId, UUID leccionId) {
+    public LeccionCompletadaResponse completarLeccion(UUID estudianteId, UUID leccionId, Integer minutosEstudiados) {
         return rlsExecutor.executeAs(estudianteId, () -> {
             Perfil estudiante = perfilRepository.findById(estudianteId)
                     .orElseThrow(() -> new ResourceNotFoundException("Perfil no encontrado."));
@@ -145,14 +145,24 @@ public class ProgresoService {
                             nueva.setIniciadoEn(Instant.now());
                             return nueva;
                         });
+                // Las lecciones sembradas tienen duracion_minutos = 0. Preferimos
+                // el tiempo real medido por el cliente; si no viene, usamos la
+                // duracion declarada y, como ultimo recurso, 1 minuto minimo,
+                // para que completar una leccion nunca sume 0.
+                int minutosBase = (leccion.getDuracionMinutos() != null && leccion.getDuracionMinutos() > 0)
+                        ? Math.min(480, leccion.getDuracionMinutos())
+                        : 1;
+                minutosDelta = (minutosEstudiados != null && minutosEstudiados > 0)
+                        ? Math.min(480, Math.max(1, minutosEstudiados))
+                        : minutosBase;
+
                 pl.setEstado(EstadoProgreso.completado);
                 pl.setPorcentaje(BigDecimal.valueOf(100));
                 pl.setXpObtenido(leccion.getXpOtorgado() != null ? leccion.getXpOtorgado() : 0);
-                pl.setMinutosEstudio(leccion.getDuracionMinutos() != null ? leccion.getDuracionMinutos() : 0);
+                pl.setMinutosEstudio(minutosDelta);
                 pl.setCompletadoEn(Instant.now());
                 progresoLeccionRepository.save(pl);
                 xpDelta = leccion.getXpOtorgado() != null ? leccion.getXpOtorgado() : 0;
-                minutosDelta = leccion.getDuracionMinutos() != null ? leccion.getDuracionMinutos() : 0;
 
                 // Acumula XP y minutos en perfil y matricula del estudiante.
                 // El trigger trg_perfil_no_escalable bloquea cambios de XP sin

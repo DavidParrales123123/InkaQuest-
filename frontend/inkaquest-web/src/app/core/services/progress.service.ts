@@ -71,12 +71,16 @@ export class ProgressService {
     _cursoId: string,
     leccionId: string,
     _xpOtorgado: number = 0,
+    minutosEstudiados?: number,
   ): Promise<number> {
     // ApiClientService traduce HttpErrorResponse a mensajes del backend
     // (por ejemplo "Debes estar matriculado en el curso...") en vez del
     // generico "Http failure response for ...".
+    const cuerpo = minutosEstudiados && minutosEstudiados > 0
+      ? { minutosEstudiados: Math.min(480, Math.max(1, Math.round(minutosEstudiados))) }
+      : {};
     const datos = await firstValueFrom(
-      this.api.post<LeccionCompletadaResponse>(`/progreso/lecciones/${leccionId}/completar`, {}),
+      this.api.post<LeccionCompletadaResponse>(`/progreso/lecciones/${leccionId}/completar`, cuerpo),
     );
     return Number(datos?.porcentajeCurso ?? datos?.porcentaje ?? 0);
   }

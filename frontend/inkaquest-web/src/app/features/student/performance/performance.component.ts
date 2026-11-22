@@ -87,9 +87,16 @@ export class PerformanceComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
     try {
+      // Antes se tragaban los errores y los KPIs caian a 0 "legitimos": el
+      // alumno veia 0 minutos sin saber que la consulta habia fallado.
+      const avisarFallo = (mensaje: string) => (e: unknown) => {
+        console.error('[InkaQuest] Error cargando rendimiento:', e);
+        if (!this.error()) this.error.set(mensaje);
+        return [] as any[];
+      };
       const [progresos, matriculados, racha] = await Promise.all([
-        this.progressService.listarMiProgreso().catch(() => [] as any[]),
-        this.courseService.listarCursosDeEstudiante(user.id).catch(() => [] as any[]),
+        this.progressService.listarMiProgreso().catch(avisarFallo('No se pudo cargar tu progreso.')),
+        this.courseService.listarCursosDeEstudiante(user.id).catch(avisarFallo('No se pudieron cargar tus cursos.')),
         this.gamificationService.obtenerRacha(user.id).catch(() => null),
       ]);
       // Combinar matriculas con progresos (o 0% si aún no ha empezado).

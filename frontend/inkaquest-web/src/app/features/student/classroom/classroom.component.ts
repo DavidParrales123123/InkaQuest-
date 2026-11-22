@@ -361,9 +361,12 @@ export class ClassroomComponent implements OnInit {
   }
 
   protected readonly errorDetalle = signal<Record<string, string>>({});
+  /** Momento en que el alumno abrio cada leccion (para medir tiempo de estudio). */
+  private readonly inicioLeccion = new Map<string, number>();
 
   protected async toggleLeccion(l: Leccion): Promise<void> {
     if (this.leccionAbierta() === l.id) { this.leccionAbierta.set(null); return; }
+    if (!this.inicioLeccion.has(l.id)) this.inicioLeccion.set(l.id, Date.now());
     this.leccionAbierta.set(l.id);
 
     // En móvil, llevar la vista al panel recién abierto. setTimeout (macro-
@@ -415,8 +418,11 @@ export class ClassroomComponent implements OnInit {
     const curso = this.curso();
     if (!user || !curso) return;
     this.marcando.set(leccionId); this.mensaje.set('');
+    const inicio = this.inicioLeccion.get(leccionId) ?? Date.now();
+    const minutos = Math.max(1, Math.round((Date.now() - inicio) / 60_000));
     try {
-      const pct = await this.progressService.registrarLeccionCompletada(user.id, curso.id, leccionId, 0);
+      const pct = await this.progressService.registrarLeccionCompletada(user.id, curso.id, leccionId, 0, minutos);
+      this.inicioLeccion.delete(leccionId);
       this.exito.set(true);
       this.mensaje.set(`Lección registrada. Progreso del curso: ${pct}%.`);
       await this.cargar();
