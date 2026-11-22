@@ -22,6 +22,8 @@ import com.inkaquest.shared.enums.EstadoProgreso;
 import com.inkaquest.shared.exception.BadRequestException;
 import com.inkaquest.shared.exception.ResourceNotFoundException;
 import com.inkaquest.shared.security.RlsExecutor;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +48,8 @@ public class ProgresoService {
     private final PerfilRepository perfilRepository;
     private final com.inkaquest.modules.gamificacion.service.GamificacionRecorder gamificacionRecorder;
     private final RlsExecutor rlsExecutor;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public ProgresoService(ProgresoCursoRepository progresoRepository,
                            ProgresoLeccionRepository progresoLeccionRepository,
@@ -151,15 +155,22 @@ public class ProgresoService {
                 minutosDelta = leccion.getDuracionMinutos() != null ? leccion.getDuracionMinutos() : 0;
 
                 // Acumula XP y minutos en perfil y matricula del estudiante.
-                estudiante.setXp((estudiante.getXp() != null ? estudiante.getXp() : 0) + xpDelta);
-                perfilRepository.save(estudiante);
-                matricula.setXpGanado((matricula.getXpGanado() != null ? matricula.getXpGanado() : 0) + xpDelta);
-                matriculaRepository.save(matricula);
+                // El trigger trg_perfil_no_escalable bloquea cambios de XP sin
+                // este flag: se activa en la MISMA conexion JPA (no JdbcTemplate).
+                escribirFlagSistema(true);
+                try {
+                    estudiante.setXp((estudiante.getXp() != null ? estudiante.getXp() : 0) + xpDelta);
+                    perfilRepository.save(estudiante);
+                    matricula.setXpGanado((matricula.getXpGanado() != null ? matricula.getXpGanado() : 0) + xpDelta);
+                    matriculaRepository.save(matricula);
 
-                // Registro de gamificacion: transaccion de XP (si aplica) y racha.
-                gamificacionRecorder.registrarActividad(estudiante,
-                        com.inkaquest.shared.enums.ConceptoXp.leccion_completada,
-                        leccionId, "Leccion", leccion.getTitulo(), xpDelta);
+                    // Registro de gamificacion: transaccion de XP (si aplica) y racha.
+                    gamificacionRecorder.registrarActividad(estudiante,
+                            com.inkaquest.shared.enums.ConceptoXp.leccion_completada,
+                            leccionId, "Leccion", leccion.getTitulo(), xpDelta);
+                } finally {
+                    escribirFlagSistema(false);
+                }
             }
 
             // Recomputo de porcentaje de unidad.
@@ -197,6 +208,17 @@ public class ProgresoService {
                     porcentajeCurso,
                     cursoCompletado);
         });
+    }
+
+    /**
+     * Activa/desactiva el flag de escritura del sistema en la MISMA conexion
+     * de la transaccion JPA (JdbcTemplate abriria otra conexion).
+     */
+    private void escribirFlagSistema(boolean activar) {
+        String sql = activar
+                ? "select public.fn_activar_escritura_sistema()"
+                : "select public.fn_desactivar_escritura_sistema()";
+        entityManager.createNativeQuery(sql).getSingleResult();
     }
 
     private BigDecimal recomputarUnidad(ProgresoCurso progreso, Perfil estudiante, Unidad unidad) {
