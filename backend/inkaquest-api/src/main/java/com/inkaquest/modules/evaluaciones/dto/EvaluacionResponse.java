@@ -1,6 +1,7 @@
 package com.inkaquest.modules.evaluaciones.dto;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -14,6 +15,8 @@ public record EvaluacionResponse(
         BigDecimal notaMaxima,
         Integer intentosPermitidos,
         Integer duracionMinutos,
+        Instant fechaInicio,
+        Instant fechaLimiteAcceso,
         boolean aleatorizarPreguntas,
         boolean mostrarResultadoInmediato,
         int totalPreguntas,

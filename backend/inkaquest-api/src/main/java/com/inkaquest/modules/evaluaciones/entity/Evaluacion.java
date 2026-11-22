@@ -66,6 +66,14 @@ public class Evaluacion implements Serializable {
     @Column(name = "duracion_minutos", nullable = true)
     private Integer duracionMinutos;
 
+    /** Inicio de la ventana de acceso. Null = sin limite inferior. */
+    @Column(name = "fecha_inicio", nullable = true)
+    private Instant fechaInicio;
+
+    /** Limite para iniciar intentos. Null = sin limite superior. */
+    @Column(name = "fecha_limite_acceso", nullable = true)
+    private Instant fechaLimiteAcceso;
+
     @CreationTimestamp
     @Column(name = "creado_en", nullable = false)
     private Instant creadoEn;
@@ -177,6 +185,26 @@ public class Evaluacion implements Serializable {
     /** Establece la columna {@code duracion_minutos}. */
     public void setDuracionMinutos(Integer duracionMinutos) {
         this.duracionMinutos = duracionMinutos;
+    }
+
+    /** Obtiene la columna {@code fecha_inicio}. */
+    public Instant getFechaInicio() {
+        return fechaInicio;
+    }
+
+    /** Establece la columna {@code fecha_inicio}. */
+    public void setFechaInicio(Instant fechaInicio) {
+        this.fechaInicio = fechaInicio;
+    }
+
+    /** Obtiene la columna {@code fecha_limite_acceso}. */
+    public Instant getFechaLimiteAcceso() {
+        return fechaLimiteAcceso;
+    }
+
+    /** Establece la columna {@code fecha_limite_acceso}. */
+    public void setFechaLimiteAcceso(Instant fechaLimiteAcceso) {
+        this.fechaLimiteAcceso = fechaLimiteAcceso;
     }
 
     /** Obtiene la columna {@code creado_en}. */

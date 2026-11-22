@@ -126,6 +126,9 @@ export class EvaluationService {
     porcentajeAprobacion?: number;
     xpOtorgado?: number;
     publicado?: boolean;
+    /** ISO 8601 (UTC). Null = sin limite. */
+    fechaInicio?: string | null;
+    fechaLimiteAcceso?: string | null;
   }): Promise<Evaluacion & { actividad: Actividad }> {
     const tiempo = Number.isFinite(input.tiempoLimiteMinutos as number) && (input.tiempoLimiteMinutos as number) > 0 ? Number(input.tiempoLimiteMinutos) : null;
     const intentos = Math.max(1, input.intentosPermitidos ?? 1);
@@ -161,6 +164,8 @@ export class EvaluationService {
         intentos_permitidos: intentos,
         porcentaje_aprobacion: input.porcentajeAprobacion ?? 60,
         mostrar_resultado_inmediato: true,
+        fecha_inicio: input.fechaInicio || null,
+        fecha_limite_acceso: input.fechaLimiteAcceso || null,
       })
       .select()
       .single();
@@ -173,6 +178,22 @@ export class EvaluationService {
     }
 
     return { ...(ev as Evaluacion), actividad: act as Actividad };
+  }
+
+  /** Actualiza la ventana de acceso de una evaluación ya creada. */
+  async actualizarVentanaAcceso(
+    evaluacionId: string,
+    fechaInicio: string | null,
+    fechaLimiteAcceso: string | null,
+  ): Promise<void> {
+    const { error } = await this.client
+      .from(this.supabase.tabla.evaluacion)
+      .update({ fecha_inicio: fechaInicio || null, fecha_limite_acceso: fechaLimiteAcceso || null })
+      .eq('id', evaluacionId);
+    if (error) {
+      console.error('[InkaQuest] Error actualizando la ventana de acceso:', error.message);
+      throw new Error(error.message);
+    }
   }
 
   /** Cambia el estado de publicación de la actividad contenedora. */

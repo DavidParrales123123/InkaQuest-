@@ -423,6 +423,10 @@ export interface Evaluacion {
   aleatorizar_preguntas: boolean;
   mostrar_resultado_inmediato: boolean;
   duracion_minutos: number | null;
+  /** Inicio de la ventana de acceso (ISO UTC). Null = sin limite inferior. */
+  fecha_inicio: string | null;
+  /** Limite para iniciar intentos (ISO UTC). Null = sin limite superior. */
+  fecha_limite_acceso: string | null;
   creado_en: string;
   actualizado_en: string;
 }

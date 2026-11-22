@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
@@ -10,6 +11,7 @@ import { DataPanelComponent } from '../../../shared/components/data-panel/data-p
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
 type EstadoEvaluacion = 'pendiente' | 'rendida';
+type EstadoVentana = 'abierta' | 'proxima' | 'cerrada';
 
 /** Fila de evaluación enriquecida por el panel del estudiante. */
 type FilaEvaluacion = Evaluacion & {
@@ -17,6 +19,7 @@ type FilaEvaluacion = Evaluacion & {
   intentosHechos: number;
   intentosPermitidos: number;
   estadoCard: EstadoEvaluacion;
+  ventana: EstadoVentana;
   ultimo?: IntentoEvaluacion;
   resultadoTexto: string;
   puntosMax: number;
@@ -25,7 +28,7 @@ type FilaEvaluacion = Evaluacion & {
 @Component({
   selector: 'app-student-evaluaciones',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, DataPanelComponent, PageHeaderComponent],
+  imports: [DatePipe, RouterLink, DataPanelComponent, PageHeaderComponent],
   template: `
     <section class="space-y-6">
       <app-page-header titulo="Evaluaciones" descripcion="Quizzes y exámenes de tus cursos. Las que rendiste quedan como realizado; las que no, veras aquí." />
@@ -45,6 +48,11 @@ type FilaEvaluacion = Evaluacion & {
                           <p class="font-medium text-marine-800">{{ e.actividad.titulo }}</p>
                           <p class="mt-1 text-xs text-marine-500">Tipo: {{ e.actividad.tipo }} · Puntos máx: {{ e.puntosMax ?? e.nota_maxima }}</p>
                           <p class="mt-0.5 text-xs text-marine-400">{{ e.intentosHechos }} de {{ e.intentosPermitidos }} intento(s) usado(s)</p>
+                          @if (e.ventana === 'proxima') {
+                            <p class="mt-0.5 text-xs font-semibold text-warning-700">Disponible desde {{ e.fecha_inicio | date:'medium' }}</p>
+                          } @else if (e.ventana === 'cerrada') {
+                            <p class="mt-0.5 text-xs font-semibold text-danger-700">Plazo de acceso finalizado</p>
+                          }
                           @if (e.estadoCard === 'rendida' && e.ultimo) {
                             <p class="mt-1.5 text-xs font-semibold text-success-700">
                               Realizado — Resultado: {{ e.resultadoTexto }}
@@ -53,6 +61,10 @@ type FilaEvaluacion = Evaluacion & {
                         </div>
                         @if (e.estadoCard === 'rendida') {
                           <span class="badge badge-gold">Realizado</span>
+                        } @else if (e.ventana === 'proxima') {
+                          <span class="badge badge-warning">Próximamente</span>
+                        } @else if (e.ventana === 'cerrada') {
+                          <span class="badge badge-danger">Cerrada</span>
                         } @else {
                           <a [routerLink]="['/estudiante/evaluaciones', e.id]" class="btn btn-primary btn-sm">▶ Rendir evaluación</a>
                         }
@@ -78,6 +90,14 @@ export class EvaluationsComponent implements OnInit {
 
   ngOnInit(): void { void this.cargar(); }
 
+  /** La UI informa del estado, pero la BD y el backend son los que bloquean. */
+  protected estadoVentana(e: Evaluacion): EstadoVentana {
+    const ahora = Date.now();
+    if (e.fecha_inicio && new Date(e.fecha_inicio).getTime() > ahora) return 'proxima';
+    if (e.fecha_limite_acceso && new Date(e.fecha_limite_acceso).getTime() < ahora) return 'cerrada';
+    return 'abierta';
+  }
+
   protected async cargar(): Promise<void> {
     const user = this.auth.usuario();
     if (!user) { this.error.set('Debes iniciar sesión.'); this.cargando.set(false); return; }
@@ -102,7 +122,8 @@ export class EvaluationsComponent implements OnInit {
               ? `${ultimo.puntaje}/${ultimo.puntaje_maximo ?? puntosMax ?? e.nota_maxima} pts`
               : 'Sin puntaje registrado aún.';
             const estadoCard: EstadoEvaluacion = intentosHechos >= intentosPermitidos ? 'rendida' : 'pendiente';
-            return { ...e, intentosHechos, intentosPermitidos, estadoCard, ultimo, resultadoTexto, puntosMax };
+            const ventana = this.estadoVentana(e);
+            return { ...e, intentosHechos, intentosPermitidos, estadoCard, ventana, ultimo, resultadoTexto, puntosMax };
           }),
         );
         items.push({ curso, evaluaciones: rows });

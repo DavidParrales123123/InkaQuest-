@@ -17,6 +17,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -106,7 +108,21 @@ public class EvaluacionesService {
         return rlsExecutor.executeAs(usuarioId, () -> {
             Evaluacion evaluacion = evaluacionRepository.findById(evaluacionId)
                     .orElseThrow(() -> new ResourceNotFoundException("Evaluación no encontrada"));
-            
+
+            // Ventana de acceso: el trigger de BD es la barrera autoritativa,
+            // aqui se valida ademas para devolver un mensaje claro al usuario.
+            Instant ahora = Instant.now();
+            if (evaluacion.getFechaInicio() != null && ahora.isBefore(evaluacion.getFechaInicio())) {
+                String inicio = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+                        .withZone(ZoneId.systemDefault())
+                        .format(evaluacion.getFechaInicio());
+                throw new BadRequestException(
+                        "Esta evaluación aún no está disponible. Puedes iniciarla a partir del " + inicio + ".");
+            }
+            if (evaluacion.getFechaLimiteAcceso() != null && ahora.isAfter(evaluacion.getFechaLimiteAcceso())) {
+                throw new BadRequestException("El plazo de acceso a esta evaluación ha finalizado.");
+            }
+
             // Verificar que está matriculado
             UUID cursoId = evaluacion.getActividadId().getCursoId().getId();
             boolean matriculado = matriculaRepository
@@ -433,6 +449,8 @@ public class EvaluacionesService {
                 e.getNotaMaxima(),
                 e.getIntentosPermitidos(),
                 e.getDuracionMinutos(),
+                e.getFechaInicio(),
+                e.getFechaLimiteAcceso(),
                 e.getAleatorizarPreguntas(),
                 e.getMostrarResultadoInmediato(),
                 (int) totalPreguntas,

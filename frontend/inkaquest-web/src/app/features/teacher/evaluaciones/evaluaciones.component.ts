@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { DatePipe, NgClass } from '@angular/common';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
@@ -34,7 +35,7 @@ type TipoEvaluacion = 'quiz' | 'examen';
 @Component({
   selector: 'app-teacher-evaluaciones',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, PageHeaderComponent],
+  imports: [DatePipe, NgClass, FormsModule, ReactiveFormsModule, RouterLink, PageHeaderComponent],
   styles: [`
     .opcion-row { display:flex; gap:.5rem; align-items:center; }
     .correcta-mark { flex: 0 0 auto; accent-color: var(--color-brand-500, #12736b); width:1.1rem; height:1.1rem; cursor:pointer; }
@@ -127,6 +128,21 @@ type TipoEvaluacion = 'quiz' | 'examen';
                 </div>
               </div>
 
+              <fieldset class="rounded-xl border border-surface-200 bg-surface-50 p-3">
+                <legend class="px-1 text-xs font-bold uppercase tracking-wider text-marine-500">Ventana de acceso</legend>
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label class="label" for="fecha-inicio">Fecha de inicio</label>
+                    <input id="fecha-inicio" type="datetime-local" class="input" formControlName="fechaInicio" aria-describedby="ventana-ayuda" />
+                  </div>
+                  <div>
+                    <label class="label" for="fecha-limite">Límite de acceso</label>
+                    <input id="fecha-limite" type="datetime-local" class="input" formControlName="fechaLimiteAcceso" aria-describedby="ventana-ayuda" />
+                  </div>
+                </div>
+                <p id="ventana-ayuda" class="mt-2 text-[0.7rem] text-marine-400">Deja ambos vacíos para que esté siempre disponible. El límite solo impide iniciar; quien ya empezó puede terminar.</p>
+              </fieldset>
+
               <div>
                 <label class="label" for="instr">Instrucciones (opcional)</label>
                 <textarea id="instr" class="textarea" rows="2" formControlName="instrucciones" placeholder="Qué verán los estudiantes justo antes de empezar."></textarea>
@@ -165,13 +181,39 @@ type TipoEvaluacion = 'quiz' | 'examen';
                             }
                           </div>
                           <p class="mt-1 text-xs text-marine-500">{{ e.intentos_permitidos }} intento(s) · {{ e.porcentaje_aprobacion }}% para aprobar · {{ e.duracion_minutos ?? 'sin' }} min · {{ e.nota_maxima }} pts máx.</p>
+                          <p class="mt-1 text-xs text-marine-500">
+                            Acceso:
+                            @if (e.fecha_inicio) { desde {{ e.fecha_inicio | date:'medium' }} } @else { sin inicio }
+                            ·
+                            @if (e.fecha_limite_acceso) { hasta {{ e.fecha_limite_acceso | date:'medium' }} } @else { sin límite }
+                          </p>
                         </div>
-                        <div class="flex flex-wrap gap-1.5">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                          <span class="badge" [ngClass]="estadoVentana(e).clase">{{ estadoVentana(e).texto }}</span>
                           <button type="button" class="btn btn-outline btn-sm" [class.ring-2]="evaluacionSel()?.id === e.id" (click)="abrirEditorDePreguntas(e)">Preguntas</button>
+                          <button type="button" class="btn btn-outline btn-sm" (click)="abrirEdicionVentana(e)">Fechas</button>
                           <button type="button" class="btn btn-outline btn-sm" (click)="togglePublicada(e)">{{ e.actividad.publicado ? 'Ocultar' : 'Publicar' }}</button>
                           <button type="button" class="btn btn-outline btn-sm text-danger-700" (click)="eliminarEvaluacion(e)">Eliminar</button>
                         </div>
                       </div>
+
+                      @if (editandoVentanaId() === e.id) {
+                        <div class="mt-3 rounded-xl border border-brand-200 bg-brand-50/50 p-3">
+                          <p class="mb-2 text-xs font-bold uppercase tracking-wider text-brand-700">Editar ventana de acceso</p>
+                          <div class="grid gap-2 sm:grid-cols-2">
+                            <label class="label" [attr.for]="'edit-ini-'+e.id">Inicio
+                              <input [id]="'edit-ini-'+e.id" type="datetime-local" class="input" [ngModel]="editInicio()" (ngModelChange)="editInicio.set($event)" />
+                            </label>
+                            <label class="label" [attr.for]="'edit-fin-'+e.id">Límite
+                              <input [id]="'edit-fin-'+e.id" type="datetime-local" class="input" [ngModel]="editLimite()" (ngModelChange)="editLimite.set($event)" />
+                            </label>
+                          </div>
+                          <div class="mt-2 flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-primary btn-sm" (click)="guardarVentana(e)">Guardar fechas</button>
+                            <button type="button" class="btn btn-outline btn-sm" (click)="cancelarEdicionVentana()">Cancelar</button>
+                          </div>
+                        </div>
+                      }
                     </li>
                   }
                 </ul>
@@ -292,6 +334,10 @@ export class EvaluationsComponent implements OnInit {
 
   // Editor de preguntas
   protected readonly evaluacionSel = signal<(Evaluacion & { actividad: Actividad }) | null>(null);
+  /** Edicion inline de la ventana de acceso (una tarjeta a la vez). */
+  protected readonly editandoVentanaId = signal<string | null>(null);
+  protected readonly editInicio = signal('');
+  protected readonly editLimite = signal('');
   protected readonly preguntas = signal<(Pregunta & { opciones: Opcion[] })[]>([]);
   protected readonly enunciado = signal('');
   protected readonly retroalimentacion = signal('');
@@ -308,6 +354,8 @@ export class EvaluationsComponent implements OnInit {
     aprobacion: [60, [Validators.required, Validators.min(0), Validators.max(100)]],
     xp: [50, [Validators.required, Validators.min(0)]],
     publicado: [true],
+    fechaInicio: [''],
+    fechaLimiteAcceso: [''],
   });
 
   ngOnInit(): void { void this.cargar(); }
@@ -367,6 +415,12 @@ export class EvaluationsComponent implements OnInit {
     if (!leccionId) { this.mensaje.set({ ok: false, texto: 'Selecciona una lección para asociar la evaluación.' }); return; }
 
     const v = this.formCrear.getRawValue();
+    const fechaInicio = this.aIso(v.fechaInicio);
+    const fechaLimiteAcceso = this.aIso(v.fechaLimiteAcceso);
+    if (fechaInicio && fechaLimiteAcceso && new Date(fechaLimiteAcceso) <= new Date(fechaInicio)) {
+      this.mensaje.set({ ok: false, texto: 'El límite de acceso debe ser posterior a la fecha de inicio.' });
+      return;
+    }
     this.creando.set(true);
     this.mensaje.set(null);
     try {
@@ -381,10 +435,12 @@ export class EvaluationsComponent implements OnInit {
         porcentajeAprobacion: v.aprobacion,
         xpOtorgado: v.xp,
         publicado: v.publicado,
+        fechaInicio,
+        fechaLimiteAcceso,
       });
       this.evaluaciones.update((arr) => [creada, ...arr]);
       await this.abrirEditorDePreguntas(creada);
-      this.formCrear.reset({ tipo: v.tipo, tiempoMin: 0, intentos: 1, aprobacion: 60, xp: v.xp, publicado: true, instrucciones: '', titulo: '' });
+      this.formCrear.reset({ tipo: v.tipo, tiempoMin: 0, intentos: 1, aprobacion: 60, xp: v.xp, publicado: true, instrucciones: '', titulo: '', fechaInicio: '', fechaLimiteAcceso: '' });
       this.mensaje.set({ ok: true, texto: 'Evaluación creada. Ahora agrega sus preguntas.' });
     } catch (e) {
       this.mensaje.set({ ok: false, texto: e instanceof Error ? e.message : 'No se pudo crear la evaluación.' });
@@ -406,6 +462,60 @@ export class EvaluationsComponent implements OnInit {
   protected cerrarEditor(): void {
     this.evaluacionSel.set(null);
     this.preguntas.set([]);
+  }
+
+  /** datetime-local (hora local) -> ISO UTC. */
+  protected aIso(valor: string | null | undefined): string | null {
+    if (!valor) return null;
+    const fecha = new Date(valor);
+    return Number.isNaN(fecha.getTime()) ? null : fecha.toISOString();
+  }
+
+  /** ISO UTC -> valor de input datetime-local (hora local del docente). */
+  protected aLocalInput(iso: string | null | undefined): string {
+    if (!iso) return '';
+    const fecha = new Date(iso);
+    if (Number.isNaN(fecha.getTime())) return '';
+    return new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+  }
+
+  /** Etiqueta y color de la ventana de acceso para el listado. */
+  protected estadoVentana(e: Evaluacion): { texto: string; clase: string } {
+    const inicio = e.fecha_inicio ? new Date(e.fecha_inicio).getTime() : null;
+    const limite = e.fecha_limite_acceso ? new Date(e.fecha_limite_acceso).getTime() : null;
+    const ahora = Date.now();
+    if (inicio !== null && ahora < inicio) return { texto: 'PRÓXIMA', clase: 'badge-warning' };
+    if (limite !== null && ahora > limite) return { texto: 'CERRADA', clase: 'badge-danger' };
+    if (inicio === null && limite === null) return { texto: 'SIEMPRE ABIERTA', clase: 'badge-neutral' };
+    return { texto: 'EN CURSO', clase: 'badge-success' };
+  }
+
+  protected abrirEdicionVentana(e: Evaluacion & { actividad: Actividad }): void {
+    this.editandoVentanaId.set(e.id);
+    this.editInicio.set(this.aLocalInput(e.fecha_inicio));
+    this.editLimite.set(this.aLocalInput(e.fecha_limite_acceso));
+  }
+
+  protected cancelarEdicionVentana(): void {
+    this.editandoVentanaId.set(null);
+  }
+
+  protected async guardarVentana(e: Evaluacion & { actividad: Actividad }): Promise<void> {
+    const inicio = this.aIso(this.editInicio());
+    const limite = this.aIso(this.editLimite());
+    if (inicio && limite && new Date(limite) <= new Date(inicio)) {
+      this.mensaje.set({ ok: false, texto: 'El límite de acceso debe ser posterior a la fecha de inicio.' });
+      return;
+    }
+    try {
+      await this.evaluationService.actualizarVentanaAcceso(e.id, inicio, limite);
+      this.evaluaciones.update((arr) => arr.map((x) => x.id === e.id ? { ...x, fecha_inicio: inicio, fecha_limite_acceso: limite } : x));
+      this.evaluacionSel.update((sel) => sel && sel.id === e.id ? { ...sel, fecha_inicio: inicio, fecha_limite_acceso: limite } : sel);
+      this.editandoVentanaId.set(null);
+      this.mensaje.set({ ok: true, texto: 'Ventana de acceso actualizada.' });
+    } catch (err) {
+      this.mensaje.set({ ok: false, texto: err instanceof Error ? err.message : 'No se pudo actualizar la ventana de acceso.' });
+    }
   }
 
   protected async togglePublicada(e: Evaluacion & { actividad: Actividad }): Promise<void> {
