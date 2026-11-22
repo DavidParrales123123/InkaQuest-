@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { tamanoLegible } from '../../../shared/utilities/archivo.util';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -234,13 +235,7 @@ export class ResourcesComponent implements OnInit {
 
   ngOnInit(): void { void this.cargar(); }
 
-  protected tamanoKb(bytes: number | null | undefined): string {
-    const n = Number(bytes ?? 0);
-    if (!Number.isFinite(n) || n <= 0) return '—';
-    if (n < 1024) return `${n} B`;
-    if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
-    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-  }
+  protected tamanoKb(bytes: number | null | undefined): string { return tamanoLegible(bytes); }
 
   protected leccionDe(id: string): { titulo: string } | null {
     const l = this.lecciones().find((x) => x.id === id);

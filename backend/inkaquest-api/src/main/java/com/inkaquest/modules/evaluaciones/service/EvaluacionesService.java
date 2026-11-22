@@ -78,10 +78,16 @@ public class EvaluacionesService {
     @Transactional(readOnly = true)
     public List<EvaluacionResponse> listarEvaluaciones(UUID usuarioId, UUID cursoId) {
         return rlsExecutor.executeAs(usuarioId, () -> {
-            // TODO: Filtrar por curso si se especifica
-            List<Evaluacion> evaluaciones = evaluacionRepository.findAll();
-            
+            // Antes se hacia findAll() ignorando cursoId: cualquier estudiante
+            // recibia las evaluaciones de TODOS los cursos.
+            List<Evaluacion> evaluaciones = cursoId == null
+                    ? evaluacionRepository.findAll()
+                    : evaluacionRepository.findAllByActividadIdCursoIdId(cursoId);
+
             return evaluaciones.stream()
+                    // "Disponibles" = publicadas (los borradores no se listan).
+                    .filter(e -> e.getActividadId() != null
+                            && Boolean.TRUE.equals(e.getActividadId().getPublicado()))
                     .map(e -> toResponse(e, usuarioId))
                     .toList();
         });

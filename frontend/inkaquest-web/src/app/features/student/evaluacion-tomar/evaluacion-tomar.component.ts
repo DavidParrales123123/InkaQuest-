@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { NgClass } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
@@ -31,11 +32,11 @@ interface IntentoJuego {
   preguntas: PreguntaJuego[];
 }
 interface ResultadoPregunta {
-  preguntaId: string;
+  id: string;
   enunciado: string;
   tipo: string;
   puntos: string | number;
-  puntajeObtenido: string | number;
+  puntosObtenidos: string | number;
   correcta: boolean;
   respuestaEstudiante: string;
   respuestaCorrecta: string | null;
@@ -50,7 +51,8 @@ interface ResultadoIntento {
   aprobado: boolean;
   tiempoInicio: string;
   tiempoFin: string;
-  respuestas: ResultadoPregunta[];
+  /** El backend devuelve 'preguntas' (PreguntaResultadoDto), no 'respuestas'. */
+  preguntas: ResultadoPregunta[];
 }
 interface ResumenEvaluacion {
   id: string;
@@ -83,7 +85,7 @@ type Fase = 'cargando' | 'intro' | 'jugando' | 'enviando' | 'resultado';
 @Component({
   selector: 'app-evaluacion-tomar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, PageHeaderComponent, StatusBadgeComponent],
+  imports: [NgClass, RouterLink, PageHeaderComponent, StatusBadgeComponent],
   template: `
     <section class="space-y-6">
       <app-page-header
@@ -190,15 +192,15 @@ type Fase = 'cargando' | 'intro' | 'jugando' | 'enviando' | 'resultado';
               <div class="mt-3 flex justify-center"><app-status-badge [estado]="r.aprobado ? 'aprobado' : 'reprobado'" /></div>
               <p class="mt-2 text-xs text-marine-400">{{ r.aprobado ? 'Has aprobado la evaluación. ¡Felicitaciones!' : 'No aprobaste esta vez. Revisa las preguntas y vuelve cuando tu docente lo permita.' }}</p>
             </div>
-            @if (r.respuestas?.length) {
+            @if (r.preguntas?.length) {
               <div>
                 <h3 class="text-base font-semibold text-marine-800">Revisión</h3>
                 <ul class="mt-2 space-y-2">
-                  @for (resp of r.respuestas; track resp.preguntaId) {
-                    <li class="rounded-lg border p-3 text-sm" [class]="resp.correcta ? 'border-success-500 bg-success-50' : 'border-danger-200 bg-danger-50'">
+                  @for (resp of r.preguntas; track resp.id) {
+                    <li class="rounded-lg border p-3 text-sm" [ngClass]="resp.correcta ? 'border-success-500 bg-success-50' : 'border-danger-200 bg-danger-50'">
                       <p class="font-semibold text-marine-800">{{ resp.enunciado }}</p>
                       @if (resp.respuestaEstudiante) { <p class="mt-1 text-xs text-marine-500">Tu respuesta: {{ resp.respuestaEstudiante }}</p> }
-                      <p class="mt-1 text-xs font-semibold" [class]="resp.correcta ? 'text-success-600' : 'text-danger-600'">{{ resp.correcta ? 'Correcta' : 'Incorrecta' }} · {{ resp.puntajeObtenido }} / {{ resp.puntos }} pts</p>
+                      <p class="mt-1 text-xs font-semibold" [ngClass]="resp.correcta ? 'text-success-600' : 'text-danger-600'">{{ resp.correcta ? 'Correcta' : 'Incorrecta' }} · {{ resp.puntosObtenidos }} / {{ resp.puntos }} pts</p>
                       @if (resp.retroalimentacion) { <p class="mt-1 text-xs text-marine-500">{{ resp.retroalimentacion }}</p> }
                     </li>
                   }

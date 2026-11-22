@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { tamanoLegible } from '../../../shared/utilities/archivo.util';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DatePipe } from '@angular/common';
@@ -319,13 +320,7 @@ export class AssignmentsComponent implements OnInit {
   protected setNota(id: string, v: unknown): void { this.notas.update((m) => ({ ...m, [id]: Number(v) })); }
   protected setComentario(id: string, v: unknown): void { this.comentarios.update((m) => ({ ...m, [id]: String(v ?? '') })); }
 
-  protected tamanoKb(bytes: number | null | undefined): string {
-    const n = Number(bytes ?? 0);
-    if (!Number.isFinite(n) || n <= 0) return '—';
-    if (n < 1024) return `${n} B`;
-    if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
-    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-  }
+  protected tamanoKb(bytes: number | null | undefined): string { return tamanoLegible(bytes); }
 
   protected async cargar(): Promise<void> {
     const user = this.auth.usuario();

@@ -3,6 +3,7 @@ package com.inkaquest.modules.evaluaciones.repository;
 import com.inkaquest.modules.evaluaciones.entity.Evaluacion;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,4 +16,7 @@ import java.util.UUID;
  */
 @Repository
 public interface EvaluacionRepository extends JpaRepository<Evaluacion, UUID> {
+
+    /** Evaluaciones de un curso (RLS limita las filas visibles al contexto actual). */
+    List<Evaluacion> findAllByActividadIdCursoIdId(UUID cursoId);
 }

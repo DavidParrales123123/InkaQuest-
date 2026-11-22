@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { tamanoLegible } from '../../../shared/utilities/archivo.util';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
@@ -237,13 +238,7 @@ export class SubmissionsComponent implements OnInit {
     return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
-  protected tamanoKb(bytes: number | null | undefined): string {
-    const n = Number(bytes ?? 0);
-    if (!Number.isFinite(n) || n <= 0) return '—';
-    if (n < 1024) return `${n} B`;
-    if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
-    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-  }
+  protected tamanoKb(bytes: number | null | undefined): string { return tamanoLegible(bytes); }
 
   protected async abrirArchivo(a: EntregaArchivo): Promise<void> {
     try {

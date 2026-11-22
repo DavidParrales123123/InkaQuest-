@@ -312,23 +312,6 @@ export class EvaluationService {
     }
   }
 
-  /** Envía una respuesta a una pregunta del intento. */
-  async responderPregunta(
-    intentoId: string,
-    preguntaId: string,
-    respuesta: string | string[]
-  ): Promise<void> {
-    await firstValueFrom(
-      this.http.post<ApiResponse<void>>(
-        `${environment.apiUrl}/intentos/${intentoId}/responder`,
-        {
-          preguntaId,
-          respuesta: Array.isArray(respuesta) ? respuesta : [respuesta]
-        }
-      )
-    );
-  }
-
   /** Obtiene el resultado de un intento finalizado. */
   async obtenerResultado(intentoId: string): Promise<ResultadoIntentoResponse> {
     const res = await firstValueFrom(

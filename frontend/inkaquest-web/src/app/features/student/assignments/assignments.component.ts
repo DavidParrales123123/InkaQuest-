@@ -1,7 +1,10 @@
 // @ts-nocheck
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+
+import { FeedbackMessageComponent } from '../../../shared/components/feedback-message/feedback-message.component';
+import { tamanoLegible } from '../../../shared/utilities/archivo.util';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { ActivityService } from '../../../core/services/activity.service';
@@ -31,12 +34,15 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 @Component({
   selector: 'app-student-assignments',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, DataPanelComponent, PageHeaderComponent, StatusBadgeComponent],
+  imports: [DatePipe, FormsModule, DataPanelComponent, FeedbackMessageComponent, PageHeaderComponent, StatusBadgeComponent],
   template: `
     <section class="space-y-6">
       <app-page-header titulo="Tareas" descripcion="Consulta tus tareas pendientes y entrégalas con descripción y archivo. No se aceptan entregas después de la fecha límite." [acciones]="true">
         <div acciones><button class="btn btn-outline btn-sm" type="button" (click)="cargar()" [disabled]="cargando()">Actualizar</button></div>
       </app-page-header>
+      @if (descargaError()) {
+        <app-feedback-message [mensaje]="descargaError()!" [exito]="false" class="block" />
+      }
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="tareas().length === 0 && calificaciones().length === 0" tituloVacio="Aún no hay tareas" descripcionVacia="Todavía no hay tareas publicadas en tus cursos. Cuando tu docente publique una tarea, aparecerá aquí para que la entregues. Mientras tanto, revisa «Unidades» y «Actividades» para tu contenido y tus pendientes." (alReintentar)="cargar()">
         <div contenido class="space-y-6">
           <!-- ════ Filtros: curso y estado ════ -->
@@ -199,9 +205,15 @@ export class AssignmentsComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly courseService = inject(CourseService);
   private readonly activityService = inject(ActivityService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  /** Reloj reactivo: sin el, una tarea que vence con la pagina abierta no
+   *  cambia de pestaña hasta que el estudiante recarga. */
+  private readonly ahora = signal(Date.now());
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+  protected readonly descargaError = signal<string | null>(null);
   protected readonly tareas = signal<(Tarea & { actividad: Actividad; entrega: Entrega | null })[]>([]);
   protected readonly calificaciones = signal<Calificacion[]>([]);
   protected readonly enviando = signal<string | null>(null);
@@ -277,7 +289,11 @@ export class AssignmentsComponent implements OnInit {
   protected readonly archivosDeMiEntrega = signal<Record<string, EntregaArchivo[]>>({});
   protected readonly archivoPreparado = signal<Record<string, File | null>>({});
 
-  ngOnInit(): void { void this.cargar(); }
+  ngOnInit(): void {
+    const reloj = setInterval(() => this.ahora.set(Date.now()), 30_000);
+    this.destroyRef.onDestroy(() => clearInterval(reloj));
+    void this.cargar();
+  }
 
   protected borrador(id: string): string { return this.borradores()[id] ?? ''; }
   protected setBorrador(id: string, v: string): void { this.borradores.update((m) => ({ ...m, [id]: v ?? '' })); }
@@ -285,13 +301,7 @@ export class AssignmentsComponent implements OnInit {
   protected ok(id: string): boolean { return !!this.oks()[id]; }
   protected puedeEnviar(id: string): boolean { return (this.borrador(id) || '').trim().length > 0; }
 
-  protected tamanoKb(bytes: number | null | undefined): string {
-    const n = Number(bytes ?? 0);
-    if (!Number.isFinite(n) || n <= 0) return '—';
-    if (n < 1024) return `${n} B`;
-    if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
-    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-  }
+  protected tamanoKb(bytes: number | null | undefined): string { return tamanoLegible(bytes); }
 
   /** Una tarea está calificada si el docente registró una nota en su entrega. */
   protected calificada(t: Tarea & { entrega: Entrega | null }): boolean {
@@ -314,12 +324,12 @@ export class AssignmentsComponent implements OnInit {
     // Si el estudiante entregó ANTES del plazo, la tarea no está vencida para
     // él: ya cumplió, aunque hoy sea posterior a la fecha límite.
     if (this.entregadaATiempo(t)) return false;
-    return new Date(t.fecha_entrega).getTime() < Date.now();
+    return new Date(t.fecha_entrega).getTime() < this.ahora();
   }
 
   /** El plazo sigue ABIERTO para escribir (no confundir con "entregó a tiempo"). */
   protected editable(t: Tarea & { entrega: Entrega | null }): boolean {
-    return !t.fecha_entrega || new Date(t.fecha_entrega).getTime() > Date.now();
+    return !t.fecha_entrega || new Date(t.fecha_entrega).getTime() > this.ahora();
   }
 
   protected prepararArchivo(tareaId: string, input: HTMLInputElement): void {
@@ -377,14 +387,23 @@ export class AssignmentsComponent implements OnInit {
     }
   }
 
+  private async abrirDescarga(url: string | null): Promise<void> {
+    if (!url) {
+      this.descargaError.set('No se pudo generar el enlace de descarga. Intenta de nuevo.');
+      return;
+    }
+    this.descargaError.set(null);
+    // location.assign no depende de un gesto del usuario tras el await
+    // (window.open era bloqueado como popup por los navegadores).
+    window.location.assign(url);
+  }
+
   protected async descargarAdjuntoTarea(a: TareaArchivo): Promise<void> {
-    const url = await this.activityService.descargarUrlAdjuntoTarea(a.ruta_storage);
-    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    await this.abrirDescarga(await this.activityService.descargarUrlAdjuntoTarea(a.ruta_storage));
   }
 
   protected async descargarMiArchivo(a: EntregaArchivo): Promise<void> {
-    const url = await this.activityService.descargarUrlEntregaArchivo(a.ruta_storage);
-    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    await this.abrirDescarga(await this.activityService.descargarUrlEntregaArchivo(a.ruta_storage));
   }
 
   protected async eliminarMiArchivo(t: Tarea & { entrega: Entrega | null }, a: EntregaArchivo): Promise<void> {

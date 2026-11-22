@@ -607,7 +607,9 @@ export class ChatComponent implements OnInit, OnDestroy {
       const msgs = await this.messageService.listarMensajes(otroId);
       this.mensajes.set(msgs);
       void this.poblarUrlsAdjuntas(msgs);
-      void this.messageService.marcarLeidos(otroId).then(() => this.cargarHilos());
+      void this.messageService.marcarLeidos(otroId)
+        .then(() => this.cargarHilos())
+        .catch(() => undefined);
       this.scrollAlFinal();
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar los mensajes.');
@@ -720,7 +722,7 @@ export class ChatComponent implements OnInit, OnDestroy {
         const esDelHilo = m.emisor_id === activo || m.destinatario_id === activo;
         if (esDelHilo && activo) {
           this.mensajes.update((arr) => arr.some((x) => x.id === m.id) ? arr : [...arr, m]);
-          if (m.emisor_id === activo) void this.messageService.marcarLeidos(activo);
+          if (m.emisor_id === activo) void this.messageService.marcarLeidos(activo).catch(() => undefined);
           void this.poblarUrlsAdjuntas([m]);
           this.scrollAlFinal();
         }
