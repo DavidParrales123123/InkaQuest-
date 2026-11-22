@@ -145,7 +145,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                       @if (calificada(t)) {
                         <div class="rounded-lg border border-gold-200 bg-gold-50 p-3 text-sm text-marine-700">
                           <strong>Calificada:</strong> nota {{ t.entrega!.nota }} sobre {{ t.nota_maxima }}.
-                          @if (vencida(t)) { <span class="text-xs"> (entregada dentro del plazo)</span> }
+                          @if (entregadaATiempo(t)) { <span class="text-xs"> (entregada dentro del plazo)</span> }
                         </div>
                       } @else if (vencida(t)) {
                         <div class="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700" role="alert">
@@ -271,11 +271,17 @@ export class AssignmentsComponent implements OnInit {
     return nota !== null && nota !== undefined;
   }
 
+  /** Indica si la entrega se envió antes o en la fecha límite. */
+  protected entregadaATiempo(t: Tarea & { entrega: Entrega | null }): boolean {
+    if (!t.fecha_entrega || !t.entrega?.enviada_en) return false;
+    return new Date(t.entrega.enviada_en).getTime() <= new Date(t.fecha_entrega).getTime();
+  }
+
   protected vencida(t: Tarea & { entrega: Entrega | null }): boolean {
-    // El servidor bloquea cualquier escritura de entrega pasada la fecha,
-    // incluso si el estudiante ya había entregado antes (trigger
-    // trg_entrega_bloquear_tardio). La UI debe reflejar esa misma regla.
     if (!t.fecha_entrega) return false;
+    // Si el estudiante entregó ANTES del plazo, la tarea no está vencida para
+    // él: ya cumplió, aunque hoy sea posterior a la fecha límite.
+    if (this.entregadaATiempo(t)) return false;
     return new Date(t.fecha_entrega).getTime() < Date.now();
   }
 
