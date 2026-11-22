@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
@@ -67,7 +67,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
                   @if (comprando() === item.id) {
                     Comprando…
                   } @else if (!puedeComprar(item)) {
-                    Sin saldo suficiente
+                    {{ motivoNoCompra(item) }}
                   } @else {
                     Comprar por {{ item.precio_monedas }} monedas{{ item.precio_xp > 0 ? ' + ' + item.precio_xp + ' XP' : '' }}
                   }
@@ -128,6 +128,18 @@ export class StoreComponent implements OnInit {
     if (item.precio_monedas > 0 && saldo < item.precio_monedas) return false;
     if (item.precio_xp > 0 && xp < item.precio_xp) return false;
     return true;
+  }
+
+  protected motivoNoCompra(item: TiendaItem): string {
+    const saldo = this.monedero()?.saldo ?? 0;
+    const xp = this.auth.perfil()?.xp ?? 0;
+    if (item.precio_monedas > 0 && saldo < item.precio_monedas) {
+      return `Te faltan ${item.precio_monedas - saldo} monedas`;
+    }
+    if (item.precio_xp > 0 && xp < item.precio_xp) {
+      return `Te faltan ${item.precio_xp - xp} XP`;
+    }
+    return 'Comprar';
   }
 
   protected async comprar(item: TiendaItem): Promise<void> {
