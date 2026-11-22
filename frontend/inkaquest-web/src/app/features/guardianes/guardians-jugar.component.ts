@@ -791,15 +791,31 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** El catálogo usa códigos modin-*; el juego usaba nombres internos. Alias centralizado. */
+  private readonly ALIAS_CODIGOS: Record<string, string> = {
+    pista: 'modin-pista',
+    cincuenta_cincuenta: 'modin-5050',
+    congelar_tiempo: 'modin-congelar',
+    segunda_oportunidad: 'modin-segunda-oportunidad',
+    saltar_pregunta: 'modin-saltar',
+    tiempo_extra: 'modin-tiempo-extra',
+  };
+
+  private codigoReal(codigo: string): string {
+    return this.ALIAS_CODIGOS[codigo] ?? codigo;
+  }
+
   protected contarItem(codigo: string): number {
-    return this.itemsMochila().filter((i) => i.codigo === codigo).reduce((a, b) => a + b.cantidad, 0);
+    const real = this.codigoReal(codigo);
+    return this.itemsMochila().filter((i) => i.codigo === real).reduce((a, b) => a + b.cantidad, 0);
   }
 
   protected tieneItem(codigo: string): boolean { return this.contarItem(codigo) > 0; }
 
   /** Consume 1 unidad de un ítem del inventario (vía RPC transaccional). */
   private async consumirItemCodigo(codigo: string): Promise<{ ok: boolean; mensaje: string }> {
-    const fila = this.itemsMochila().find((i) => i.codigo === codigo && i.cantidad > 0);
+    const real = this.codigoReal(codigo);
+    const fila = this.itemsMochila().find((i) => i.codigo === real && i.cantidad > 0);
     if (!fila) return { ok: false, mensaje: 'No tienes este ítem.' };
     const ok = await this.rewards.consumirItem(fila.tienda_item_id);
     await this.cargarMochila();
@@ -835,27 +851,32 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     (this.game?.scene?.getScene('Combate') as any)?.finalizarMuerte?.();
   }
 
-  /** Pista de la pregunta (ítem: Pista). */
+  /** Pista de la pregunta (ítem: Pista). Solo se consume si se obtiene la pista. */
   protected async usarPistaPregunta(): Promise<void> {
     const p = this.preguntaActual();
-    if (!p) return;
-    const ok = await this.consumirItemCodigo('pista');
-    if (!ok.ok) { this.mensajeResultado.set(ok.mensaje); return; }
+    if (!p || this.pistaActual()) return;
     const sb = this.supabase.client;
     const { data, error } = await sb.rpc('guardianes_pista_pregunta', { p_pregunta_id: p.preguntaId });
-    this.pistaActual.set(error ? 'Sigue el algoritmo dominante del tema.' : String(data ?? 'Sigue el algoritmo dominante del tema.'));
+    if (error) { this.mensajeResultado.set('No se pudo obtener la pista. Intenta de nuevo.'); return; }
+    const texto = String(data ?? '').trim() || 'Sigue el algoritmo dominante del tema.';
+    const ok = await this.consumirItemCodigo('pista');
+    if (!ok.ok) { this.mensajeResultado.set(ok.mensaje); return; }
+    this.pistaActual.set(texto);
   }
 
-  /** 50/50: marca 2 opciones incorrectas (ítem: 50/50). */
+  /** 50/50: marca 2 opciones incorrectas. Solo se consume si se obtienen las opciones. */
   protected async usarCincuentaYCincuenta(): Promise<void> {
     const p = this.preguntaActual();
-    if (!p) return;
-    const ok = await this.consumirItemCodigo('cincuenta_cincuenta');
-    if (!ok.ok) { this.mensajeResultado.set(ok.mensaje); return; }
+    if (!p || this.eliminadas().length > 0) return;
     const sb = this.supabase.client;
     const { data, error } = await sb.rpc('guardianes_eliminar_dos', { p_pregunta_id: p.preguntaId });
+    if (error) { this.mensajeResultado.set('No se pudo aplicar el 50/50. Intenta de nuevo.'); return; }
     const opciones = (data as { opciones?: unknown } | null)?.opciones;
-    this.eliminadas.set(error ? [] : Array.isArray(opciones) ? opciones.map(String) : []);
+    const eliminadas = Array.isArray(opciones) ? opciones.map(String) : [];
+    if (eliminadas.length === 0) { this.mensajeResultado.set('No se pudo aplicar el 50/50. Intenta de nuevo.'); return; }
+    const ok = await this.consumirItemCodigo('cincuenta_cincuenta');
+    if (!ok.ok) { this.mensajeResultado.set(ok.mensaje); return; }
+    this.eliminadas.set(eliminadas);
   }
 
   /** Segunda oportunidad: te permite volver a responder la pregunta (ítem: Segunda oportunidad). */
