@@ -1,10 +1,8 @@
 // @ts-nocheck
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
-import { environment } from '../../../environments/environment';
-import { ApiResponse } from '../models/api-response.model';
+import { ApiClientService } from './api-client.service';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 
@@ -16,7 +14,7 @@ import { AuthService } from './auth.service';
  */
 @Injectable({ providedIn: 'root' })
 export class ProgressService {
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(ApiClientService);
   private readonly supabase = inject(SupabaseService);
   private readonly client = this.supabase.client;
   private readonly auth = inject(AuthService);
@@ -74,14 +72,13 @@ export class ProgressService {
     leccionId: string,
     _xpOtorgado: number = 0,
   ): Promise<number> {
-    const res = await firstValueFrom(
-      this.http.post<ApiResponse<LeccionCompletadaResponse>>(
-        `${environment.apiUrl}/progreso/lecciones/${leccionId}/completar`,
-        {},
-      ),
+    // ApiClientService traduce HttpErrorResponse a mensajes del backend
+    // (por ejemplo "Debes estar matriculado en el curso...") en vez del
+    // generico "Http failure response for ...".
+    const datos = await firstValueFrom(
+      this.api.post<LeccionCompletadaResponse>(`/progreso/lecciones/${leccionId}/completar`, {}),
     );
-    const datos: any = res.data || {};
-    return Number(datos.porcentajeCurso ?? datos.porcentaje ?? 0);
+    return Number(datos?.porcentajeCurso ?? datos?.porcentaje ?? 0);
   }
 
   /** Normaliza la fila de progreso_curso (snake) a la forma usada por la UI. */

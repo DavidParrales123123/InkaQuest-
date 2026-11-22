@@ -27,7 +27,7 @@ export class StatusBadgeComponent {
 
   /** Etiqueta legible: estado conocido o normalizado (sin guiones bajos). */
   protected readonly texto = computed(() => {
-    const estado = this.estado().trim();
+    const estado = (this.estado() ?? '').trim();
     if (!estado) return '—';
     return ETIQUETAS[estado] ?? estado.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
   });
@@ -72,6 +72,9 @@ export class StatusBadgeComponent {
       // Progreso
       completado: 'badge-success',
       incompleto: 'badge-warning',
+      // Evaluaciones
+      aprobado: 'badge-success',
+      reprobado: 'badge-danger',
       // Cuenta
       pendiente_verificacion: 'badge-warning',
       activo: 'badge-success',
@@ -113,6 +116,8 @@ const ETIQUETAS: Record<string, string> = {
   cerrado: 'Cerrado',
   completado: 'Completado',
   incompleto: 'Incompleto',
+  aprobado: 'Aprobado',
+  reprobado: 'Reprobado',
   pendiente_verificacion: 'Por verificar',
   activo: 'Activo',
   suspendido: 'Suspendido',

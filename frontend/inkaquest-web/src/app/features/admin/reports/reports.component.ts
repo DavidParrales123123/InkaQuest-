@@ -58,10 +58,6 @@ interface FilaCurso {
         </app-stat-card>
       </div>
 
-      @if (error()) {
-        <p class="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700" role="alert">{{ error() }}</p>
-      }
-
       <div class="grid gap-6 xl:grid-cols-3">
         <!-- Cursos y matrícula -->
         <app-data-panel class="xl:col-span-2" [cargando]="cargando()" [error]="error()" [vacio]="filasCurso().length === 0" tituloVacio="Aún no hay cursos" descripcionVacia="Selecciona un curso publicado y con matrícula activa para ver métricas en vivo." (alReintentar)="cargar()">
@@ -78,8 +74,8 @@ interface FilaCurso {
                     <th scope="col">Estado</th>
                     <th scope="col">Matriculados</th>
                     <th scope="col">Completados</th>
-                    <th scope="col">Abandonadas</th>
-                    <th scope="col">% aprobado</th>
+                    <th scope="col">Pago pendiente</th>
+                    <th scope="col">% pagado</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -89,8 +85,8 @@ interface FilaCurso {
                       <td data-label="Estado"><app-status-badge [estado]="fila.estado" /></td>
                       <td data-label="Matriculados">{{ fila.matriculados }}</td>
                       <td data-label="Completados">{{ fila.completadas }}</td>
-                      <td data-label="Abandonadas">{{ fila.pendientes }}</td>
-                      <td data-label="% aprobado">{{ fila.porcentaje_pago }}%</td>
+                      <td data-label="Pago pendiente">{{ fila.pendientes }}</td>
+                      <td data-label="% pagado">{{ fila.porcentaje_pago }}%</td>
                     </tr>
                   }
                 </tbody>
@@ -100,7 +96,7 @@ interface FilaCurso {
         </app-data-panel>
 
         <!-- Tickets abiertos -->
-        <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="ticketsRecientes().length === 0" tituloVacio="Sin tickets" descripcionVacia="Cuando los alumnos/docentes creen tickets de soporte, aparecerán aquí." (alReintentar)="cargar()">
+        <app-data-panel [cargando]="cargando()" [vacio]="ticketsRecientes().length === 0" tituloVacio="Sin tickets" descripcionVacia="Cuando los alumnos/docentes creen tickets de soporte, aparecerán aquí." (alReintentar)="cargar()">
           <div contenido class="space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h2 class="text-base font-semibold text-marine-800">Tickets recientes</h2>

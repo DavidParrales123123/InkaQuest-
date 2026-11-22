@@ -216,7 +216,7 @@ export interface SeccionPanel {
           </div>
         </header>
 
-        <main id="contenido-principal" class="flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-12">
+        <main id="contenido-principal" tabindex="-1" class="flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-12">
           <div class="mx-auto w-full max-w-7xl">
             <router-outlet />
           </div>

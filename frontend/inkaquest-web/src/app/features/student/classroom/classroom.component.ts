@@ -12,6 +12,7 @@ import { StorageService } from '../../../core/services/storage.service';
 import { Contenido, Curso, Leccion, Modulo, ProgresoCurso, ProgresoLeccion, Recurso, Unidad } from '../../../core/models/domain.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
+import { FeedbackMessageComponent } from '../../../shared/components/feedback-message/feedback-message.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { imagenDeCurso } from '../../../shared/utilities/curso-imagen.util';
 
@@ -20,13 +21,16 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
 @Component({
   selector: 'app-student-classroom',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, DecimalPipe, ButtonComponent, DataPanelComponent, StatusBadgeComponent],
+  imports: [RouterLink, DecimalPipe, ButtonComponent, DataPanelComponent, FeedbackMessageComponent, StatusBadgeComponent],
   template: `
     <section class="space-y-6">
       <a routerLink="/estudiante/cursos" class="inline-flex items-center gap-1.5 text-sm font-medium text-marine-500 hover:text-brand-600">
         <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Volver a mis cursos
       </a>
+
+      <!-- Fuera del panel: sigue visible aunque la recarga muestre skeletons. -->
+      <app-feedback-message [mensaje]="mensaje()" [exito]="exito()" />
 
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="!curso()" tituloVacio="Curso no disponible" descripcionVacia="No se pudo cargar el aula del curso." (alReintentar)="cargar()">
         <div contenido class="space-y-6">
@@ -54,9 +58,6 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                     </div>
                   } @else {
                     <p class="mt-3 text-sm text-marine-500">No hay registro de progreso para este curso (requiere matrícula activa).</p>
-                  }
-                  @if (mensaje()) {
-                    <p class="mt-3 text-sm" [class.text-success-600]="exito()" [class.text-danger-600]="!exito()">{{ mensaje() }}</p>
                   }
                 </div>
               </div>
@@ -113,31 +114,32 @@ interface LeccionDetalle { contenidos: Contenido[]; recursos: (Recurso & { urlRe
                           } @else {
                             <ul class="space-y-3">
                               @for (l of m.lecciones; track l.id) {
-                                <li class="scroll-mt-4 rounded-xl border border-surface-200 bg-white" [attr.data-leccion-abierta]="leccionAbierta() === l.id ? 'true' : null">
-                                  <button type="button" class="flex w-full flex-col items-stretch gap-3 p-4 text-left sm:flex-row sm:items-center" (click)="toggleLeccion(l)">
-                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                      <div class="min-w-0 flex-1">
-                                        <div class="flex flex-wrap items-center gap-2">
-                                          <p class="font-semibold text-marine-800">{{ l.numero }}. {{ l.titulo }}</p>
-                                          @if (completada(l.id)) { <span class="badge badge-success">Completada</span> }
+                                <li class="scroll-mt-20 rounded-xl border border-surface-200 bg-white" [attr.data-leccion-id]="l.id">
+                                  <div class="flex w-full flex-col items-stretch gap-3 p-4 text-left sm:flex-row sm:items-center">
+                                    <button type="button" class="min-w-0 flex-1 text-left" [attr.aria-expanded]="leccionAbierta() === l.id" (click)="toggleLeccion(l)">
+                                      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div class="min-w-0 flex-1">
+                                          <div class="flex flex-wrap items-center gap-2">
+                                            <p class="font-semibold text-marine-800">{{ l.numero }}. {{ l.titulo }}</p>
+                                            @if (completada(l.id)) { <span class="badge badge-success">Completada</span> }
+                                          </div>
+                                          <p class="mt-0.5 text-xs text-marine-500">{{ l.duracion_minutos }} min · {{ l.xp_otorgado }} XP · {{ l.tipo_contenido }}</p>
+                                          @if (l.descripcion) { <p class="mt-1 text-sm text-marine-600 line-clamp-2">{{ l.descripcion }}</p> }
                                         </div>
-                                        <p class="mt-0.5 text-xs text-marine-500">{{ l.duracion_minutos }} min · {{ l.xp_otorgado }} XP · {{ l.tipo_contenido }}</p>
-                                        @if (l.descripcion) { <p class="mt-1 text-sm text-marine-600 line-clamp-2">{{ l.descripcion }}</p> }
+                                        <span class="shrink-0 text-xs text-brand-700 font-medium">{{ leccionAbierta() === l.id ? 'Ocultar materiales' : 'Ver materiales' }}</span>
                                       </div>
-                                      <div class="flex shrink-0 flex-row flex-wrap items-center justify-between gap-2 sm:flex-col sm:items-end sm:justify-start">
-                                        <span class="text-xs text-brand-700 font-medium">{{ leccionAbierta() === l.id ? 'Ocultar materiales' : 'Ver materiales' }}</span>
-                                        @if (!completada(l.id)) {
-                                          @if (!tieneMateriales(l.id) && cargandoDetalle() !== l.id && detalleCargados(l.id)) {
-                                            <span class="text-xs text-marine-400">Subí primero los materiales del docente; luego podrás marcarla completada.</span>
-                                          }
-                                          <span (click)="$event.stopPropagation()">
-                                            <app-button variante="primario" tamano="sm" [deshabilitado]="!puedeMarcar() || marcando() === l.id || !tieneMateriales(l.id)" [cargando]="marcando() === l.id" (alPulsar)="marcar(l.id)">
-                                              Marcar completada
-                                            </app-button>
-                                          </span>
-                                        }</div>
-                                    </div>
-                                  </button>
+                                    </button>
+                                    @if (!completada(l.id)) {
+                                      <div class="flex shrink-0 flex-col items-start gap-1 sm:items-end">
+                                        @if (!tieneMateriales(l.id) && cargandoDetalle() !== l.id && detalleCargados(l.id)) {
+                                          <span class="text-xs text-marine-400">Subí primero los materiales del docente; luego podrás marcarla completada.</span>
+                                        }
+                                        <app-button variante="primario" tamano="sm" [deshabilitado]="!puedeMarcar() || marcando() === l.id || !tieneMateriales(l.id)" [cargando]="marcando() === l.id" (alPulsar)="marcar(l.id)">
+                                          Marcar completada
+                                        </app-button>
+                                      </div>
+                                    }
+                                  </div>
 
                                   @if (leccionAbierta() === l.id) {
                                     <div class="border-t border-surface-200 bg-surface-50 p-4 space-y-4">
@@ -364,16 +366,20 @@ export class ClassroomComponent implements OnInit {
     if (this.leccionAbierta() === l.id) { this.leccionAbierta.set(null); return; }
     this.leccionAbierta.set(l.id);
 
-    // En móvil, llevar la vista al panel recién abierto para que el contenido
-    // y los materiales se vean sin tener que buscarlos en la pantalla.
-    queueMicrotask(() => {
+    // En móvil, llevar la vista al panel recién abierto. setTimeout (macro-
+    // tarea) corre DESPUES de la change detection de Angular; un microtask
+    // encontraba la leccion anterior o ninguna. Buscamos por id para no
+    // depender de un atributo que Angular aun no ha actualizado.
+    setTimeout(() => {
       try {
-        const destino = this.host.nativeElement.querySelector('[data-leccion-abierta="true"]') as HTMLElement | null;
+        const destino = this.host.nativeElement.querySelector('[data-leccion-id="' + l.id + '"]') as HTMLElement | null;
         if (destino && typeof destino.scrollIntoView === 'function') {
-          destino.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          const reduce = typeof matchMedia === 'function'
+            && matchMedia('(prefers-reduced-motion: reduce)').matches;
+          destino.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
         }
       } catch { /* scroll no disponible: no bloquea la lección */ }
-    });
+    }, 0);
 
     if (this.detalles()[l.id]) return;
     this.cargandoDetalle.set(l.id);

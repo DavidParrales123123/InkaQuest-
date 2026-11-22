@@ -115,10 +115,9 @@
     .text-marine-400, .text-marine-500 { color: #1b2a4a !important; }
   }
   @media print {
-    nav, .btn, app-chatbot-widget, app-confirm-dialog, app-global-error-banner, app-navigation-progress { display: none !important; }
+    nav, .btn, app-chatbot-widget, app-confirm-dialog, app-global-error-banner, app-navigation-progress, app-offline-banner, app-feedback-message { display: none !important; }
     body { background: #fff !important; color: #000 !important; }
     .card, .table-wrap { box-shadow: none !important; break-inside: avoid; }
-    a[href]::after { content: ''; }
   }
 }
 
@@ -145,7 +144,9 @@
   .label { @apply mb-1.5 block text-sm font-bold text-marine-700; }
   .input {
     @apply w-full rounded-xl border border-surface-300 bg-white px-3.5 py-2.5 text-sm text-marine-800 placeholder:text-marine-300 transition-colors min-h-11
-           focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none disabled:bg-surface-50 disabled:text-marine-300;
+           focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20
+           focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500
+           disabled:bg-surface-50 disabled:text-marine-300;
   }
   .input-error { @apply border-danger-500 focus:border-danger-500 focus:ring-danger-500/20; }
   [aria-invalid='true'] { @apply border-danger-500 focus:border-danger-500 focus:ring-2 focus:ring-danger-500/20; }
@@ -153,14 +154,17 @@
   .input::placeholder, .textarea::placeholder { @apply text-marine-300; }
   .select {
     @apply w-full rounded-xl border border-surface-300 bg-white px-3.5 py-2.5 text-sm text-marine-800 transition-colors min-h-11
-           focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none
+           focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20
+           focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500
            disabled:bg-surface-50 disabled:text-marine-300 appearance-none bg-no-repeat pr-10;
     background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%235d729a' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-size: 1.1rem; background-position: right 0.75rem center;
   }
   .textarea {
     @apply w-full rounded-xl border border-surface-300 bg-white px-3.5 py-2.5 text-sm text-marine-800 placeholder:text-marine-300 transition-colors
-           focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none disabled:bg-surface-50 disabled:text-marine-300 min-h-28 resize-y;
+           focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20
+           focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500
+           disabled:bg-surface-50 disabled:text-marine-300 min-h-28 resize-y;
   }
   .field-error { @apply flex items-center gap-1 text-sm text-danger-600; min-height: 1.25rem; margin-top: 0.15rem; line-height: 1.25rem; }
   .checkbox { @apply size-5 rounded border-surface-300 text-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:ring-offset-0; }

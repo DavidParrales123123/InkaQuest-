@@ -53,7 +53,7 @@ export class StatCardComponent {
   /** Indica si se pinta el icono. */
   readonly icono = input(false);
   /** Tono visual del icono. */
-  readonly tono = input<'brand' | 'gold' | 'danger' | 'info' | 'surface'>('brand');
+  readonly tono = input<'brand' | 'success' | 'gold' | 'danger' | 'info' | 'surface'>('brand');
   /** Ruta a la que navega la tarjeta (opcional). */
   readonly enlace = input<string | null>(null);
 
@@ -67,6 +67,8 @@ export class StatCardComponent {
   /** Clases del contenedor del icono segun el tono. */
   protected tonoIcono(): string {
     switch (this.tono()) {
+      case 'success':
+        return 'bg-success-50 text-success-600';
       case 'gold':
         return 'bg-gold-50 text-gold-700';
       case 'danger':

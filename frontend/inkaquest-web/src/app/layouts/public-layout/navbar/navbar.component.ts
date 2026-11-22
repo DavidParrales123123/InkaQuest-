@@ -109,6 +109,7 @@ import { LogoComponent } from '../../../shared/components/logo/logo.component';
               [routerLink]="enlace.ruta"
               routerLinkActive="active"
               [routerLinkActiveOptions]="{ exact: enlace.exacto }"
+              ariaCurrentWhenActive="page"
               class="header__nav-link"
             >{{ enlace.texto }}</a>
           }
@@ -154,6 +155,7 @@ import { LogoComponent } from '../../../shared/components/logo/logo.component';
                     [routerLink]="enlace.ruta"
                     routerLinkActive="active"
                     [routerLinkActiveOptions]="{ exact: enlace.exacto }"
+                    ariaCurrentWhenActive="page"
                     class="header__mobile-link"
                     (click)="cerrarMenu()"
                   >{{ enlace.texto }}</a>
