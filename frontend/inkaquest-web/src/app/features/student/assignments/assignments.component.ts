@@ -142,7 +142,12 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                     }
 
                     <div class="space-y-2 border-t border-surface-200 pt-3">
-                      @if (vencida(t)) {
+                      @if (calificada(t)) {
+                        <div class="rounded-lg border border-gold-200 bg-gold-50 p-3 text-sm text-marine-700">
+                          <strong>Calificada:</strong> nota {{ t.entrega!.nota }} sobre {{ t.nota_maxima }}.
+                          @if (vencida(t)) { <span class="text-xs"> (entregada dentro del plazo)</span> }
+                        </div>
+                      } @else if (vencida(t)) {
                         <div class="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700" role="alert">
                           <strong>Plazo vencido.</strong> Esta tarea ya no acepta entregas ni cambios en la entrega (política de la institución). Si tu docente considerara regularización, comunícalo por los canales oficiales.
                         </div>
@@ -203,27 +208,31 @@ export class AssignmentsComponent implements OnInit {
     const f = this.filtroCurso();
     return f ? this.tareas().filter((t) => t.actividad.curso_id === f) : this.tareas();
   });
-  protected readonly vencidas = computed(() => this.tareasFiltradas().filter((x) => this.vencida(x)));
+  protected readonly vencidas = computed(() =>
+    this.tareasFiltradas().filter((x) => this.vencida(x) && !this.calificada(x)),
+  );
   protected readonly tareasVisibles = computed(() => {
     const base = this.tareasFiltradas();
-    const vencidas = base.filter((x) => this.vencida(x));
-    const activas = base.filter((x) => !this.vencida(x));
+    const calificadas = base.filter((x) => this.calificada(x));
+    const vencidas = base.filter((x) => this.vencida(x) && !this.calificada(x));
+    const activas = base.filter((x) => !this.vencida(x) || this.calificada(x));
     const t = this.tab();
     if (t === 'vencidas') return vencidas;
-    // El resto de pestañas nunca debe mostrar tareas vencidas.
+    if (t === 'calificadas') return calificadas;
+    // El resto de pestañas nunca debe mostrar tareas vencidas sin calificar.
     if (t === 'pendientes') return activas.filter((x) => !x.entrega);
-    if (t === 'entregadas') return activas.filter((x) => !!x.entrega);
-    if (t === 'calificadas') return activas.filter((x) => x.entrega?.nota !== null && x.entrega?.nota !== undefined);
+    if (t === 'entregadas') return activas.filter((x) => !!x.entrega && !this.calificada(x));
     return activas;
   });
   protected readonly contarTab = (t: 'todas' | 'pendientes' | 'entregadas' | 'calificadas' | 'vencidas'): number => {
     const base = this.tareasFiltradas();
-    const vencidas = base.filter((x) => this.vencida(x));
-    const activas = base.filter((x) => !this.vencida(x));
+    const calificadas = base.filter((x) => this.calificada(x));
+    const vencidas = base.filter((x) => this.vencida(x) && !this.calificada(x));
+    const activas = base.filter((x) => !this.vencida(x) || this.calificada(x));
     if (t === 'vencidas') return vencidas.length;
+    if (t === 'calificadas') return calificadas.length;
     if (t === 'pendientes') return activas.filter((x) => !x.entrega).length;
-    if (t === 'entregadas') return activas.filter((x) => !!x.entrega).length;
-    if (t === 'calificadas') return activas.filter((x) => x.entrega?.nota !== null && x.entrega?.nota !== undefined).length;
+    if (t === 'entregadas') return activas.filter((x) => !!x.entrega && !this.calificada(x)).length;
     return activas.length;
   };
   protected readonly contarPorCurso = (id: string): number => {
@@ -254,6 +263,12 @@ export class AssignmentsComponent implements OnInit {
     if (n < 1024) return `${n} B`;
     if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
     return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  /** Una tarea está calificada si el docente registró una nota en su entrega. */
+  protected calificada(t: Tarea & { entrega: Entrega | null }): boolean {
+    const nota = t.entrega?.nota;
+    return nota !== null && nota !== undefined;
   }
 
   protected vencida(t: Tarea & { entrega: Entrega | null }): boolean {
