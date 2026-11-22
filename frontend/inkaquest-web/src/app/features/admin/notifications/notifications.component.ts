@@ -208,7 +208,7 @@ export class AdminNotificationsComponent implements OnInit {
     if (!this.formularioValido() || this.enviando()) return;
     const detalle = this.segmento() === 'usuario'
       ? `Se enviará al perfil ${this.email().trim()}.`
-      : `Se enviará a ${this.conteo()} usuario(s) activos (${SEGMENTOS.find((s) => s.id === this.segmento())?.etiqueta}).`;
+      : `Se enviará a ${this.conteo()} usuario(s) (${SEGMENTOS.find((s) => s.id === this.segmento())?.etiqueta}).`;
     const confirmar = await this.confirm.ask({
       title: 'Enviar notificación',
       mensaje: `${detalle}\n\nEsta acción no se puede deshacer.`,
@@ -219,17 +219,28 @@ export class AdminNotificationsComponent implements OnInit {
 
     this.enviando.set(true);
     this.resultado.set(null);
-    const res = await this.adminService.enviarNotificacionAdmin({
-      titulo: this.titulo().trim(),
-      mensaje: this.mensaje().trim(),
-      segmento: this.segmento(),
-      email: this.segmento() === 'usuario' ? this.email().trim() : undefined,
-    });
-    this.resultado.set({ ok: res.ok, mensaje: res.mensaje });
-    this.enviando.set(false);
-    if (res.ok) {
+    let envioOk = false;
+    try {
+      const res = await this.adminService.enviarNotificacionAdmin({
+        titulo: this.titulo().trim(),
+        mensaje: this.mensaje().trim(),
+        segmento: this.segmento(),
+        email: this.segmento() === 'usuario' ? this.email().trim() : undefined,
+      });
+      this.resultado.set({ ok: res.ok, mensaje: res.mensaje });
+      envioOk = res.ok;
+    } catch (e) {
+      this.resultado.set({
+        ok: false,
+        mensaje: e instanceof Error ? e.message : 'No se pudo enviar la notificación.',
+      });
+    } finally {
+      // El spinner nunca queda colgado aunque falle la RPC o la red.
+      this.enviando.set(false);
+    }
+    if (envioOk) {
       this.limpiarFormulario(false);
-      await this.cargar();
+      void this.cargar().catch(() => undefined);
     }
   }
 

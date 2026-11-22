@@ -11,6 +11,7 @@ import { SupabaseService } from '../../../core/services/supabase.service';
 import { TeacherService } from '../../../core/services/teacher.service';
 import { CourseService } from '../../../core/services/course.service';
 import { Mensaje, Perfil, Curso } from '../../../core/models/domain.models';
+import { FeedbackMessageComponent } from '../../../shared/components/feedback-message/feedback-message.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
 type Tab = 'conversaciones' | 'miembros';
@@ -31,7 +32,7 @@ const COLORES_AVATAR = ['#12736b', '#f2a541', '#d6143f', '#2b6cb0', '#1b2a4a', '
 @Component({
   selector: 'app-chat',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, ReactiveFormsModule, PageHeaderComponent],
+  imports: [DatePipe, ReactiveFormsModule, FeedbackMessageComponent, PageHeaderComponent],
   template: `
     <section class="flex h-[calc(100vh-6.5rem)] min-h-[480px] flex-col gap-3">
       <app-page-header titulo="Mensajes" descripcion="Habla con tu docente o con tus compañeros del curso. Todo queda entre tú y el destinatario." [acciones]="true">
@@ -64,7 +65,7 @@ const COLORES_AVATAR = ['#12736b', '#f2a541', '#d6143f', '#2b6cb0', '#1b2a4a', '
             </div>
           </div>
           @if (resultadoGrupo(); as r) {
-            <p class="rounded-lg p-2.5 text-sm" [class.bg-success-50]="r.ok" [class.text-success-600]="r.ok" [class.bg-danger-50]="!r.ok" [class.text-danger-700]="!r.ok" role="status">{{ r.mensaje }}</p>
+            <app-feedback-message class="mt-2 block" [mensaje]="r.mensaje" [exito]="r.ok" />
           }
         </div>
       }
@@ -409,6 +410,8 @@ export class ChatComponent implements OnInit, OnDestroy {
   protected readonly urlsAdjuntas = signal<Record<string, string | null>>({});
 
   private canal: ReturnType<typeof this.supabase.client.channel> | null = null;
+  /** Debounce para no recargar los hilos N veces por el fan-out realtime. */
+  private timerRecargaHilos: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit(): void {
     void this.cargarTodo();
@@ -438,22 +441,42 @@ export class ChatComponent implements OnInit, OnDestroy {
 
     this.enviandoGrupo.set(true);
     this.resultadoGrupo.set(null);
-    const { data, error } = await this.supabase.client.rpc('chat_enviar_grupo', {
-      p_curso_id: curso,
-      p_cuerpo: texto,
-    });
-    if (error) {
-      this.resultadoGrupo.set({ ok: false, mensaje: error.message ?? 'No se pudo enviar al grupo.' });
-    } else {
+    try {
+      const { data, error } = await this.supabase.client.rpc('chat_enviar_grupo', {
+        p_curso_id: curso,
+        p_cuerpo: texto,
+      });
+      if (error) {
+        throw new Error(error.message || 'No se pudo enviar al grupo.');
+      }
       const n = Number(data ?? 0);
       this.resultadoGrupo.set({ ok: true, mensaje: `Mensaje entregado a ${n} estudiante(s) y registrado en auditoría.` });
       this.cuerpoGrupo.set('');
-      await this.cargarHilos();
+    } catch (e) {
+      this.resultadoGrupo.set({
+        ok: false,
+        mensaje: e instanceof Error ? e.message : 'No se pudo enviar al grupo. Intenta de nuevo.',
+      });
+    } finally {
+      // Siempre se rehabilita el boton, incluso si la RPC o la red fallan.
+      this.enviandoGrupo.set(false);
     }
-    this.enviandoGrupo.set(false);
+    // La recarga NO debe mantener el boton deshabilitado: ademas, el fan-out
+    // dispara N eventos realtime, asi que se agrupa en una sola recarga.
+    this.programarRecargaHilos();
+  }
+
+  /** Agrupa las recargas de hilos (fan-out del envio grupal + realtime). */
+  private programarRecargaHilos(): void {
+    if (this.timerRecargaHilos) clearTimeout(this.timerRecargaHilos);
+    this.timerRecargaHilos = setTimeout(() => {
+      this.timerRecargaHilos = null;
+      void this.cargarHilos().catch(() => undefined);
+    }, 250);
   }
 
   ngOnDestroy(): void {
+    if (this.timerRecargaHilos) clearTimeout(this.timerRecargaHilos);
     if (this.canal) {
       void this.supabase.client.removeChannel(this.canal);
       this.canal = null;
@@ -701,7 +724,7 @@ export class ChatComponent implements OnInit, OnDestroy {
           void this.poblarUrlsAdjuntas([m]);
           this.scrollAlFinal();
         }
-        void this.cargarHilos();
+        this.programarRecargaHilos();
       })
       .subscribe();
   }
