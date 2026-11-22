@@ -387,23 +387,33 @@ export class AssignmentsComponent implements OnInit {
     }
   }
 
-  private async abrirDescarga(url: string | null): Promise<void> {
+  private async abrirDescarga(urlPromise: Promise<string | null>): Promise<void> {
+    // Abrir la pestaña DURANTE el gesto del usuario: si se hiciera tras el
+    // await, el navegador lo bloquearia como popup.
+    // Sin 'noopener' en features: con el, window.open devuelve null y no
+    // podriamos navegar la pestaña despues. Se limpia el opener manualmente.
+    const pestana = window.open('about:blank', '_blank');
+    const url = await urlPromise;
     if (!url) {
+      pestana?.close();
       this.descargaError.set('No se pudo generar el enlace de descarga. Intenta de nuevo.');
       return;
     }
     this.descargaError.set(null);
-    // location.assign no depende de un gesto del usuario tras el await
-    // (window.open era bloqueado como popup por los navegadores).
-    window.location.assign(url);
+    if (pestana) {
+      pestana.opener = null;
+      pestana.location.href = url;
+    } else {
+      window.location.assign(url);
+    }
   }
 
   protected async descargarAdjuntoTarea(a: TareaArchivo): Promise<void> {
-    await this.abrirDescarga(await this.activityService.descargarUrlAdjuntoTarea(a.ruta_storage));
+    await this.abrirDescarga(this.activityService.descargarUrlAdjuntoTarea(a.ruta_storage));
   }
 
   protected async descargarMiArchivo(a: EntregaArchivo): Promise<void> {
-    await this.abrirDescarga(await this.activityService.descargarUrlEntregaArchivo(a.ruta_storage));
+    await this.abrirDescarga(this.activityService.descargarUrlEntregaArchivo(a.ruta_storage));
   }
 
   protected async eliminarMiArchivo(t: Tarea & { entrega: Entrega | null }, a: EntregaArchivo): Promise<void> {
