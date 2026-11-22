@@ -47,6 +47,10 @@ export class NotificationService {
    * @param usuarioId identificador del usuario
    */
   async listarNotificaciones(usuarioId: string): Promise<NotificacionCompleta[]> {
+    // Toda vista que lista notificaciones recalcula la campana: una sola
+    // fuente de verdad evita que el badge y la lista se desincronicen.
+    void this.contarNoLeidas(usuarioId);
+
     const { data: destinatarios, error: errorDestinatarios } = await this.supabase.client
       .from(this.supabase.tabla.notificacionDestinatario)
       .select('*')
@@ -104,8 +108,9 @@ export class NotificationService {
       .is('leida_en', null);
 
     if (error) {
-      this.noLeidas.set(0);
-      return 0;
+      // Ante un fallo conservamos el ultimo valor conocido: poner 0 hacia
+      // desaparecer la campana temporalmente y luego "saltar" de nuevo.
+      return this.noLeidas();
     }
     this.noLeidas.set(count ?? 0);
     return count ?? 0;
@@ -114,15 +119,22 @@ export class NotificationService {
   /** Marca una notificacion como leida. */
   async marcarLeida(destinatarioId: string): Promise<{ ok: boolean; mensaje: string }> {
     try {
-      const { error } = await this.supabase.client
+      // .select() confirma cuantas filas cambiaron: sin el, Supabase informa
+      // exito aunque otra pestaña ya hubiera marcado la misma fila como leida,
+      // y el decremento a ciegas dejaba la campana desincronizada (-2).
+      const { data, error } = await this.supabase.client
         .from(this.supabase.tabla.notificacionDestinatario)
         .update({ leida_en: new Date().toISOString(), estado: 'leida' })
-        .eq('id', destinatarioId);
+        .eq('id', destinatarioId)
+        .select('id, usuario_id');
 
       if (error) {
         return { ok: false, mensaje: error.message };
       }
-      this.noLeidas.update((n) => Math.max(0, n - 1));
+      const filas = (data ?? []) as Array<{ id: string; usuario_id: string }>;
+      if (filas.length > 0) {
+        await this.contarNoLeidas(filas[0].usuario_id);
+      }
       return { ok: true, mensaje: 'Notificación marcada como leída.' };
     } catch (e) {
       return {
@@ -144,7 +156,7 @@ export class NotificationService {
       if (error) {
         return { ok: false, mensaje: error.message };
       }
-      this.noLeidas.set(0);
+      await this.contarNoLeidas(usuarioId);
       return { ok: true, mensaje: 'Todas las notificaciones fueron marcadas como leídas.' };
     } catch (e) {
       return {

@@ -168,15 +168,20 @@ export class AdminService {
     return (data ?? []) as Certificado[];
   }
 
-  /** Listado administrativo de notificaciones. */
-  /** Cuenta los perfiles activos que recibirían una notificación para un segmento dado. */
+  /**
+   * Cuenta los perfiles que recibirían una notificación para un segmento dado.
+   * Debe usar la MISMA condición que el RPC crear_notificacion_admin:
+   * se excluyen solo eliminados y suspendidos, por lo que las cuentas
+   * pendientes de verificación SÍ cuentan (antes solo se contaban 'activo').
+   */
   async contarDestinatariosNotificacion(
     segmento: 'todos' | 'estudiantes' | 'docentes' | 'administradores',
   ): Promise<number> {
     let consulta = this.supabase.client
       .from(this.supabase.tabla.perfil)
       .select('id', { count: 'exact', head: true })
-      .eq('estado_cuenta', 'activo');
+      .neq('estado_cuenta', 'eliminado')
+      .neq('estado_cuenta', 'suspendido');
     if (segmento !== 'todos') {
       const roles: Record<typeof segmento, string> = {
         estudiantes: 'estudiante',

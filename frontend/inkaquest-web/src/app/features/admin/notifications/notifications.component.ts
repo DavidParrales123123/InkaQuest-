@@ -15,10 +15,10 @@ type Segmento = 'todos' | 'estudiantes' | 'docentes' | 'administradores' | 'usua
 type Pestana = 'enviar' | 'registro';
 
 const SEGMENTOS: Array<{ id: Segmento; etiqueta: string; nota: string }> = [
-  { id: 'todos', etiqueta: 'Todos', nota: 'Todos los perfiles activos' },
-  { id: 'estudiantes', etiqueta: 'Estudiantes', nota: 'Solo estudiantes activos' },
-  { id: 'docentes', etiqueta: 'Docentes', nota: 'Solo docentes activos' },
-  { id: 'administradores', etiqueta: 'Administradores', nota: 'Solo administradores activos' },
+  { id: 'todos', etiqueta: 'Todos', nota: 'Todos los perfiles disponibles' },
+  { id: 'estudiantes', etiqueta: 'Estudiantes', nota: 'Solo estudiantes disponibles' },
+  { id: 'docentes', etiqueta: 'Docentes', nota: 'Solo docentes disponibles' },
+  { id: 'administradores', etiqueta: 'Administradores', nota: 'Solo administradores disponibles' },
   { id: 'usuario', etiqueta: 'Un usuario', nota: 'Un perfil por correo' },
 ];
 
@@ -89,7 +89,7 @@ const SEGMENTOS: Array<{ id: Segmento; etiqueta: string; nota: string }> = [
               } @else if (contando()) {
                 Contando destinatarios…
               } @else {
-                <strong>{{ conteo() }}</strong> usuario(s) activo(s) recibirán esta notificación.
+                <strong>{{ conteo() }}</strong> usuario(s) recibirán esta notificación.
               }
             </div>
 
@@ -110,7 +110,7 @@ const SEGMENTOS: Array<{ id: Segmento; etiqueta: string; nota: string }> = [
               <h2 class="text-sm font-bold uppercase tracking-wide text-marine-500">Notas importantes</h2>
               <ul class="mt-2 list-disc space-y-1.5 pl-5 text-sm text-marine-600">
                 <li>Las notificaciones son <strong>in-app</strong>: aparecen en el panel del usuario (campana + página «Notificaciones»).</li>
-                <li>Se envían solo a perfiles <strong>activos</strong>. Los suspendidos o pendientes no las reciben.</li>
+                <li>Se envían a todos los perfiles <strong>disponibles</strong>, incluidos los pendientes de verificación. Solo se excluyen suspendidos y eliminados.</li>
                 <li>Cada envío queda <strong>auditado</strong> con tu usuario. Ver en <a routerLink="/admin/auditoria" class="font-semibold text-brand-600 hover:underline">Auditoría →</a></li>
                 <li>El correo del destinatario se valida contra la base de datos en el momento del envío.</li>
               </ul>

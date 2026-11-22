@@ -82,7 +82,8 @@ export class AdminLayoutComponent {
       titulo: 'Cuenta y sistema',
       elementos: [
         { texto: 'Mi perfil', ruta: '/admin/perfil', icono: 'users' },
-        { texto: 'Notificaciones', ruta: '/admin/notificaciones', icono: 'bell' },
+        { texto: 'Mis notificaciones', ruta: '/admin/notificaciones', icono: 'bell', exacto: true },
+        { texto: 'Enviar avisos', ruta: '/admin/notificaciones/enviar', icono: 'inbox' },
         { texto: 'Guardianes · Estado', ruta: '/admin/guardianes', icono: 'trophy' },
         { texto: 'Soporte', ruta: '/admin/soporte', icono: 'help' },
         { texto: 'Configuración', ruta: '/admin/configuracion', icono: 'cog' },

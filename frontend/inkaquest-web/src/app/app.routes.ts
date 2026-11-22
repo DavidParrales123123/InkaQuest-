@@ -813,11 +813,21 @@ export const routes: Routes = [
       },
       {
         path: 'notificaciones',
+        pathMatch: 'full',
+        loadComponent: () =>
+          import('./features/shared/notifications/notifications.component').then(
+            (m) => m.NotificationsComponent,
+          ),
+        title: 'Mis notificaciones · InkaQuest',
+      },
+      {
+        path: 'notificaciones/enviar',
+        pathMatch: 'full',
         loadComponent: () =>
           import('./features/admin/notifications/notifications.component').then(
             (m) => m.AdminNotificationsComponent,
           ),
-        title: 'Notificaciones · InkaQuest',
+        title: 'Enviar notificaciones · InkaQuest',
       },
       {
         path: 'soporte',

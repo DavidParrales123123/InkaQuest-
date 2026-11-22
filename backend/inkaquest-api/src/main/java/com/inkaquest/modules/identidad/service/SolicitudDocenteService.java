@@ -134,8 +134,9 @@ public class SolicitudDocenteService {
             SolicitudDocente s = solicitudDocenteRepository.findById(solicitudId)
                     .orElseThrow(() -> new ResourceNotFoundException("Solicitud no encontrada."));
 
-            if (s.getEstado() != EstadoSolicitudDocente.pendiente) {
-                throw new BadRequestException("Solo las solicitudes pendientes pueden aprobarse.");
+            if (s.getEstado() != EstadoSolicitudDocente.pendiente
+                    && s.getEstado() != EstadoSolicitudDocente.en_revision) {
+                throw new BadRequestException("Solo las solicitudes pendientes o en revision pueden aprobarse.");
             }
 
             Perfil perfil = s.getUsuarioId();
