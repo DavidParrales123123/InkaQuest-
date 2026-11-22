@@ -294,7 +294,7 @@ interface RespuestaHistorial {
                           } @else if (esCodigo(i.codigo, 'segunda_oportunidad')) {
                             <span class="shrink-0 text-[0.55rem] font-bold uppercase tracking-widest text-marine-400">Tras error</span>
                           } @else if (esCodigo(i.codigo, 'saltar_pregunta')) {
-                            <button type="button" class="btn btn-gold btn-xs shrink-0" [disabled]="!preguntaActual()" (click)="usarSaltarPregunta()">Usar</button>
+                            <span class="shrink-0 text-[0.55rem] font-bold uppercase tracking-widest text-marine-400">En chequeo</span>
                           } @else if (esCodigo(i.codigo, 'vida_extra')) {
                             <span class="shrink-0 text-[0.55rem] font-bold uppercase tracking-widest text-marine-400">Al morir</span>
                           }
@@ -405,6 +405,9 @@ interface RespuestaHistorial {
                           }
                           @if (tieneItem('cincuenta_cincuenta') && eliminadas().length === 0) {
                             <button type="button" class="rounded-lg border border-gold-500/40 bg-gold-500/10 px-2.5 py-1 text-[0.62rem] font-extrabold uppercase tracking-widest text-gold-300 transition-colors hover:border-gold-400 hover:text-white" (click)="usarCincuentaYCincuenta()">✂️ 50/50 ({{ contarItem('cincuenta_cincuenta') }})</button>
+                          }
+                          @if (tieneItem('saltar_pregunta')) {
+                            <button type="button" class="rounded-lg border border-gold-500/40 bg-gold-500/10 px-2.5 py-1 text-[0.62rem] font-extrabold uppercase tracking-widest text-gold-300 transition-colors hover:border-gold-400 hover:text-white" (click)="usarSaltarPregunta()">⏭️ Saltar ({{ contarItem('saltar_pregunta') }})</button>
                           }
                         </div>
                       }
@@ -520,6 +523,8 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected readonly pistaActual = signal<string | null>(null);
   /** Opciones incorrectas eliminadas con el ítem 50/50. */
   protected readonly eliminadas = signal<string[]>([]);
+  /** Evita doble consumo por dos clics rapidos antes de que llegue la RPC. */
+  private readonly consumiendoItem = signal(false);
 
   /** Dispositivo táctil real (pointer coarse / maxTouchPoints>0). */
   protected readonly esTouch = signal(false);
@@ -804,7 +809,6 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     congelar_tiempo: 'modin-congelar',
     segunda_oportunidad: 'modin-segunda-oportunidad',
     saltar_pregunta: 'modin-saltar',
-    tiempo_extra: 'modin-tiempo-extra',
   };
 
   private codigoReal(codigo: string): string {
@@ -825,12 +829,20 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
 
   /** Consume 1 unidad de un ítem del inventario (vía RPC transaccional). */
   private async consumirItemCodigo(codigo: string): Promise<{ ok: boolean; mensaje: string }> {
+    // Un unico guard para TODOS los items: dos clics rapidos no deben cobrar
+    // dos unidades mientras la primera RPC todavia esta en vuelo.
+    if (this.consumiendoItem()) return { ok: false, mensaje: 'Procesando el ítem anterior…' };
     const real = this.codigoReal(codigo);
     const fila = this.itemsMochila().find((i) => i.codigo === real && i.cantidad > 0);
     if (!fila) return { ok: false, mensaje: 'No tienes este ítem.' };
-    const ok = await this.rewards.consumirItem(fila.tienda_item_id);
-    await this.cargarMochila();
-    return ok;
+    this.consumiendoItem.set(true);
+    try {
+      const ok = await this.rewards.consumirItem(fila.tienda_item_id);
+      await this.cargarMochila();
+      return ok;
+    } finally {
+      this.consumiendoItem.set(false);
+    }
   }
 
   /** Bomba Total: elimina a todos los enemigos en pantalla. */
@@ -864,10 +876,17 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
 
   /** Saltar pregunta (ítem): consume y omite el chequeo actual sin perder la mejora. */
   protected async usarSaltarPregunta(): Promise<void> {
-    if (!this.preguntaActual()) { this.mensajeResultado.set('Solo puedes usar Saltar pregunta durante un chequeo.'); return; }
+    if (!this.preguntaActual() || this.respuestaResultado()) return;
     const ok = await this.consumirItemCodigo('saltar_pregunta');
     if (!ok.ok) { this.mensajeResultado.set(ok.mensaje); return; }
     this.mochilaAbierta.set(false);
+    // Limpiar TODO el estado del chequeo: si quedaba abierto, el usuario
+    // volvia a ver el overlay y al pulsar "Omitir" saltaba dos hordas.
+    this.preguntaActual.set(null);
+    this.respuestaElegida.set(null);
+    this.respuestaResultado.set(null);
+    this.pistaActual.set(null);
+    this.eliminadas.set([]);
     // Omitir con éxito conserva la mejora pendiente.
     this.resolverMejoraTrasChequeo(true);
     this.iniciarSiguienteHorda();
