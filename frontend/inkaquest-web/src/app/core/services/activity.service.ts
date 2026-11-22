@@ -112,7 +112,7 @@ export class ActivityService {
   async listarTareasCurso(cursoId: string, _estudianteId?: string): Promise<(Tarea & { actividad: Actividad; entrega: Entrega | null })[]> {
     const { data, error } = await this.client
       .from(this.supabase.tabla.tarea)
-      .select('*, actividad:actividad_id!inner(*), entrega:entrega(id, estado, contenido, nota, enviada_en, revisada_en)')
+      .select('*, actividad:actividad_id!inner(*), entrega:entrega(id, estado, contenido, nota, enviada_en, revisada_en, creado_en)')
       .eq('actividad.curso_id', cursoId)
       .eq('actividad.publicado', true)
       .order('creado_en', { ascending: true });
@@ -128,11 +128,15 @@ export class ActivityService {
     })) as (Tarea & { actividad: Actividad; entrega: Entrega | null })[];
   }
 
-  /** Calificaciones propias del estudiante. */
+  /**
+   * Calificaciones de TAREAS del estudiante. Se excluyen las notas de
+   * evaluaciones/examenes (intento_id), que no pertenecen a esta pantalla.
+   */
   async listarCalificaciones(estudianteId?: string): Promise<Calificacion[]> {
     let consulta = this.client
       .from(this.supabase.tabla.calificacion)
       .select('*')
+      .not('entrega_id', 'is', null)
       .order('calificado_en', { ascending: false });
 
     if (estudianteId) consulta = consulta.eq('estudiante_id', estudianteId);
@@ -194,10 +198,17 @@ export class ActivityService {
   async enviarTarea(tareaId: string, _estudianteId: string, contenido: string): Promise<{ ok: boolean; mensaje: string }> {
     const existente = await this.obtenerEntregaDeEstudiante(tareaId);
 
+    // La fecha de ENVIO es un hecho historico: nunca se sobrescribe al
+    // actualizar el contenido. Hacerlo convertia una entrega hecha a tiempo
+    // en "vencida" al reenviar el mismo texto despues del plazo.
+    // El estado siempre pasa a 'enviado': dejarlo en 'borrador' hacia que la
+    // entrega no apareciera en la bandeja del docente.
+    const enviadaEn = existente?.enviada_en ?? new Date().toISOString();
+
     const { data, error } = existente
       ? await this.client
           .from(this.supabase.tabla.entrega)
-          .update({ contenido, estado: existente.estado === 'borrador' ? 'borrador' : 'enviado', enviada_en: new Date().toISOString() })
+          .update({ contenido, estado: 'enviado', enviada_en: enviadaEn })
           .eq('id', existente.id)
           .select()
           .maybeSingle()
@@ -255,13 +266,15 @@ export class ActivityService {
 
   /** Elimina un archivo de la entrega del estudiante. */
   async eliminarEntregaArchivo(id: string, rutaStorage: string): Promise<void> {
-    const { error: errorStorage } = await this.supabase.client.storage.from('entregas').remove([rutaStorage]);
-    if (errorStorage) {
-      throw new Error(errorStorage.message || 'No se pudo borrar el archivo del almacenamiento.');
-    }
+    // Primero la fila: si falla el storage, la UI ya no muestra un adjunto
+    // fantasma que daria 404 al descargar.
     const { error: errorDelete } = await this.client.from(this.supabase.tabla.entregaArchivo).delete().eq('id', id);
     if (errorDelete) {
       throw new Error(errorDelete.message || 'No se pudo borrar el registro del archivo.');
+    }
+    const { error: errorStorage } = await this.supabase.client.storage.from('entregas').remove([rutaStorage]);
+    if (errorStorage) {
+      throw new Error(errorStorage.message || 'No se pudo borrar el archivo del almacenamiento.');
     }
   }
 

@@ -53,12 +53,12 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
             </div>
           }
           <div class="flex flex-wrap gap-2 border-b border-surface-200 pb-3 text-sm font-bold" role="tablist" aria-label="Estado de entrega">
-            <button type="button" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'todas'" [class.text-white]="tab() === 'todas'" [class.text-marine-600]="tab() !== 'todas'" (click)="tab.set('todas')">Todas ({{ tareasVisibles().length }})</button>
-            <button type="button" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'pendientes'" [class.text-white]="tab() === 'pendientes'" [class.text-marine-600]="tab() !== 'pendientes'" (click)="tab.set('pendientes')">Pendientes ({{ contarTab('pendientes') }})</button>
-            <button type="button" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'entregadas'" [class.text-white]="tab() === 'entregadas'" [class.text-marine-600]="tab() !== 'entregadas'" (click)="tab.set('entregadas')">Entregadas ({{ contarTab('entregadas') }})</button>
-            <button type="button" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'calificadas'" [class.text-white]="tab() === 'calificadas'" [class.text-marine-600]="tab() !== 'calificadas'" (click)="tab.set('calificadas')">Calificadas ({{ contarTab('calificadas') }})</button>
+            <button type="button" role="tab" [attr.aria-selected]="tab() === 'todas'" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'todas'" [class.text-white]="tab() === 'todas'" [class.text-marine-600]="tab() !== 'todas'" (click)="tab.set('todas')">Todas ({{ contarTab('todas') }})</button>
+            <button type="button" role="tab" [attr.aria-selected]="tab() === 'pendientes'" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'pendientes'" [class.text-white]="tab() === 'pendientes'" [class.text-marine-600]="tab() !== 'pendientes'" (click)="tab.set('pendientes')">Pendientes ({{ contarTab('pendientes') }})</button>
+            <button type="button" role="tab" [attr.aria-selected]="tab() === 'entregadas'" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'entregadas'" [class.text-white]="tab() === 'entregadas'" [class.text-marine-600]="tab() !== 'entregadas'" (click)="tab.set('entregadas')">Entregadas ({{ contarTab('entregadas') }})</button>
+            <button type="button" role="tab" [attr.aria-selected]="tab() === 'calificadas'" class="rounded-lg px-3 py-1.5" [class.bg-marine-800]="tab() === 'calificadas'" [class.text-white]="tab() === 'calificadas'" [class.text-marine-600]="tab() !== 'calificadas'" (click)="tab.set('calificadas')">Calificadas ({{ contarTab('calificadas') }})</button>
             @if (contarTab('vencidas') > 0) {
-              <button type="button" class="rounded-lg px-3 py-1.5" [class.bg-danger-600]="tab() === 'vencidas'" [class.text-white]="tab() === 'vencidas'" [class.text-danger-700]="tab() !== 'vencidas'" [class.bg-danger-50]="tab() !== 'vencidas'" (click)="tab.set('vencidas')">Fecha límite superado ({{ contarTab('vencidas') }})</button>
+              <button type="button" role="tab" [attr.aria-selected]="tab() === 'vencidas'" class="rounded-lg px-3 py-1.5" [class.bg-danger-600]="tab() === 'vencidas'" [class.text-white]="tab() === 'vencidas'" [class.text-danger-700]="tab() !== 'vencidas'" [class.bg-danger-50]="tab() !== 'vencidas'" (click)="tab.set('vencidas')">Fecha límite superado ({{ contarTab('vencidas') }})</button>
             }
           </div>
 
@@ -84,12 +84,12 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
               <p class="mt-2 text-sm text-marine-500">No hay tareas en este filtro. Prueba «Todas» u otro curso.</p>
             } @else {
               <div class="mt-3 space-y-4">                  @for (t of tareasVisibles(); track t.id) {
-                    <article class="card card-body space-y-3" [class.border-danger-200]="vencida(t)" [class.bg-danger-50/30]="vencida(t)">
+                    <article class="card card-body space-y-3" [class.border-danger-200]="clase(t) === 'vencida'" [class.bg-danger-50/30]="clase(t) === 'vencida'">
                       <div class="flex flex-wrap items-start justify-between gap-2">
                         <div class="min-w-0">
                           <div class="flex flex-wrap items-center gap-2">
                             <p class="font-semibold text-marine-800">{{ t.actividad.titulo }}</p>
-                            @if (vencida(t)) { <span class="badge badge-danger">Fecha superada</span> }
+                            @if (clase(t) === 'vencida') { <span class="badge badge-danger">Fecha límite superada</span> }
                           </div>
                         <p class="mt-1 text-sm text-marine-500">{{ t.actividad.descripcion || t.actividad.instrucciones || 'Sin instrucciones adicionales.' }}</p>
                         <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-marine-500">
@@ -132,8 +132,8 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                             <li class="flex items-center gap-1 rounded-lg border border-surface-200 bg-white px-2 py-1 text-xs">
                               <button type="button" class="font-medium text-marine-800 hover:text-brand-600 hover:underline" (click)="descargarMiArchivo(a)">↓ {{ a.nombre }}</button>
                               <span class="text-marine-400">{{ tamanoKb(a.tamano_bytes) }}</span>
-                              @if (!vencida(t)) {
-                                <button type="button" class="ml-1 text-danger-600 hover:text-danger-800" title="Quitar archivo" aria-label="Quitar archivo" (click)="eliminarMiArchivo(t, a)">✕</button>
+                              @if (editable(t)) {
+                                <button type="button" class="ml-1 text-danger-600 hover:text-danger-800" [title]="'Quitar archivo ' + a.nombre" [attr.aria-label]="'Quitar archivo ' + a.nombre" (click)="eliminarMiArchivo(t, a)">✕</button>
                               }
                             </li>
                           }
@@ -147,9 +147,14 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                           <strong>Calificada:</strong> nota {{ t.entrega!.nota }} sobre {{ t.nota_maxima }}.
                           @if (entregadaATiempo(t)) { <span class="text-xs"> (entregada dentro del plazo)</span> }
                         </div>
-                      } @else if (vencida(t)) {
+                      } @else if (clase(t) === 'vencida') {
                         <div class="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700" role="alert">
                           <strong>Plazo vencido.</strong> Esta tarea ya no acepta entregas ni cambios en la entrega (política de la institución). Si tu docente considerara regularización, comunícalo por los canales oficiales.
+                        </div>
+                      } @else if (!editable(t)) {
+                        <div class="rounded-lg border border-surface-200 bg-surface-50 p-3 text-sm text-marine-600">
+                          <strong>Plazo finalizado.</strong> Tu entrega fue registrada y ya no puede modificarse.
+                          @if (t.entrega?.enviada_en) { <span class="text-xs"> Enviada: {{ t.entrega!.enviada_en | date:'medium' }}.</span> }
                         </div>
                       } @else {
                         <label class="label" [attr.for]="'ent-'+t.id">{{ t.entrega ? 'Actualizar entrega (descripción)' : 'Descripción de la entrega' }}</label>
@@ -164,7 +169,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
                           <button class="btn btn-primary btn-sm" type="button" (click)="enviar(t)" [disabled]="enviando() === t.id || !puedeEnviar(t.id)">{{ enviando() === t.id ? 'Enviando…' : (t.entrega ? 'Actualizar entrega' : 'Enviar entrega') }}</button>
-                          @if (msg(t.id)) { <span class="text-sm" [class.text-success-600]="ok(t.id)" [class.text-danger-600]="!ok(t.id)">{{ msg(t.id) }}</span> }
+                          @if (msg(t.id)) { <span class="text-sm" role="status" aria-live="polite" [class.text-success-600]="ok(t.id)" [class.text-danger-600]="!ok(t.id)">{{ msg(t.id) }}</span> }
                         </div>
                         <p class="text-xs text-marine-400">La entrega se guarda según permisos RLS. Se guardan descripción + archivos (máx. 25 MB por archivo). Tras vencer el plazo no puedes enviar ni modificar.</p>
                       }
@@ -181,7 +186,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
               <p class="mt-2 text-sm text-marine-500">Aún no tienes calificaciones registradas.</p>
             } @else {
               <div class="mt-3 table-wrap"><div class="overflow-x-auto"><table class="table"><thead><tr><th>Nota</th><th>Máximo</th><th>Estado</th><th>Fecha</th><th>Comentario</th></tr></thead><tbody>
-                @for (c of calificaciones(); track c.id) { <tr><td>{{ c.nota }}</td><td>{{ c.nota_maxima }}</td><td>{{ c.aprobado ? 'Aprobado' : 'Revisado' }}</td><td>{{ c.calificado_en | date: 'medium' }}</td><td class="text-sm text-marine-600">{{ c.comentario || '—' }}</td></tr> }
+                @for (c of calificaciones(); track c.id) { <tr><td>{{ c.nota }}</td><td>{{ c.nota_maxima }}</td><td>{{ c.aprobado == null ? 'Revisado' : (c.aprobado ? 'Aprobado' : 'Reprobado') }}</td><td>{{ c.calificado_en | date: 'medium' }}</td><td class="text-sm text-marine-600">{{ c.comentario || '—' }}</td></tr> }
               </tbody></table></div></div>
             }
           </div>
@@ -208,33 +213,56 @@ export class AssignmentsComponent implements OnInit {
     const f = this.filtroCurso();
     return f ? this.tareas().filter((t) => t.actividad.curso_id === f) : this.tareas();
   });
+  /**
+   * Clase unica de cada tarea. De aqui derivan pestañas, contadores, badges y
+   * bloques de texto: evita que una misma tarjeta diga "calificada" y
+   * "fecha superada" a la vez.
+   */
+  protected clase(t: Tarea & { entrega: Entrega | null }): 'calificada' | 'vencida' | 'entregada' | 'pendiente' {
+    if (this.calificada(t)) return 'calificada';
+    if (this.vencida(t)) return 'vencida';
+    if (t.entrega) return 'entregada';
+    return 'pendiente';
+  }
+
   protected readonly vencidas = computed(() =>
-    this.tareasFiltradas().filter((x) => this.vencida(x) && !this.calificada(x)),
+    this.tareasFiltradas().filter((x) => this.clase(x) === 'vencida'),
   );
+
   protected readonly tareasVisibles = computed(() => {
     const base = this.tareasFiltradas();
-    const calificadas = base.filter((x) => this.calificada(x));
-    const vencidas = base.filter((x) => this.vencida(x) && !this.calificada(x));
-    const activas = base.filter((x) => !this.vencida(x) || this.calificada(x));
     const t = this.tab();
-    if (t === 'vencidas') return vencidas;
-    if (t === 'calificadas') return calificadas;
-    // El resto de pestañas nunca debe mostrar tareas vencidas sin calificar.
-    if (t === 'pendientes') return activas.filter((x) => !x.entrega);
-    if (t === 'entregadas') return activas.filter((x) => !!x.entrega && !this.calificada(x));
-    return activas;
+    if (t === 'vencidas') return this.vencidas();
+    if (t === 'todas') return base;
+    return base.filter((x) => {
+      const c = this.clase(x);
+      if (t === 'calificadas') return c === 'calificada';
+      if (t === 'pendientes') return c === 'pendiente';
+      if (t === 'entregadas') return c === 'entregada' || c === 'calificada';
+      return true;
+    });
   });
-  protected readonly contarTab = (t: 'todas' | 'pendientes' | 'entregadas' | 'calificadas' | 'vencidas'): number => {
+
+  protected readonly conteoPorTab = computed(() => {
+    const out: Record<'todas' | 'pendientes' | 'entregadas' | 'calificadas' | 'vencidas', number> = {
+      todas: 0, pendientes: 0, entregadas: 0, calificadas: 0, vencidas: 0,
+    };
     const base = this.tareasFiltradas();
-    const calificadas = base.filter((x) => this.calificada(x));
-    const vencidas = base.filter((x) => this.vencida(x) && !this.calificada(x));
-    const activas = base.filter((x) => !this.vencida(x) || this.calificada(x));
-    if (t === 'vencidas') return vencidas.length;
-    if (t === 'calificadas') return calificadas.length;
-    if (t === 'pendientes') return activas.filter((x) => !x.entrega).length;
-    if (t === 'entregadas') return activas.filter((x) => !!x.entrega && !this.calificada(x)).length;
-    return activas.length;
-  };
+    out.todas = base.length;
+    for (const x of base) {
+      const c = this.clase(x);
+      if (c === 'pendiente') out.pendientes++;
+      else if (c === 'vencida') out.vencidas++;
+      else {
+        out.entregadas++;
+        if (c === 'calificada') out.calificadas++;
+      }
+    }
+    return out;
+  });
+
+  protected readonly contarTab = (t: 'todas' | 'pendientes' | 'entregadas' | 'calificadas' | 'vencidas'): number =>
+    this.conteoPorTab()[t];
   protected readonly contarPorCurso = (id: string): number => {
     return this.tareas().filter((t) => t.actividad.curso_id === id).length;
   };
@@ -273,8 +301,12 @@ export class AssignmentsComponent implements OnInit {
 
   /** Indica si la entrega se envió antes o en la fecha límite. */
   protected entregadaATiempo(t: Tarea & { entrega: Entrega | null }): boolean {
-    if (!t.fecha_entrega || !t.entrega?.enviada_en) return false;
-    return new Date(t.entrega.enviada_en).getTime() <= new Date(t.fecha_entrega).getTime();
+    if (!t.fecha_entrega || !t.entrega) return false;
+    // entregas antiguas creadas como borrador pueden no tener enviada_en;
+    // creado_en es la mejor evidencia disponible del momento del envio.
+    const enviada = t.entrega.enviada_en ?? (t.entrega as any).creado_en;
+    if (!enviada) return false;
+    return new Date(enviada).getTime() <= new Date(t.fecha_entrega).getTime();
   }
 
   protected vencida(t: Tarea & { entrega: Entrega | null }): boolean {
@@ -283,6 +315,11 @@ export class AssignmentsComponent implements OnInit {
     // él: ya cumplió, aunque hoy sea posterior a la fecha límite.
     if (this.entregadaATiempo(t)) return false;
     return new Date(t.fecha_entrega).getTime() < Date.now();
+  }
+
+  /** El plazo sigue ABIERTO para escribir (no confundir con "entregó a tiempo"). */
+  protected editable(t: Tarea & { entrega: Entrega | null }): boolean {
+    return !t.fecha_entrega || new Date(t.fecha_entrega).getTime() > Date.now();
   }
 
   protected prepararArchivo(tareaId: string, input: HTMLInputElement): void {
@@ -365,7 +402,7 @@ export class AssignmentsComponent implements OnInit {
     const user = this.auth.usuario();
     const contenido = (this.borrador(t.id) || '').trim();
     if (!user || !contenido) return;
-    if (this.vencida(t)) {
+    if (!this.editable(t)) {
       this.msgs.update((m) => ({ ...m, [t.id]: 'El plazo venció. Esta tarea ya no acepta entregas ni cambios.' }));
       this.oks.update((m) => ({ ...m, [t.id]: false }));
       return;
