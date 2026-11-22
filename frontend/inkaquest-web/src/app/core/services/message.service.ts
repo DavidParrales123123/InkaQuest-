@@ -252,19 +252,21 @@ export class MessageService {
     return count ?? 0;
   }
 
-  /** Perfiles por ids (solo lectura). */
+  /** Perfiles por ids (solo lectura). Se fragmenta para no exceder la URL. */
   private async listarPerfiles(ids: string[]): Promise<Perfil[]> {
-    if (ids.length === 0) {
-      return [];
+    if (ids.length === 0) return [];
+    const resultados: Perfil[] = [];
+    for (let i = 0; i < ids.length; i += 100) {
+      const lote = ids.slice(i, i + 100);
+      const { data, error } = await this.supabase.client
+        .from(this.supabase.tabla.perfil)
+        .select('id, nombre, apellido, email, avatar_url')
+        .in('id', lote);
+      if (error) {
+        throw new Error(`No se pudieron cargar los perfiles de los miembros: ${error.message}`);
+      }
+      resultados.push(...(data ?? []) as Perfil[]);
     }
-    const { data, error } = await this.supabase.client
-      .from(this.supabase.tabla.perfil)
-      .select('id, nombre, apellido, email, avatar_url')
-      .in('id', ids);
-
-    if (error) {
-      throw new Error(`No se pudieron cargar los perfiles de los miembros: ${error.message}`);
-    }
-    return (data ?? []) as Perfil[];
+    return resultados;
   }
 }

@@ -466,12 +466,27 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.programarRecargaHilos();
   }
 
-  /** Agrupa las recargas de hilos (fan-out del envio grupal + realtime). */
+  /**
+   * Agrupa las recargas (fan-out del envio grupal + realtime) y actualiza
+   * TAMBIEN la conversacion abierta: cargarHilos() solo refresca la lista
+   * izquierda, pero el hilo derecho se pinta desde el signal 'mensajes'.
+   * Sin esto, el docente ve el "Mensaje entregado" y la conversacion sigue
+   * igual hasta que recarga la pagina.
+   */
   private programarRecargaHilos(): void {
     if (this.timerRecargaHilos) clearTimeout(this.timerRecargaHilos);
     this.timerRecargaHilos = setTimeout(() => {
       this.timerRecargaHilos = null;
-      void this.cargarHilos().catch(() => undefined);
+      const otro = this.sel();
+      void (async () => {
+        await this.cargarHilos();
+        if (otro) {
+          const msgs = await this.messageService.listarMensajes(otro);
+          this.mensajes.set(msgs);
+          await this.poblarUrlsAdjuntas(msgs);
+          this.scrollAlFinal();
+        }
+      })().catch(() => undefined);
     }, 250);
   }
 
@@ -568,8 +583,13 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   private async cargarHilos(): Promise<void> {
-    try { this.hilos.set(await this.messageService.listarHilos()); }
-    catch (e) { this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar los mensajes.'); }
+    try {
+      this.hilos.set(await this.messageService.listarHilos());
+      this.error.set(null);
+    } catch (e) {
+      console.error('[InkaQuest] Error cargando hilos de chat:', e);
+      this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar los mensajes.');
+    }
   }
 
   private async cargarMisCursos(): Promise<void> {
