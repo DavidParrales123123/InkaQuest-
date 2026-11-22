@@ -209,7 +209,10 @@ export class ActivityService {
 
     if (error) {
       console.error('[InkaQuest] Error enviando la entrega:', error.message);
-      return { ok: false, mensaje: 'No pudimos registrar tu respuesta. Intenta de nuevo.' };
+      return {
+        ok: false,
+        mensaje: error.message || 'No pudimos registrar tu respuesta. Intenta de nuevo.',
+      };
     }
     return { ok: true, mensaje: 'Respuesta enviada.' };
   }

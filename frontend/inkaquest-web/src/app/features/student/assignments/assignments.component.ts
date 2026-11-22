@@ -124,7 +124,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                     <div class="space-y-2 border-t border-surface-200 pt-3">
                       @if (vencida(t)) {
                         <div class="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700" role="alert">
-                          <strong>Plazo vencido.</strong> Esta tarea no acepta entregas fuera de fecha (política de la institución). Si tu docente considerara regularización, comunícalo por los canales oficiales.
+                          <strong>Plazo vencido.</strong> Esta tarea ya no acepta entregas ni cambios en la entrega (política de la institución). Si tu docente considerara regularización, comunícalo por los canales oficiales.
                         </div>
                       } @else {
                         <label class="label" [attr.for]="'ent-'+t.id">{{ t.entrega ? 'Actualizar entrega (descripción)' : 'Descripción de la entrega' }}</label>
@@ -229,7 +229,9 @@ export class AssignmentsComponent implements OnInit {
   }
 
   protected vencida(t: Tarea & { entrega: Entrega | null }): boolean {
-    if (t.entrega) return false;           // ya entregó; las ediciones se permiten hasta que el docente cierre
+    // El servidor bloquea cualquier escritura de entrega pasada la fecha,
+    // incluso si el estudiante ya había entregado antes (trigger
+    // trg_entrega_bloquear_tardio). La UI debe reflejar esa misma regla.
     if (!t.fecha_entrega) return false;
     return new Date(t.fecha_entrega).getTime() < Date.now();
   }
@@ -315,7 +317,7 @@ export class AssignmentsComponent implements OnInit {
     const contenido = (this.borrador(t.id) || '').trim();
     if (!user || !contenido) return;
     if (this.vencida(t)) {
-      this.msgs.update((m) => ({ ...m, [t.id]: 'El plazo venció. No se aceptan entregas tardías.' }));
+      this.msgs.update((m) => ({ ...m, [t.id]: 'El plazo venció. Esta tarea ya no acepta entregas ni cambios.' }));
       this.oks.update((m) => ({ ...m, [t.id]: false }));
       return;
     }
