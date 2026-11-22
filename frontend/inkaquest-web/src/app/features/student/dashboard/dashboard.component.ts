@@ -204,6 +204,9 @@ export class DashboardComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
     try {
+      // Entrar al panel cuenta como actividad del día: actualiza la racha
+      // (idempotente) antes de leerla para mostrar el valor de hoy.
+      await this.gamificationService.registrarActividadDiaria(user.id);
       const [cursos, matriculas, progresos, racha, noLeidas] = await Promise.all([
         this.courseService.listarCursosDeEstudiante(user.id),
         this.enrollmentService.listarMisMatriculas(),

@@ -17,6 +17,7 @@ import { filter } from 'rxjs';
 
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { GamificationService } from '../../core/services/gamification.service';
 import { MessageService } from '../../core/services/message.service';
 import { LogoComponent } from '../../shared/components/logo/logo.component';
 import { ChatbotWidgetComponent } from '../../shared/components/chatbot-widget/chatbot-widget.component';
@@ -243,6 +244,7 @@ export class PanelLayoutComponent implements OnInit {
   protected readonly auth = inject(AuthService);
   /** Servicio de notificaciones. */
   private readonly notifications = inject(NotificationService);
+  private readonly gamification = inject(GamificationService);
   /** Servicio de mensajes (contadores de no leídos para la sidebar). */
   private readonly mensajes = inject(MessageService);
   /** Router. */
@@ -344,6 +346,7 @@ export class PanelLayoutComponent implements OnInit {
 
   /** Carga el numero de notificaciones sin leer. */
   ngOnInit(): void {
+    void this.registrarActividadDiaria();
     void this.cargarNoLeidas();
     void this.cargarMensajesNoLeidos();
     this.router.events
@@ -372,6 +375,13 @@ export class PanelLayoutComponent implements OnInit {
         window.removeEventListener('focus', this.manejarFocoVentana);
       });
     }
+  }
+
+  /** Registra la visita de hoy en la racha (idempotente por día). */
+  private async registrarActividadDiaria(): Promise<void> {
+    const usuario = this.auth.usuario();
+    if (!usuario) return;
+    await this.gamification.registrarActividadDiaria(usuario.id);
   }
 
   /** Consulta el contador de notificaciones pendientes. */

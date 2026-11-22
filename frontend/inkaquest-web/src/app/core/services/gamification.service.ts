@@ -68,6 +68,28 @@ export class GamificationService {
     }
   }
 
+  /**
+   * Registra la visita de HOY a la plataforma en la racha del usuario.
+   *
+   * <p>Usa la función SQL `fn_actualizar_racha` (SECURITY DEFINER, idempotente
+   * por día). Es la forma en que "entrar al panel" cuenta como actividad diaria,
+   * además de completar lecciones. Si ya se registró hoy, no hace nada.</p>
+   */
+  async registrarActividadDiaria(usuarioId: string): Promise<{ ok: boolean; racha: number }> {
+    try {
+      const { data, error } = await this.supabase.client.rpc('fn_actualizar_racha', {
+        p_usuario_id: usuarioId,
+      });
+      if (error) {
+        console.error('[InkaQuest] Error actualizando la racha:', error.message);
+        return { ok: false, racha: 0 };
+      }
+      return { ok: true, racha: Number(data ?? 0) };
+    } catch {
+      return { ok: false, racha: 0 };
+    }
+  }
+
   // === INSIGNIAS ===
 
   /** Obtiene el catálogo de insignias con el progreso del usuario. */
