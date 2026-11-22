@@ -285,11 +285,17 @@ interface RespuestaHistorial {
                             <p class="text-xs font-bold text-white">{{ i.nombre }} <span class="text-gold-400">×{{ i.cantidad }}</span></p>
                             <p class="text-[0.6rem] leading-snug text-marine-300">{{ i.descripcion }}</p>
                           </div>
-                          @if (i.codigo === 'bomba_total' || i.codigo === 'congelar_tiempo') {
-                            <button type="button" class="btn btn-gold btn-xs shrink-0" (click)="i.codigo === 'bomba_total' ? usarBombaTotal() : usarCongelarTiempo()">Usar</button>
-                          } @else if (i.codigo === 'pista' || i.codigo === 'cincuenta_cincuenta' || i.codigo === 'segunda_oportunidad') {
+                          @if (esCodigo(i.codigo, 'bomba_total')) {
+                            <button type="button" class="btn btn-gold btn-xs shrink-0" (click)="usarBombaTotal()">Usar</button>
+                          } @else if (esCodigo(i.codigo, 'congelar_tiempo')) {
+                            <button type="button" class="btn btn-gold btn-xs shrink-0" (click)="usarCongelarTiempo()">Usar</button>
+                          } @else if (esCodigo(i.codigo, 'pista') || esCodigo(i.codigo, 'cincuenta_cincuenta')) {
                             <span class="shrink-0 text-[0.55rem] font-bold uppercase tracking-widest text-marine-400">En chequeo</span>
-                          } @else if (i.codigo === 'vida_extra') {
+                          } @else if (esCodigo(i.codigo, 'segunda_oportunidad')) {
+                            <span class="shrink-0 text-[0.55rem] font-bold uppercase tracking-widest text-marine-400">Tras error</span>
+                          } @else if (esCodigo(i.codigo, 'saltar_pregunta')) {
+                            <button type="button" class="btn btn-gold btn-xs shrink-0" [disabled]="!preguntaActual()" (click)="usarSaltarPregunta()">Usar</button>
+                          } @else if (esCodigo(i.codigo, 'vida_extra')) {
                             <span class="shrink-0 text-[0.55rem] font-bold uppercase tracking-widest text-marine-400">Al morir</span>
                           }
                         </div>
@@ -805,6 +811,11 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
     return this.ALIAS_CODIGOS[codigo] ?? codigo;
   }
 
+  /** Compara un código de inventario con un código lógico (alias incluidos). */
+  protected esCodigo(codigoInventario: string, codigoLogico: string): boolean {
+    return codigoInventario === this.codigoReal(codigoLogico);
+  }
+
   protected contarItem(codigo: string): number {
     const real = this.codigoReal(codigo);
     return this.itemsMochila().filter((i) => i.codigo === real).reduce((a, b) => a + b.cantidad, 0);
@@ -849,6 +860,17 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
   protected aceptarMuerte(): void {
     this.muertoEntra.set(false);
     (this.game?.scene?.getScene('Combate') as any)?.finalizarMuerte?.();
+  }
+
+  /** Saltar pregunta (ítem): consume y omite el chequeo actual sin perder la mejora. */
+  protected async usarSaltarPregunta(): Promise<void> {
+    if (!this.preguntaActual()) { this.mensajeResultado.set('Solo puedes usar Saltar pregunta durante un chequeo.'); return; }
+    const ok = await this.consumirItemCodigo('saltar_pregunta');
+    if (!ok.ok) { this.mensajeResultado.set(ok.mensaje); return; }
+    this.mochilaAbierta.set(false);
+    // Omitir con éxito conserva la mejora pendiente.
+    this.resolverMejoraTrasChequeo(true);
+    this.iniciarSiguienteHorda();
   }
 
   /** Pista de la pregunta (ítem: Pista). Solo se consume si se obtiene la pista. */
