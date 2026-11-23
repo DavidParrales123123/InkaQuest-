@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
@@ -53,15 +53,40 @@ import { FeedbackMessageComponent } from '../../../shared/components/feedback-me
     </section>
   `,
 })
-export class CuentaSuspendidaComponent {
+export class CuentaSuspendidaComponent implements OnInit, OnDestroy {
   private readonly supabase = inject(SupabaseService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected motivo = '';
-  protected correo = '';
+  protected correo = this.route.snapshot.queryParamMap.get('email') ?? this.auth.usuario()?.email ?? '';
   protected readonly enviando = signal(false);
   protected readonly resultado = signal<{ ok: boolean; mensaje: string } | null>(null);
+  private timerReactivacion: ReturnType<typeof setInterval> | null = null;
+
+  ngOnInit(): void {
+    // Si el admin reactiva la cuenta mientras esta pantalla sigue abierta,
+    // se detecta el cambio y se devuelve al usuario a su panel por rol.
+    this.timerReactivacion = setInterval(async () => {
+      if (!this.auth.usuario()) return;
+      await this.auth.cargarPerfil();
+      if (this.auth.cuentaHabilitada()) {
+        if (this.timerReactivacion) clearInterval(this.timerReactivacion);
+        await this.router.navigateByUrl(this.panelPorRol());
+      }
+    }, 5000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.timerReactivacion) clearInterval(this.timerReactivacion);
+  }
+
+  private panelPorRol(): string {
+    if (this.auth.esAdmin()) return '/admin/dashboard';
+    if (this.auth.esDocente()) return '/docente/dashboard';
+    return '/estudiante/dashboard';
+  }
 
   protected async enviar(): Promise<void> {
     if (this.motivo.trim().length < 10) return;

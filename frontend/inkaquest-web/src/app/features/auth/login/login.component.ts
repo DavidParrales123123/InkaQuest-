@@ -213,6 +213,12 @@ export class LoginComponent {
       const resultado = await this.auth.iniciarSesion(email, password);
 
       if (!resultado.ok) {
+        if ((this.auth.motivoSesion() ?? '').includes('suspendida')) {
+          await this.router.navigate(['/cuenta-suspendida'], {
+            queryParams: { email },
+          });
+          return;
+        }
         this.mensaje.set(resultado.mensaje);
         this.exito.set(false);
         return;

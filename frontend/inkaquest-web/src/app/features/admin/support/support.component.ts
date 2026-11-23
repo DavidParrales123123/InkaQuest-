@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 
 import { AdminService } from '../../../core/services/admin.service';
 import { SupportService, TicketDetalle } from '../../../core/services/support.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { Ticket } from '../../../core/models/domain.models';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -79,6 +80,16 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
             </div>
           }
 
+          @if (d.categoria === 'desbloqueo') {
+            <div class="rounded-xl border border-gold-300 bg-gold-50 p-3">
+              <p class="text-sm font-semibold text-gold-800">Solicitud de desbloqueo de cuenta</p>
+              <p class="mt-1 text-xs text-marine-600">Si decides reactivarla, la cuenta vuelve a su panel según su rol (estudiante o docente) y se levanta el bloqueo de acceso.</p>
+              <button type="button" class="btn btn-primary btn-sm mt-3" [disabled]="procesando()" (click)="reactivarCuenta(d)">
+                {{ procesando() ? 'Procesando…' : 'Reactivar cuenta' }}
+              </button>
+            </div>
+          }
+
           @if (d.estado !== 'cerrado') {
             <div class="space-y-2 border-t border-surface-200 pt-4">
               <label class="label" for="respuesta-admin">Responder al usuario</label>
@@ -111,6 +122,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 export class SupportComponent implements OnInit {
   private readonly adminService = inject(AdminService);
   private readonly support = inject(SupportService);
+  private readonly confirm = inject(ConfirmService);
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
@@ -175,5 +187,25 @@ export class SupportComponent implements OnInit {
     this.procesando.set(false);
     this.exito.set(res.ok);
     this.mensaje.set(res.mensaje);
+  }
+
+  /** Decide a favor del usuario: reactiva la cuenta desde el propio ticket. */
+  protected async reactivarCuenta(d: TicketDetalle): Promise<void> {
+    if (!d.usuario_id || this.procesando()) return;
+    const ok = await this.confirm.ask({
+      title: 'Reactivar cuenta',
+      mensaje: '¿Aceptar la solicitud y reactivar la cuenta? El usuario podrá volver a entrar según su rol.',
+      textoConfirmar: 'Reactivar cuenta',
+      variante: 'primario',
+    });
+    if (!ok) return;
+    this.procesando.set(true);
+    const res = await this.adminService.cambiarEstadoCuenta(d.usuario_id, 'activo');
+    this.exito.set(res.ok);
+    this.mensaje.set(res.ok
+      ? 'Cuenta reactivada. El usuario ya puede iniciar sesión y vuelve a su panel según su rol.'
+      : res.mensaje);
+    if (res.ok) await this.cargar();
+    this.procesando.set(false);
   }
 }

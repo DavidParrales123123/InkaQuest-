@@ -491,6 +491,10 @@ export class AuthService {
    */
   private traducirError(mensaje: string): string {
     const m = mensaje.toLowerCase();
+    if (m.includes('banned') || m.includes('suspend')) {
+      this._motivoSesion.set('Tu cuenta está suspendida. Contacta con el administrador.');
+      return 'Tu cuenta está suspendida. Contacta con el administrador.';
+    }
     if (m.includes('invalid login credentials')) {
       return 'El correo o la contraseña no son correctos.';
     }
