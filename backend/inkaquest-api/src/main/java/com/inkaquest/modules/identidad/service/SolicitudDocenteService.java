@@ -141,6 +141,10 @@ public class SolicitudDocenteService {
 
             Perfil perfil = s.getUsuarioId();
             perfil.setRol(RolUsuario.docente);
+            // Aprobar implica activar la cuenta: si se deja en
+            // pendiente_verificacion, el docente aparece "por verificar" en el
+            // panel admin aunque su solicitud ya fue aprobada.
+            perfil.setEstadoCuenta(com.inkaquest.shared.enums.EstadoCuenta.activo);
 
             s.setEstado(EstadoSolicitudDocente.aprobada);
             s.setRevisadoPor(perfilRepository.findById(revisorId).orElseThrow(
