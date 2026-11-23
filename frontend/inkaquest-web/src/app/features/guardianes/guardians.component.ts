@@ -65,9 +65,9 @@ interface NivelItem {
 
             <!-- CTA — botones uniformes -->
             <div class="mt-7 flex flex-wrap items-center gap-3">
-              <a class="btn btn-gold btn-lg shadow-[0_6px_0_#b45309] hover:translate-y-[1px] hover:shadow-[0_4px_0_#b45309]" [routerLink]="['/estudiante/guardianes/nivel', primerDisponible() ?? 1]">
+              <a class="btn btn-gold btn-lg shadow-[0_6px_0_#b45309] hover:translate-y-[1px] hover:shadow-[0_4px_0_#b45309]" [routerLink]="['/estudiante/guardianes/nivel', siguienteNumero()]">
                 <svg viewBox="0 0 24 24" class="size-5" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.52.85l10.2-6.5a1 1 0 0 0 0-1.7L9.52 4.65A1 1 0 0 0 8 5.5z"/></svg>
-                Empezar partida · Nivel {{ primerDisponible() }}
+                Empezar partida · Nivel {{ siguienteNumero() }}
               </a>
               <button type="button" class="btn btn-outline-light btn-lg" (click)="irACampana()">
                 <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
@@ -214,7 +214,7 @@ interface NivelItem {
             <ol class="mt-3 space-y-2.5 text-sm text-marine-700">
               <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">1</span>Elige tu guardián y supera las hordas de la lección.</li>
               <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">2</span>Entre oleadas eliges una mejora: el chequeo académico decide si la conservas — si fallas, la pierdes.</li>
-              <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">3</span>Completa la lección en el aula para desbloquear el siguiente nivel.</li>
+              <li class="flex items-start gap-2.5"><span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-marine-800 text-[0.62rem] font-extrabold text-white">3</span>Gana el nivel en el juego para desbloquear el siguiente (marcar la lección en el aula no cuenta como victoria).</li>
             </ol>
           </div>
 
@@ -334,18 +334,24 @@ export class GuardiansComponent implements OnInit, OnDestroy {
         this.cargando.set(false);
         return;
       }
-      const [{ data: campana }, { data: progreso }, { data: intentos }] = await Promise.all([
+      const [{ data: campana }, { data: intentos }] = await Promise.all([
         supabase.from('guardianes_campana').select('id').limit(1).maybeSingle(),
-        supabase.from('progreso_leccion').select('leccion_id,estado').eq('estudiante_id', USER.id),
-        supabase.from('guardianes_intento').select('estado, xp_recibido, precision, hordas_completadas').eq('estudiante_id', USER.id),
+        // El nivel del JUEGO se mide por victorias reales, no por lecciones del
+        // aula: un alumno puede marcar lecciones completadas sin haber jugado.
+        supabase.from('guardianes_intento').select('nivel_id, estado, xp_recibido, precision, hordas_completadas').eq('estudiante_id', USER.id),
       ]);
       const { data: nivelesDb, error: nivelesErr } = await supabase
         .from('guardianes_nivel')
-        .select('numero, titulo, leccion_id, xp_recompensa, monedas_recompensa')
+        .select('id, numero, titulo, leccion_id, xp_recompensa, monedas_recompensa')
         .eq('campana_id', campana?.id ?? '')
         .order('numero');
       if (nivelesErr) throw new Error(nivelesErr.message);
-      const completadas = new Set((progreso ?? []).filter((r: any) => r.estado === 'completado').map((r: any) => r.leccion_id));
+      const victorias = new Set(
+        (intentos ?? []).filter((i: any) => i.estado === 'completado').map((i: any) => i.nivel_id),
+      );
+      const completadas = new Set(
+        (nivelesDb ?? []).filter((n: any) => victorias.has(n.id)).map((n: any) => n.leccion_id),
+      );
       const items: NivelItem[] = (nivelesDb ?? []).map((n: any) => ({
         numero: n.numero,
         titulo: n.titulo ?? `Nivel ${n.numero}`,

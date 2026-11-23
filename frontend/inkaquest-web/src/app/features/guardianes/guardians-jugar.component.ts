@@ -727,20 +727,22 @@ export class GuardiansJugarComponent implements OnInit, OnDestroy {
       if (!user) return;
       const supabase = this.supabase.client;
       const { data: campana } = await supabase.from('guardianes_campana').select('id').limit(1).maybeSingle();
-      const [{ data: progreso }, { data: nivelesDb }] = await Promise.all([
-        supabase.from('progreso_leccion').select('leccion_id,estado').eq('estudiante_id', user.id),
+      const [{ data: intentos }, { data: nivelesDb }] = await Promise.all([
+        // El desbloqueo del roster va por VICTORIAS del juego, no por lecciones
+        // marcadas en el aula (eso hacia que apareciera "nivel 5" sin jugar).
+        supabase.from('guardianes_intento').select('nivel_id, estado').eq('estudiante_id', user.id),
         supabase
           .from('guardianes_nivel')
-          .select('numero, leccion_id')
+          .select('id, numero')
           .eq('campana_id', campana?.id ?? '')
           .order('numero'),
       ]);
-      const completadas = new Set(
-        (progreso ?? []).filter((r: any) => r.estado === 'completado').map((r: any) => r.leccion_id),
+      const victorias = new Set(
+        (intentos ?? []).filter((i: any) => i.estado === 'completado').map((i: any) => i.nivel_id),
       );
       let max = 1;
       for (const n of nivelesDb ?? []) {
-        if (!completadas.has((n as any).leccion_id)) break;
+        if (!victorias.has((n as any).id)) break;
         max = (n as any).numero + 1;
       }
       this.nivelMaximoAlcanzado.set(Math.min(max, 18));
