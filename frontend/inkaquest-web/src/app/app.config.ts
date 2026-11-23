@@ -10,6 +10,8 @@ import {
   ErrorHandler,
   provideBrowserGlobalErrorListeners,
   provideZoneChangeDetection,
+  provideAppInitializer,
+  inject,
 } from '@angular/core';
 import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
@@ -19,6 +21,7 @@ import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
 import { GlobalErrorHandler } from './core/errors/global-error-handler';
 import { APP_CONFIG, APP_CONFIG_VALUE } from './core/config/app-config';
+import { SessionTrackingService } from './core/services/session-tracking.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -32,5 +35,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withFetch(), withInterceptors([authInterceptor, errorInterceptor])),
     { provide: APP_CONFIG, useValue: APP_CONFIG_VALUE },
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
+    // Arranca el registro de duración de sesión (servicio silencioso).
+    provideAppInitializer(() => { inject(SessionTrackingService); }),
   ],
 };
