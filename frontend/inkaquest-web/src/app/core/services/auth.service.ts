@@ -146,7 +146,9 @@ export class AuthService {
   private verificarEstadoCuenta(): boolean {
     if (this.cuentaHabilitada()) return true;
     this._motivoSesion.set('Tu cuenta está suspendida. Contacta con el administrador.');
-    void this.cerrarSesion(this._motivoSesion()!);
+    // NO cerramos la sesión: el usuario debe poder enviar su solicitud de
+    // desbloqueo con su JWT. Los guards y la RLS ya bloquean el resto de la app.
+    void this.router.navigate(['/cuenta-suspendida']);
     return false;
   }
 

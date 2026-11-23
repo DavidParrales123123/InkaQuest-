@@ -143,8 +143,8 @@ export class LoginComponent {
       this.mensaje.set('Tu sesión no se pudo verificar en el servidor. Inicia sesión de nuevo.');
       this.exito.set(false);
     } else if (params['motivo'] === 'cuenta-suspendida') {
-      this.mensaje.set('Tu cuenta está suspendida. Contacta con el administrador para reactivarla.');
-      this.exito.set(false);
+      void this.router.navigate(['/cuenta-suspendida']);
+      return;
     }
     const motivoAuth = this.auth.motivoSesion();
     if (motivoAuth && !this.mensaje()) {

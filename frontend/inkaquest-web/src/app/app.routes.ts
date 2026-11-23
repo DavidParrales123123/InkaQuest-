@@ -40,6 +40,14 @@ export const routes: Routes = [
         title: 'Solicitar acceso docente · InkaQuest',
       },
       {
+        path: 'cuenta-suspendida',
+        loadComponent: () =>
+          import('./features/auth/cuenta-suspendida/cuenta-suspendida.component').then(
+            (m) => m.CuentaSuspendidaComponent,
+          ),
+        title: 'Cuenta suspendida · InkaQuest',
+      },
+      {
         path: '',
         pathMatch: 'full',
         loadComponent: () =>

@@ -23,11 +23,18 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
         (alReintentar)="cargar()">
         <div contenido class="table-wrap">
           <div class="overflow-x-auto"><table class="table">
-            <thead><tr><th>Asunto</th><th>Razón</th><th>Prioridad</th><th>Estado</th><th>Creado</th><th></th></tr></thead>
+            <thead><tr><th>Asunto</th><th>Categoría</th><th>Razón</th><th>Prioridad</th><th>Estado</th><th>Creado</th><th></th></tr></thead>
             <tbody>
               @for (t of tickets(); track t.id) {
                 <tr>
                   <td class="font-medium text-marine-800">{{ t.asunto }}</td>
+                  <td class="text-xs text-marine-500">
+                    @if (t.categoria === 'desbloqueo') {
+                      <span class="badge badge-warning">Desbloqueo</span>
+                    } @else {
+                      {{ t.categoria || 'general' }}
+                    }
+                  </td>
                   <td class="max-w-xs truncate text-xs text-marine-600" [title]="t.descripcion">{{ t.descripcion || '—' }}</td>
                   <td>{{ t.prioridad }}</td>
                   <td><app-status-badge [estado]="t.estado" /></td>
