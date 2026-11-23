@@ -109,7 +109,14 @@ interface AsignacionView extends DocenteCurso {
                     <td><app-status-badge [estado]="d.estado_cuenta" /></td>
                     <td>{{ d.creado_en | date: 'mediumDate' }}</td>
                     <td class="text-sm">{{ resumenAsignaciones(d.id) }}</td>
-                    <td><button type="button" class="link text-sm" (click)="seleccionarDocente(d.id)">Seleccionar para asignar</button></td>
+                    <td class="whitespace-nowrap">
+                      @if (d.estado_cuenta === 'suspendido') {
+                        <button type="button" class="btn btn-outline btn-sm mr-2" (click)="cambiarEstadoDocente(d)">Reactivar</button>
+                      } @else if (d.estado_cuenta === 'activo') {
+                        <button type="button" class="btn btn-outline btn-sm mr-2 text-danger-700" (click)="cambiarEstadoDocente(d)">Suspender</button>
+                      }
+                      <button type="button" class="link text-sm" (click)="seleccionarDocente(d.id)">Seleccionar para asignar</button>
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -276,6 +283,28 @@ export class TeachersComponent implements OnInit {
     const r = await this.adminService.actualizarAsignacionDocenteCurso(a.id, { es_responsable: !a.es_responsable });
     this.setMensaje(r.ok, r.mensaje);
     if (r.ok) await this.cargar();
+  }
+
+  /** Suspende o reactiva la cuenta de un docente desde este panel. */
+  protected async cambiarEstadoDocente(d: Perfil): Promise<void> {
+    const suspender = d.estado_cuenta === 'activo';
+    const ok = await this.confirm.ask({
+      title: suspender ? 'Suspender docente' : 'Reactivar docente',
+      mensaje: suspender
+        ? `¿Suspender a ${this.nombre(d)}? Perderá el acceso a la plataforma de inmediato.`
+        : `¿Reactivar a ${this.nombre(d)}? Recuperará el acceso a la plataforma.`,
+      textoConfirmar: suspender ? 'Suspender' : 'Reactivar',
+      variante: 'primario',
+    });
+    if (!ok) return;
+    const estado = suspender ? 'suspendido' : 'activo';
+    const r = await this.adminService.cambiarEstadoCuenta(d.id, estado);
+    this.setMensaje(r.ok, r.mensaje);
+    if (r.ok) {
+      this.docentes.update((arr) => arr.map((x) => x.id === d.id
+        ? { ...x, estado_cuenta: estado as Perfil['estado_cuenta'] } : x));
+      await this.cargar();
+    }
   }
 
   protected async eliminar(a: DocenteCurso): Promise<void> {
