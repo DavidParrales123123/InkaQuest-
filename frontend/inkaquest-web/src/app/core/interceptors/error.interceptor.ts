@@ -42,6 +42,11 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         );
         return throwError(() => new Error('Tu sesion expiro. Inicia sesion nuevamente.'));
       }
+      if (error instanceof HttpErrorResponse && error.status === 403
+          && (error.error?.error === 'CUENTA_SUSPENDIDA' || (error.error?.message ?? '').includes('suspendida'))) {
+        void auth.cerrarSesion('Tu cuenta está suspendida. Contacta con el administrador.');
+        return throwError(() => new Error('Tu cuenta está suspendida. Contacta con el administrador.'));
+      }
       return throwError(() => error);
     }),
   );

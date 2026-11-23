@@ -39,6 +39,16 @@ export class AuthService {
   /** Indica si hay una sesion activa. */
   readonly autenticado = computed(() => this._usuario() !== null);
 
+  /** Cuenta habilitada para usar la plataforma (suspendida/eliminada no). */
+  readonly cuentaHabilitada = computed(() => {
+    const estado = this._perfil()?.estado_cuenta;
+    return !estado || estado === 'activo' || estado === 'pendiente_verificacion';
+  });
+
+  /** Motivo por el que se cerro la sesion (ej. cuenta suspendida). */
+  private readonly _motivoSesion = signal<string | null>(null);
+  readonly motivoSesion = this._motivoSesion.asReadonly();
+
   /** Se marca mientras el inicio de sesion esta en curso. */
   private readonly _iniciandoSesion = signal(false);
   /** Indica si un login esta en curso (usado por interceptores/guards). */
@@ -69,8 +79,10 @@ export class AuthService {
       this._usuario.set(data.session?.user ?? null);
       if (data.session?.user) {
         await this.cargarPerfil();
-        if (!this._perfil()) {
-          await this.asegurarPerfilBasico();
+        if (this.verificarEstadoCuenta()) {
+          if (!this._perfil()) {
+            await this.asegurarPerfilBasico();
+          }
         }
       }
     } catch {
@@ -86,7 +98,7 @@ export class AuthService {
       if (sesion?.user) {
         void (async () => {
           await this.cargarPerfil();
-          if (!this._perfil()) {
+          if (this.verificarEstadoCuenta() && !this._perfil()) {
             await this.asegurarPerfilBasico();
           }
         })();
@@ -125,6 +137,17 @@ export class AuthService {
 
     this._perfil.set(null);
     return null;
+  }
+
+  /**
+   * Si la cuenta está suspendida/eliminada, cierra la sesión y deja un aviso.
+   * Devuelve true cuando la cuenta puede seguir usando la plataforma.
+   */
+  private verificarEstadoCuenta(): boolean {
+    if (this.cuentaHabilitada()) return true;
+    this._motivoSesion.set('Tu cuenta está suspendida. Contacta con el administrador.');
+    void this.cerrarSesion(this._motivoSesion()!);
+    return false;
   }
 
   /** Lectura del perfil vía API REST. Devuelve null si falla o viene vacío. */
@@ -388,6 +411,9 @@ export class AuthService {
           mensaje: 'No pudimos conectar tu cuenta con el servidor en este momento (tu perfil no carga). Vuelve a intentarlo; si el problema persiste, escribe a soporte.',
         };
       }
+      if (!this.verificarEstadoCuenta()) {
+        return { ok: false, mensaje: this._motivoSesion() ?? 'Tu cuenta no está activa.' };
+      }
       await this.procesarSolicitudDocentePendiente();
 
       return { ok: true, mensaje: 'Sesión iniciada.' };
@@ -404,13 +430,14 @@ export class AuthService {
   /**
    * Cierra la sesion actual.
    */
-  async cerrarSesion(): Promise<void> {
+  async cerrarSesion(motivo?: string): Promise<void> {
+    if (motivo) this._motivoSesion.set(motivo);
     try {
       await this.supabase.client.auth.signOut();
     } finally {
       this._usuario.set(null);
       this._perfil.set(null);
-      await this.router.navigate(['/']);
+      await this.router.navigate(['/login'], { queryParams: motivo ? { motivo: 'cuenta-suspendida' } : {} });
     }
   }
 

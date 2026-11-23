@@ -2,6 +2,7 @@ package com.inkaquest.shared.security;
 
 import com.inkaquest.shared.enums.RolUsuario;
 import com.inkaquest.shared.exception.ResourceNotFoundException;
+import com.inkaquest.shared.exception.UnauthorizedException;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -32,8 +33,10 @@ public class CheckRoleService {
     public RolUsuario rolDe(UUID usuarioId) {
         return rlsExecutor.executeAs(usuarioId, () ->
                 perfilRepository.findById(usuarioId)
+                        .filter(p -> p.getEstadoCuenta() == com.inkaquest.shared.enums.EstadoCuenta.activo
+                                || p.getEstadoCuenta() == com.inkaquest.shared.enums.EstadoCuenta.pendiente_verificacion)
                         .map(com.inkaquest.modules.identidad.entity.Perfil::getRol)
-                        .orElseThrow(() -> new ResourceNotFoundException("El perfil del usuario no existe o está suspendido.")));
+                        .orElseThrow(() -> new UnauthorizedException("Tu cuenta no está activa.")));
     }
 
     /** Comprueba si el usuario tiene alguno de los roles solicitados. */

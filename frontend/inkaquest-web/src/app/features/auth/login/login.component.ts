@@ -142,6 +142,14 @@ export class LoginComponent {
     } else if (params['motivo'] === 'sesion-expirada') {
       this.mensaje.set('Tu sesión no se pudo verificar en el servidor. Inicia sesión de nuevo.');
       this.exito.set(false);
+    } else if (params['motivo'] === 'cuenta-suspendida') {
+      this.mensaje.set('Tu cuenta está suspendida. Contacta con el administrador para reactivarla.');
+      this.exito.set(false);
+    }
+    const motivoAuth = this.auth.motivoSesion();
+    if (motivoAuth && !this.mensaje()) {
+      this.mensaje.set(motivoAuth);
+      this.exito.set(false);
     }
 
     void this.redirigirSiAutenticado();
@@ -149,7 +157,7 @@ export class LoginComponent {
 
   private async redirigirSiAutenticado(): Promise<void> {
     await this.esperarCargaAuth();
-    if (this.auth.autenticado()) {
+    if (this.auth.autenticado() && this.auth.cuentaHabilitada()) {
       await this.router.navigateByUrl(this.destinoSolicitado());
     }
   }

@@ -27,12 +27,14 @@ export const authGuard: CanActivateFn = async (_route, state) => {
     });
   }
 
-  if (auth.autenticado()) {
+  if (auth.autenticado() && auth.cuentaHabilitada()) {
     return true;
   }
 
   return router.createUrlTree(['/login'], {
-    queryParams: { retorno: state.url },
+    queryParams: auth.autenticado()
+      ? { motivo: 'cuenta-suspendida' }
+      : { retorno: state.url },
   });
 };
 
@@ -61,6 +63,9 @@ export const roleGuard: CanActivateFn = async (route) => {
 
   if (!auth.autenticado()) {
     return router.createUrlTree(['/login']);
+  }
+  if (!auth.cuentaHabilitada()) {
+    return router.createUrlTree(['/login'], { queryParams: { motivo: 'cuenta-suspendida' } });
   }
 
   const rolesRequeridos = (route.data?.['roles'] ?? []) as string[];
