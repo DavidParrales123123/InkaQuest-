@@ -46,7 +46,7 @@ interface AsignacionView extends DocenteCurso {
       <!-- Asignar curso a docente -->
       <div class="card card-body space-y-4">
         <h2 class="text-lg font-semibold text-marine-800">Asignar docente a curso</h2>
-        <p class="text-sm text-marine-600">Selecciona un docente y un curso. Se creará o reactivará la asignación (incluso si el docente está inactivo). El docente verá el curso en su panel cuando la asignación esté activa y tenga los permisos/RLS correspondientes.</p>
+        <p class="text-sm text-marine-600">Selecciona un docente y un curso. Se creará o reactivará la asignación (incluso si el docente está inactivo). Marca «Docente responsable» solo si quieres transferirle ese rol: el curso puede tener un único responsable activo.</p>
         <form class="grid gap-4 md:grid-cols-2 xl:grid-cols-4 items-end" [formGroup]="formAsignacion" (ngSubmit)="asignar()">
           <div class="xl:col-span-2">
             <label class="label" for="docente">Docente</label>
@@ -174,7 +174,9 @@ export class TeachersComponent implements OnInit {
   protected readonly formAsignacion = this.fb.nonNullable.group({
     docenteId: ['', Validators.required],
     cursoId: ['', Validators.required],
-    esResponsable: [true],
+    // Por defecto NO se marca responsable: los cursos ya suelen tener uno y
+    // el indice uq_docente_curso_responsable rechazaria un segundo responsable.
+    esResponsable: [false],
   });
 
   protected readonly docentesOrdenados = computed(() =>

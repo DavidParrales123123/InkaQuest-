@@ -30,6 +30,15 @@ import {
   Unidad,
 } from '../models/domain.models';
 
+/** Traduce errores de asignacion a un mensaje accionable para el administrador. */
+function mensajeAsignacion(e: unknown): string {
+  const msg = e instanceof Error ? e.message : '';
+  if (msg.includes('uq_docente_curso_responsable') || msg.includes('23505')) {
+    return 'El curso ya tiene un docente responsable activo. Marca «Docente responsable» para transferirle el rol, o desactiva al responsable actual.';
+  }
+  return msg || 'No se pudo asignar el docente al curso (verifica permisos/RLS).';
+}
+
 /** Extrae el mensaje útil de un error HTTP del backend (`ApiResponse` en el cuerpo). */
 function mensajeErrorApi(e: unknown, porDefecto: string): string {
   const error = e as HttpErrorResponse;
@@ -500,7 +509,7 @@ export class AdminService {
     return (data ?? []) as DocenteCurso[];
   }
 
-  /** Asigna o reactualiza un docente en un curso (upsert por curso_id, docente_id). */
+  /** Asigna o reactualiza un docente en un curso (RPC segura, upsert atomico). */
   async asignarDocenteACurso(params: {
     cursoId: string;
     docenteId: string;
@@ -508,62 +517,41 @@ export class AdminService {
     asignadoPor?: string | null;
   }): Promise<{ ok: boolean; mensaje: string }> {
     try {
-      const { data: existente, error: errBuscar } = await this.supabase.client
-        .from(this.supabase.tabla.docenteCurso)
-        .select('id')
-        .eq('curso_id', params.cursoId)
-        .eq('docente_id', params.docenteId)
-        .maybeSingle();
-      if (errBuscar) throw new Error(errBuscar.message);
-
-      if (existente?.id) {
-        const { error } = await this.supabase.client
-          .from(this.supabase.tabla.docenteCurso)
-          .update({
-            activo: true,
-            es_responsable: !!params.esResponsable,
-            asignado_por: params.asignadoPor ?? null,
-            asignado_en: new Date().toISOString(),
-          })
-          .eq('id', existente.id);
-        if (error) throw new Error(error.message);
-        return { ok: true, mensaje: 'Asignación actualizada y activada correctamente.' };
-      }
-
-      const { error } = await this.supabase.client.from(this.supabase.tabla.docenteCurso).insert({
-        curso_id: params.cursoId,
-        docente_id: params.docenteId,
-        es_responsable: !!params.esResponsable,
-        activo: true,
-        asignado_por: params.asignadoPor ?? null,
+      const { data, error } = await this.supabase.client.rpc('asignar_docente_curso', {
+        p_curso_id: params.cursoId,
+        p_docente_id: params.docenteId,
+        p_es_responsable: !!params.esResponsable,
+        p_asignado_por: params.asignadoPor ?? null,
       });
       if (error) throw new Error(error.message);
-      return { ok: true, mensaje: 'Docente asignado al curso correctamente.' };
+      return { ok: true, mensaje: (data as any)?.mensaje ?? 'Docente asignado al curso correctamente.' };
     } catch (e) {
-      return {
-        ok: false,
-        mensaje: e instanceof Error ? e.message : 'No se pudo asignar el docente al curso (verifica permisos/RLS).',
-      };
+      return { ok: false, mensaje: mensajeAsignacion(e) };
     }
   }
 
-  /** Activa, desactiva o cambia el rol responsable de una asignacion. */
+  /** Activa, desactiva o cambia el rol responsable de una asignacion (RPC segura). */
   async actualizarAsignacionDocenteCurso(
     asignacionId: string,
     cambios: { activo?: boolean; es_responsable?: boolean },
   ): Promise<{ ok: boolean; mensaje: string }> {
     try {
-      const { error } = await this.supabase.client
+      const { data: actual, error: errBuscar } = await this.supabase.client
         .from(this.supabase.tabla.docenteCurso)
-        .update(cambios)
-        .eq('id', asignacionId);
+        .select('activo, es_responsable')
+        .eq('id', asignacionId)
+        .maybeSingle();
+      if (errBuscar) throw new Error(errBuscar.message);
+
+      const { data, error } = await this.supabase.client.rpc('actualizar_asignacion_docente_curso', {
+        p_asignacion_id: asignacionId,
+        p_activo: cambios.activo ?? actual?.activo ?? true,
+        p_es_responsable: cambios.es_responsable ?? actual?.es_responsable ?? false,
+      });
       if (error) throw new Error(error.message);
-      return { ok: true, mensaje: 'Asignación actualizada correctamente.' };
+      return { ok: true, mensaje: (data as any)?.mensaje ?? 'Asignación actualizada correctamente.' };
     } catch (e) {
-      return {
-        ok: false,
-        mensaje: e instanceof Error ? e.message : 'No se pudo actualizar la asignación.',
-      };
+      return { ok: false, mensaje: mensajeAsignacion(e) };
     }
   }
 
