@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { AdminService } from '../../../core/services/admin.service';
 import { StorageService } from '../../../core/services/storage.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { Categoria, Curso, DocenteCurso, Perfil } from '../../../core/models/domain.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
@@ -104,6 +105,8 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                     <button class="link text-sm" type="button" (click)="editarCurso(c)">Editar</button>
                     @if (c.estado !== 'publicado') { <button class="link text-sm" type="button" (click)="cambiar(c.id,'publicado')">Publicar</button> }
                     @if (c.estado === 'publicado') { <button class="link text-sm" type="button" (click)="cambiar(c.id,'borrador')">Pasar a borrador</button> }
+                    @if (c.estado !== 'archivado') { <button class="link text-sm" type="button" (click)="cambiar(c.id,'archivado')">Archivar</button> }
+                    <button class="link text-sm text-danger-600" type="button" (click)="eliminar(c)">Eliminar</button>
                   </td>
                 </tr>
               }
@@ -119,6 +122,7 @@ export class CoursesComponent implements OnInit {
   private readonly adminService = inject(AdminService);
   private readonly storage = inject(StorageService);
   private readonly auth = inject(AuthService);
+  private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
 
   protected readonly cargando = signal(true);
@@ -295,6 +299,20 @@ export class CoursesComponent implements OnInit {
 
   protected async cambiar(id: string, estado: string): Promise<void> {
     const r = await this.adminService.cambiarEstadoCurso(id, estado);
+    this.mensaje.set(r.mensaje); this.exito.set(r.ok);
+    if (r.ok) await this.cargar();
+  }
+
+  /** Borrado físico validado en BD; si tiene ventas/matrículas, sugiere archivar. */
+  protected async eliminar(c: Curso): Promise<void> {
+    const ok = await this.confirm.ask({
+      title: 'Eliminar curso',
+      mensaje: `¿Eliminar definitivamente «${c.titulo}»? Esta acción no se puede deshacer. Si tiene matrículas o ventas asociadas, te sugerimos archivarlo.`,
+      textoConfirmar: 'Eliminar curso',
+      variante: 'primario',
+    });
+    if (!ok) return;
+    const r = await this.adminService.eliminarCursoAdmin(c.id);
     this.mensaje.set(r.mensaje); this.exito.set(r.ok);
     if (r.ok) await this.cargar();
   }

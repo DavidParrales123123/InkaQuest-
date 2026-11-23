@@ -495,6 +495,24 @@ export class AdminService {
     }
   }
 
+  /** Elimina un curso (RPC segura: valida dependencias y permisos). */
+  async eliminarCursoAdmin(cursoId: string): Promise<{ ok: boolean; mensaje: string }> {
+    try {
+      const { data, error } = await this.supabase.client.rpc('eliminar_curso', {
+        p_curso_id: cursoId,
+      });
+      if (error) {
+        return { ok: false, mensaje: error.message || 'No se pudo eliminar el curso.' };
+      }
+      return { ok: true, mensaje: (data as any)?.mensaje ?? 'Curso eliminado correctamente.' };
+    } catch (e) {
+      return {
+        ok: false,
+        mensaje: e instanceof Error ? e.message : 'No se pudo eliminar el curso.',
+      };
+    }
+  }
+
   /* -------------------------------------------- Asignacion docente-curso --- */
 
   /** Lista todas las asignaciones docente-curso (para administracion). */
