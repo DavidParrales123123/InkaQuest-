@@ -96,7 +96,7 @@ type TipoEvaluacion = 'quiz' | 'examen';
                 }
               </div>
 
-              <div class="grid grid-cols-2 gap-3">
+              <div class="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label class="label" for="tipo">Tipo</label>
                   <select id="tipo" class="select" formControlName="tipo">
@@ -148,9 +148,9 @@ type TipoEvaluacion = 'quiz' | 'examen';
                 <textarea id="instr" class="textarea" rows="2" formControlName="instrucciones" placeholder="Qué verán los estudiantes justo antes de empezar."></textarea>
               </div>
 
-              <div class="flex items-center justify-between gap-3 border-t border-surface-100 pt-3">
-                <p class="text-[0.7rem] text-marine-400">Una vez creada, agrega las preguntas en el panel de la derecha.</p>
-                <button type="submit" class="btn btn-primary" [disabled]="formCrear.invalid || creando()">{{ creando() ? 'Creando…' : 'Crear evaluación' }}</button>
+              <div class="flex flex-col items-stretch gap-2 border-t border-surface-100 pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <p class="text-[0.7rem] text-marine-400">Una vez creada, agrega sus preguntas desde «Preguntas».</p>
+                <button type="submit" class="btn btn-primary w-full sm:w-auto" [disabled]="formCrear.invalid || creando()">{{ creando() ? 'Creando…' : 'Crear evaluación' }}</button>
               </div>
             </form>
 
@@ -169,11 +169,11 @@ type TipoEvaluacion = 'quiz' | 'examen';
                 <ul class="space-y-2">
                   @for (e of evaluaciones(); track e.id) {
                     <li class="card card-body">
-                      <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div class="min-w-0">
+                      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="w-full min-w-0 sm:w-auto">
                           <div class="flex flex-wrap items-center gap-2">
                             <span class="rounded-full bg-marine-800 px-2 py-0.5 text-[0.65rem] font-bold uppercase text-gold-400">{{ e.actividad.tipo }}</span>
-                            <p class="font-semibold text-marine-800">{{ e.actividad.titulo }}</p>
+                            <p class="break-words font-semibold text-marine-800">{{ e.actividad.titulo }}</p>
                             @if (e.actividad.publicado) {
                               <span class="rounded-full bg-success-100 px-2 py-0.5 text-[0.65rem] font-bold text-success-700">PUBLICADA</span>
                             } @else {
@@ -183,13 +183,13 @@ type TipoEvaluacion = 'quiz' | 'examen';
                           <p class="mt-1 text-xs text-marine-500">{{ e.intentos_permitidos }} intento(s) · {{ e.porcentaje_aprobacion }}% para aprobar · {{ e.duracion_minutos ?? 'sin' }} min · {{ e.nota_maxima }} pts máx.</p>
                           <p class="mt-1 text-xs text-marine-500">
                             Acceso:
-                            @if (e.fecha_inicio) { desde {{ e.fecha_inicio | date:'medium' }} } @else { sin inicio }
+                            @if (e.fecha_inicio) { desde {{ e.fecha_inicio | date:'short' }} } @else { sin inicio }
                             ·
-                            @if (e.fecha_limite_acceso) { hasta {{ e.fecha_limite_acceso | date:'medium' }} } @else { sin límite }
+                            @if (e.fecha_limite_acceso) { hasta {{ e.fecha_limite_acceso | date:'short' }} } @else { sin límite }
                           </p>
                         </div>
-                        <div class="flex flex-wrap items-center gap-1.5">
-                          <span class="badge" [ngClass]="estadoVentana(e).clase">{{ estadoVentana(e).texto }}</span>
+                        <div class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-1.5">
+                          <span class="badge col-span-2 justify-self-start sm:col-span-1" [ngClass]="estadoVentana(e).clase">{{ estadoVentana(e).texto }}</span>
                           <button type="button" class="btn btn-outline btn-sm" [class.ring-2]="evaluacionSel()?.id === e.id" (click)="abrirEditorDePreguntas(e)">Preguntas</button>
                           <button type="button" class="btn btn-outline btn-sm" [class.ring-2]="resultadosAbiertosId() === e.id" (click)="toggleResultados(e)">Resultados</button>
                           <button type="button" class="btn btn-outline btn-sm" (click)="abrirEdicionVentana(e)">Fechas</button>
@@ -229,8 +229,49 @@ type TipoEvaluacion = 'quiz' | 'examen';
                           } @else if (resultados().length === 0) {
                             <p class="mt-2 text-sm text-marine-500">Todavía no hay intentos registrados en esta evaluación.</p>
                           } @else {
-                            <div class="mt-2 overflow-x-auto">
-                              <table class="table">
+                            <!-- Tarjetas en móvil: evita una tabla de 8 columnas en pantallas pequeñas -->
+                            <div class="mt-2 space-y-2 sm:hidden">
+                              @for (r of resultados(); track r.id) {
+                                <div class="rounded-xl border border-surface-200 bg-white p-3">
+                                  <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                      <p class="break-words text-sm font-semibold text-marine-800">{{ r.estudiante?.nombre }} {{ r.estudiante?.apellido }}</p>
+                                      <p class="break-all text-[0.7rem] text-marine-400">{{ r.estudiante?.email }}</p>
+                                    </div>
+                                    <span class="badge shrink-0" [ngClass]="r.aprobado ? 'badge-success' : 'badge-danger'">{{ r.aprobado ? 'Aprobado' : (r.aprobado === null ? 'Pendiente' : 'Desaprobado') }}</span>
+                                  </div>
+                                  <div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                                    <div><span class="block text-marine-400">Intento</span><span class="font-semibold text-marine-700">{{ r.numero }}</span></div>
+                                    <div><span class="block text-marine-400">Estado</span><span class="font-semibold text-marine-700">{{ r.estado.replace('_',' ') }}</span></div>
+                                    <div><span class="block text-marine-400">Puntaje</span><span class="font-semibold text-marine-700">{{ r.puntaje ?? 0 }} / {{ r.puntaje_maximo ?? 0 }} ({{ porcentajeIntento(r) }}%)</span></div>
+                                    <div><span class="block text-marine-400">Finalizado</span><span class="font-semibold text-marine-700">{{ r.tiempo_fin ? (r.tiempo_fin | date:'short') : '—' }}</span></div>
+                                  </div>
+                                  <button type="button" class="btn btn-outline btn-sm mt-3 w-full" (click)="toggleDetalle(r.id)">{{ detalleAbiertoId() === r.id ? 'Ocultar detalle' : 'Ver detalle' }}</button>
+                                  @if (detalleAbiertoId() === r.id) {
+                                    <div class="mt-2 rounded-lg border border-surface-200 bg-white p-2">
+                                      @if (cargandoDetalle()) {
+                                        <p class="text-xs text-marine-500">Cargando detalle…</p>
+                                      } @else if (detalle().length === 0) {
+                                        <p class="text-xs text-marine-500">Este intento no tiene respuestas registradas.</p>
+                                      } @else {
+                                        <ul class="space-y-1">
+                                          @for (d of detalle(); track d.id) {
+                                            <li class="flex items-start gap-2 text-xs">
+                                              <span class="font-bold" [class.text-success-700]="d.es_correcta" [class.text-danger-700]="!d.es_correcta">{{ d.es_correcta ? '✓' : '✗' }}</span>
+                                              <span class="min-w-0 flex-1 break-words">{{ d.pregunta?.enunciado ?? 'Pregunta eliminada' }}</span>
+                                              <span class="shrink-0 text-marine-500">{{ d.puntaje_otorgado ?? 0 }}/{{ d.pregunta?.puntos ?? 1 }}</span>
+                                            </li>
+                                          }
+                                        </ul>
+                                      }
+                                    </div>
+                                  }
+                                </div>
+                              }
+                            </div>
+                            <!-- Tabla en pantallas medianas o superiores -->
+                            <div class="mt-2 hidden overflow-x-auto sm:block">
+                              <table class="table min-w-[720px]">
                                 <thead>
                                   <tr>
                                     <th>Estudiante</th><th>Intento</th><th>Estado</th>
@@ -251,7 +292,7 @@ type TipoEvaluacion = 'quiz' | 'examen';
                                       <td>
                                         <span class="badge" [ngClass]="r.aprobado ? 'badge-success' : 'badge-danger'">{{ r.aprobado ? 'Aprobado' : (r.aprobado === null ? 'Pendiente' : 'Desaprobado') }}</span>
                                       </td>
-                                      <td>{{ r.tiempo_fin ? (r.tiempo_fin | date:'medium') : '—' }}</td>
+                                      <td>{{ r.tiempo_fin ? (r.tiempo_fin | date:'short') : '—' }}</td>
                                       <td><button type="button" class="btn btn-outline btn-sm" (click)="toggleDetalle(r.id)">{{ detalleAbiertoId() === r.id ? 'Ocultar' : 'Detalle' }}</button></td>
                                     </tr>
                                     @if (detalleAbiertoId() === r.id) {
@@ -307,7 +348,7 @@ type TipoEvaluacion = 'quiz' | 'examen';
                         <li class="rounded-xl border border-surface-200 p-3">
                           <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
-                              <p class="text-sm font-semibold text-marine-800"><span class="mr-1 text-marine-400">{{ p.orden }}.</span>{{ p.enunciado }}</p>
+                              <p class="break-words text-sm font-semibold text-marine-800"><span class="mr-1 text-marine-400">{{ p.orden }}.</span>{{ p.enunciado }}</p>
                               <ul class="mt-2 space-y-1 text-sm">
                                 @for (o of p.opciones; track o.id; let i = $index) {
                                   <li class="flex items-center gap-2"
@@ -320,7 +361,7 @@ type TipoEvaluacion = 'quiz' | 'examen';
                                 }
                               </ul>
                             </div>
-                            <button type="button" class="btn btn-outline btn-sm text-danger-700" [disabled]="p.id.startsWith('local-')" (click)="eliminarPregunta(p)" [title]="p.id.startsWith('local-') ? 'Guardando…' : 'Eliminar la pregunta'">Eliminar</button>
+                            <button type="button" class="btn btn-outline btn-sm shrink-0 text-danger-700" [disabled]="p.id.startsWith('local-')" (click)="eliminarPregunta(p)" [title]="p.id.startsWith('local-') ? 'Guardando…' : 'Eliminar la pregunta'">Eliminar</button>
                           </div>
                         </li>
                       } @empty {
