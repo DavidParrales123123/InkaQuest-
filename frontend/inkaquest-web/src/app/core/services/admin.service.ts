@@ -114,22 +114,25 @@ export class AdminService {
     return (data as Perfil) ?? null;
   }
 
-  /** Cambia el estado de la cuenta de un usuario. */
+  /** Cambia el estado de la cuenta de un usuario (RPC segura, con auditoria). */
   async cambiarEstadoCuenta(
     usuarioId: string,
     estado: string,
   ): Promise<{ ok: boolean; mensaje: string }> {
     try {
-      const url = `${this.backendUrl}/admin/usuarios/${encodeURIComponent(usuarioId)}/estado-cuenta?estado=${encodeURIComponent(estado)}`;
-      const { message } = await firstValueFrom(
-        this.http.post<ApiResponse>(url, {}),
-      );
-      return { ok: true, mensaje: message || 'Estado de la cuenta actualizado.' };
+      const { data, error } = await this.supabase.client.rpc('admin_cambiar_estado_cuenta', {
+        p_usuario_id: usuarioId,
+        p_estado: estado,
+      });
+      if (error) {
+        return { ok: false, mensaje: error.message || 'No se pudo actualizar la cuenta.' };
+      }
+      return { ok: true, mensaje: (data as any)?.mensaje ?? 'Estado de la cuenta actualizado.' };
     } catch (e) {
       console.error('[InkaQuest] Error cambiando estado de cuenta:', e);
       return {
         ok: false,
-        mensaje: mensajeErrorApi(e, 'No se pudo actualizar la cuenta.'),
+        mensaje: e instanceof Error ? e.message : 'No se pudo actualizar la cuenta.',
       };
     }
   }
