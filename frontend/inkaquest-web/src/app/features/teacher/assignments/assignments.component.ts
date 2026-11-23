@@ -10,6 +10,7 @@ import { ActivityService } from '../../../core/services/activity.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
 import { CourseService } from '../../../core/services/course.service';
 import { TeacherService } from '../../../core/services/teacher.service';
+import { EstadoCalificacion, FilaCalificacion, GradebookService } from '../../../core/services/gradebook.service';
 import {
   Actividad,
   Curso,
@@ -174,6 +175,7 @@ type TareaConActividad = Tarea & { actividad: Actividad };
                       </p>
                     </div>
                     <div class="flex flex-wrap gap-1.5">
+                      <button type="button" class="btn btn-outline btn-sm" [class.ring-2]="calificarAbiertaId() === t.id" (click)="toggleCalificar(t)">Calificar</button>
                       <button type="button" class="btn btn-outline btn-sm" (click)="togglePublicada(t)">{{ t.actividad.publicado ? 'Ocultar' : 'Publicar' }}</button>
                       <button type="button" class="btn btn-outline btn-sm text-danger-700" (click)="eliminarTarea(t)">Eliminar</button>
                     </div>
@@ -200,6 +202,44 @@ type TareaConActividad = Tarea & { actividad: Actividad };
                       </ul>
                     }
                   </div>
+
+                  @if (calificarAbiertaId() === t.id) {
+                    <div class="rounded-xl border border-brand-200 bg-white p-3">
+                      <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="min-w-0">
+                          <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Calificar — estudiantes matriculados</p>
+                          <p class="mt-0.5 text-[0.7rem] text-marine-400">Fecha límite: {{ t.fecha_entrega ? (t.fecha_entrega | date:'short') : 'sin fecha' }}</p>
+                        </div>
+                        <button type="button" class="btn btn-outline btn-sm" (click)="cargarRoster(t)">Actualizar</button>
+                      </div>
+                      @if (cargandoRoster()) {
+                        <p class="mt-2 text-sm text-marine-500">Cargando estudiantes…</p>
+                      } @else if (errorRoster(); as err) {
+                        <p class="mt-2 rounded-lg border border-danger-200 bg-danger-50 p-2 text-sm text-danger-700">{{ err }}</p>
+                      } @else if (roster().length === 0) {
+                        <p class="mt-2 text-sm text-marine-500">No hay estudiantes matriculados activos en este curso.</p>
+                      } @else {
+                        <ul class="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                          @for (f of roster(); track f.estudianteId) {
+                            <li class="rounded-xl border border-surface-200 bg-surface-50 p-3">
+                              <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                  <p class="break-words text-sm font-semibold text-marine-800">{{ f.nombre }}</p>
+                                  <p class="break-all text-[0.7rem] text-marine-400">{{ f.email }}</p>
+                                </div>
+                                <span class="badge shrink-0" [ngClass]="clasesEstado[f.estado]">{{ etiquetasEstado[f.estado] }}</span>
+                              </div>
+                              <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-marine-500">
+                                @if (f.nota !== null) { <span><strong class="text-marine-700">{{ f.nota }}</strong> / {{ f.notaMaxima ?? '—' }} pts</span> }
+                                @if (f.fecha) { <span>{{ f.fecha | date:'short' }}</span> }
+                              </div>
+                            </li>
+                          }
+                        </ul>
+                      }
+                      <p class="mt-2 text-xs text-marine-400">«No entregado» aparece cuando la fecha límite ya pasó y el estudiante no envió la tarea.</p>
+                    </div>
+                  }
                 </li>
               }
             </ul>
@@ -275,6 +315,7 @@ export class AssignmentsComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly teacherService = inject(TeacherService);
   private readonly activityService = inject(ActivityService);
+  private readonly gradebook = inject(GradebookService);
   private readonly courseService = inject(CourseService);
   private readonly fb = inject(FormBuilder);
   private readonly confirm = inject(ConfirmService);
@@ -297,6 +338,28 @@ export class AssignmentsComponent implements OnInit {
 
   protected readonly entregas = signal<(Entrega & { tarea: Tarea; actividad: Actividad })[]>([]);
   protected readonly calificando = signal<string | null>(null);
+
+  // Listado "Calificar" (todos los matriculados)
+  protected readonly calificarAbiertaId = signal<string | null>(null);
+  protected readonly roster = signal<FilaCalificacion[]>([]);
+  protected readonly cargandoRoster = signal(false);
+  protected readonly errorRoster = signal<string | null>(null);
+  protected readonly etiquetasEstado: Record<EstadoCalificacion, string> = {
+    pendiente: 'Pendiente',
+    no_entregado: 'No entregado',
+    en_curso: 'En curso',
+    entregado: 'Entregado',
+    por_calificar: 'Por calificar',
+    calificada: 'Calificada',
+  };
+  protected readonly clasesEstado: Record<EstadoCalificacion, string> = {
+    pendiente: 'badge-neutral',
+    no_entregado: 'badge-danger',
+    en_curso: 'badge-warning',
+    entregado: 'badge-success',
+    por_calificar: 'badge-warning',
+    calificada: 'badge-success',
+  };
   private readonly notas = signal<Record<string, number>>({});
   private readonly comentarios = signal<Record<string, string>>({});
   private readonly msgs = signal<Record<string, string>>({});
@@ -358,7 +421,34 @@ export class AssignmentsComponent implements OnInit {
     if (cursoId === this.cursoSel()) return;
     this.cursoSel.set(cursoId);
     this.leccionIdSel.set('');
+    this.calificarAbiertaId.set(null);
+    this.roster.set([]);
+    this.errorRoster.set(null);
     await this.cargarEstructuraYTareas(cursoId);
+  }
+
+  protected async toggleCalificar(t: TareaConActividad): Promise<void> {
+    if (this.calificarAbiertaId() === t.id) {
+      this.calificarAbiertaId.set(null);
+      this.roster.set([]);
+      this.errorRoster.set(null);
+      return;
+    }
+    this.calificarAbiertaId.set(t.id);
+    await this.cargarRoster(t);
+  }
+
+  protected async cargarRoster(t: TareaConActividad): Promise<void> {
+    this.cargandoRoster.set(true);
+    this.errorRoster.set(null);
+    try {
+      this.roster.set(await this.gradebook.listarRoster(this.cursoSel(), t.id, 'tarea'));
+    } catch (err) {
+      this.roster.set([]);
+      this.errorRoster.set(err instanceof Error ? err.message : 'No se pudo cargar el listado de estudiantes.');
+    } finally {
+      this.cargandoRoster.set(false);
+    }
   }
 
   private async cargarEstructuraYTareas(cursoId: string): Promise<void> {

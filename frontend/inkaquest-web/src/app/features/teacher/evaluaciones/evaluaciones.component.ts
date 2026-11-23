@@ -7,6 +7,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
 import { EvaluationService, ResultadoDocente, RespuestaDetalle } from '../../../core/services/evaluation.service';
+import { EstadoCalificacion, FilaCalificacion, GradebookService } from '../../../core/services/gradebook.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
 import { TeacherService } from '../../../core/services/teacher.service';
 import {
@@ -192,6 +193,7 @@ type TipoEvaluacion = 'quiz' | 'examen';
                           <span class="badge col-span-2 justify-self-start sm:col-span-1" [ngClass]="estadoVentana(e).clase">{{ estadoVentana(e).texto }}</span>
                           <button type="button" class="btn btn-outline btn-sm" [class.ring-2]="evaluacionSel()?.id === e.id" (click)="abrirEditorDePreguntas(e)">Preguntas</button>
                           <button type="button" class="btn btn-outline btn-sm" [class.ring-2]="resultadosAbiertosId() === e.id" (click)="toggleResultados(e)">Resultados</button>
+                          <button type="button" class="btn btn-outline btn-sm" [class.ring-2]="calificarAbiertaId() === e.id" (click)="toggleCalificar(e)">Calificar</button>
                           <button type="button" class="btn btn-outline btn-sm" (click)="abrirEdicionVentana(e)">Fechas</button>
                           <button type="button" class="btn btn-outline btn-sm" (click)="togglePublicada(e)">{{ e.actividad.publicado ? 'Ocultar' : 'Publicar' }}</button>
                           <button type="button" class="btn btn-outline btn-sm text-danger-700" (click)="eliminarEvaluacion(e)">Eliminar</button>
@@ -324,6 +326,45 @@ type TipoEvaluacion = 'quiz' | 'examen';
                           <p class="mt-2 text-xs text-marine-400">Solo lectura: las calificaciones las genera el backend y no se pueden modificar desde aquí.</p>
                         </div>
                       }
+
+                      @if (calificarAbiertaId() === e.id) {
+                        <div class="mt-3 rounded-xl border border-brand-200 bg-white p-3">
+                          <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div class="min-w-0">
+                              <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Calificar — estudiantes matriculados</p>
+                              <p class="mt-0.5 text-[0.7rem] text-marine-400">Plazo de acceso: {{ e.fecha_limite_acceso ? (e.fecha_limite_acceso | date:'short') : 'sin límite' }}</p>
+                            </div>
+                            <button type="button" class="btn btn-outline btn-sm" (click)="cargarRoster(e)">Actualizar</button>
+                          </div>
+                          @if (cargandoRoster()) {
+                            <p class="mt-2 text-sm text-marine-500">Cargando estudiantes…</p>
+                          } @else if (errorRoster(); as err) {
+                            <p class="mt-2 rounded-lg border border-danger-200 bg-danger-50 p-2 text-sm text-danger-700">{{ err }}</p>
+                          } @else if (roster().length === 0) {
+                            <p class="mt-2 text-sm text-marine-500">No hay estudiantes matriculados activos en este curso.</p>
+                          } @else {
+                            <ul class="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                              @for (f of roster(); track f.estudianteId) {
+                                <li class="rounded-xl border border-surface-200 bg-surface-50 p-3">
+                                  <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                      <p class="break-words text-sm font-semibold text-marine-800">{{ f.nombre }}</p>
+                                      <p class="break-all text-[0.7rem] text-marine-400">{{ f.email }}</p>
+                                    </div>
+                                    <span class="badge shrink-0" [ngClass]="clasesEstado[f.estado]">{{ etiquetasEstado[f.estado] }}</span>
+                                  </div>
+                                  <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-marine-500">
+                                    @if (f.nota !== null) { <span><strong class="text-marine-700">{{ f.nota }}</strong> / {{ f.notaMaxima ?? '—' }} pts</span> }
+                                    @if (f.numero !== null) { <span>Intento {{ f.numero }}</span> }
+                                    @if (f.fecha) { <span>{{ f.fecha | date:'short' }}</span> }
+                                  </div>
+                                </li>
+                              }
+                            </ul>
+                          }
+                          <p class="mt-2 text-xs text-marine-400">«No entregado» aparece cuando el plazo ya terminó y el estudiante no dejó ningún intento.</p>
+                        </div>
+                      }
                     </li>
                   }
                 </ul>
@@ -429,6 +470,7 @@ export class EvaluationsComponent implements OnInit {
   private readonly teacherService = inject(TeacherService);
   private readonly courseService = inject(CourseService);
   private readonly evaluationService = inject(EvaluationService);
+  private readonly gradebook = inject(GradebookService);
   private readonly fb = inject(FormBuilder);
   private readonly confirm = inject(ConfirmService);
 
@@ -463,6 +505,28 @@ export class EvaluationsComponent implements OnInit {
   protected readonly detalleAbiertoId = signal<string | null>(null);
   protected readonly detalle = signal<RespuestaDetalle[]>([]);
   protected readonly cargandoDetalle = signal(false);
+
+  // Listado "Calificar" (todos los matriculados)
+  protected readonly calificarAbiertaId = signal<string | null>(null);
+  protected readonly roster = signal<FilaCalificacion[]>([]);
+  protected readonly cargandoRoster = signal(false);
+  protected readonly errorRoster = signal<string | null>(null);
+  protected readonly etiquetasEstado: Record<EstadoCalificacion, string> = {
+    pendiente: 'Pendiente',
+    no_entregado: 'No entregado',
+    en_curso: 'En curso',
+    entregado: 'Entregado',
+    por_calificar: 'Por calificar',
+    calificada: 'Calificada',
+  };
+  protected readonly clasesEstado: Record<EstadoCalificacion, string> = {
+    pendiente: 'badge-neutral',
+    no_entregado: 'badge-danger',
+    en_curso: 'badge-warning',
+    entregado: 'badge-success',
+    por_calificar: 'badge-warning',
+    calificada: 'badge-success',
+  };
 
   protected readonly formCrear = this.fb.nonNullable.group({
     titulo: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(140)]],
@@ -509,6 +573,9 @@ export class EvaluationsComponent implements OnInit {
     this.detalleAbiertoId.set(null);
     this.detalle.set([]);
     this.errorResultados.set(null);
+    this.calificarAbiertaId.set(null);
+    this.roster.set([]);
+    this.errorRoster.set(null);
     await this.cargarEstructuraYEvaluaciones(cursoId);
   }
 
@@ -640,6 +707,30 @@ export class EvaluationsComponent implements OnInit {
     const maximo = Number(r.puntaje_maximo ?? 0);
     if (maximo <= 0) return '—';
     return String(Math.round((Number(r.puntaje ?? 0) / maximo) * 100));
+  }
+
+  protected async toggleCalificar(e: Evaluacion & { actividad: Actividad }): Promise<void> {
+    if (this.calificarAbiertaId() === e.id) {
+      this.calificarAbiertaId.set(null);
+      this.roster.set([]);
+      this.errorRoster.set(null);
+      return;
+    }
+    this.calificarAbiertaId.set(e.id);
+    await this.cargarRoster(e);
+  }
+
+  protected async cargarRoster(e: Evaluacion & { actividad: Actividad }): Promise<void> {
+    this.cargandoRoster.set(true);
+    this.errorRoster.set(null);
+    try {
+      this.roster.set(await this.gradebook.listarRoster(this.cursoSel(), e.id, 'evaluacion'));
+    } catch (err) {
+      this.roster.set([]);
+      this.errorRoster.set(err instanceof Error ? err.message : 'No se pudo cargar el listado de estudiantes.');
+    } finally {
+      this.cargandoRoster.set(false);
+    }
   }
 
   /** datetime-local (hora local) -> ISO UTC. */
