@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } 
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { AdminService } from '../../../core/services/admin.service';
+import { ConfirmService } from '../../../core/services/confirm.service';
 import { Curso, Unidad } from '../../../core/models/domain.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
@@ -68,6 +69,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
                   <td>{{ u.xp_otorgado }}</td>
                   <td>
                     <button class="link text-sm" type="button" (click)="editarUnidad(u)">Editar</button>
+                    <button class="link text-sm text-danger-600" type="button" (click)="eliminar(u)">Eliminar</button>
                   </td>
                 </tr>
               }
@@ -80,6 +82,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 })
 export class UnitsComponent implements OnInit {
   private readonly adminService = inject(AdminService);
+  private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
 
   protected readonly cargando = signal(true);
@@ -179,5 +182,22 @@ export class UnitsComponent implements OnInit {
         await this.cargar();
       }
     } finally { this.guardando.set(false); }
+  }
+
+  /** Elimina la unidad; el backend rechaza si todavía tiene módulos. */
+  protected async eliminar(u: Unidad): Promise<void> {
+    const ok = await this.confirm.ask({
+      title: 'Eliminar unidad',
+      mensaje: `¿Eliminar la unidad ${u.numero} «${u.titulo}»? Si tiene módulos, el sistema te lo impedirá y deberás borrarlos primero.`,
+      textoConfirmar: 'Eliminar unidad',
+      variante: 'primario',
+    });
+    if (!ok) return;
+    const res = await this.adminService.eliminarUnidadAdmin(u.id);
+    this.setMsg(res.ok, res.mensaje);
+    if (res.ok) {
+      if (this.editandoId() === u.id) this.cancelarEdicion();
+      await this.cargar();
+    }
   }
 }

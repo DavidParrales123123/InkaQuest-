@@ -600,6 +600,18 @@ export class AdminService {
       return { ok: false, mensaje: e instanceof Error ? e.message : 'No se pudo actualizar la unidad.' };
     }
   }
+
+  /** Elimina una unidad por el backend, que valida permisos y módulos hijos. */
+  async eliminarUnidadAdmin(id: string): Promise<{ ok: boolean; mensaje: string }> {
+    try {
+      await firstValueFrom(
+        this.http.delete<ApiResponse>(`${this.backendUrl}/unidades/${encodeURIComponent(id)}`),
+      );
+      return { ok: true, mensaje: 'Unidad eliminada correctamente.' };
+    } catch (e) {
+      return { ok: false, mensaje: mensajeErrorApi(e, 'No se pudo eliminar la unidad.') };
+    }
+  }
   /* ---------------------------------------------- Admin creación académica --- */
 
   /** Categorías activas para selector de creación de cursos. */
