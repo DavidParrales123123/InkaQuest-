@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
 import { SupabaseService } from './supabase.service';
-import { Actividad, Evaluacion, IntentoEvaluacion, Opcion, Pregunta } from '../models/domain.models';
+import { Actividad, Evaluacion, IntentoEvaluacion, Opcion, Pregunta, RespuestaEvaluacion } from '../models/domain.models';
 
 /**
  * Servicio de evaluaciones (examenes y cuestionarios).
@@ -58,6 +58,40 @@ export class EvaluationService {
       return [];
     }
     return (data ?? []) as IntentoEvaluacion[];
+  }
+
+  /**
+   * Intentos de todos los estudiantes en una evaluación, para el panel docente.
+   * La RLS de `intento_evaluacion` restringe el resultado a los cursos que
+   * imparte el docente autenticado (o a todo si es administrador).
+   */
+  async listarResultadosDocente(evaluacionId: string): Promise<ResultadoDocente[]> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.intentoEvaluacion)
+      .select('*, estudiante:estudiante_id(nombre, apellido, email)')
+      .eq('evaluacion_id', evaluacionId)
+      .order('creado_en', { ascending: false });
+
+    if (error) {
+      console.error('[InkaQuest] Error cargando resultados de la evaluación:', error.message);
+      throw new Error(error.message);
+    }
+    return (data ?? []) as ResultadoDocente[];
+  }
+
+  /** Respuestas de un intento con el enunciado de cada pregunta (solo lectura). */
+  async listarRespuestasIntento(intentoId: string): Promise<RespuestaDetalle[]> {
+    const { data, error } = await this.client
+      .from(this.supabase.tabla.respuestaEvaluacion)
+      .select('*, pregunta:pregunta_id(enunciado, puntos)')
+      .eq('intento_id', intentoId)
+      .order('creado_en', { ascending: true });
+
+    if (error) {
+      console.error('[InkaQuest] Error cargando respuestas del intento:', error.message);
+      throw new Error(error.message);
+    }
+    return (data ?? []) as RespuestaDetalle[];
   }
 
   // === EVALUACIONES ===
@@ -324,6 +358,16 @@ export class EvaluationService {
 }
 
 // === INTERFACES ===
+
+/** Intento enriquecido con los datos del estudiante (para el panel docente). */
+export interface ResultadoDocente extends IntentoEvaluacion {
+  estudiante: { nombre: string; apellido: string | null; email: string } | null;
+}
+
+/** Respuesta enriquecida con el enunciado de la pregunta (para el panel docente). */
+export interface RespuestaDetalle extends RespuestaEvaluacion {
+  pregunta: { enunciado: string; puntos: number } | null;
+}
 
 export interface EvaluacionResponse {
   id: string;

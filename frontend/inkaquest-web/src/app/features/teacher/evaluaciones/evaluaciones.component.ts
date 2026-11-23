@@ -6,7 +6,7 @@ import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
-import { EvaluationService } from '../../../core/services/evaluation.service';
+import { EvaluationService, ResultadoDocente, RespuestaDetalle } from '../../../core/services/evaluation.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
 import { TeacherService } from '../../../core/services/teacher.service';
 import {
@@ -191,6 +191,7 @@ type TipoEvaluacion = 'quiz' | 'examen';
                         <div class="flex flex-wrap items-center gap-1.5">
                           <span class="badge" [ngClass]="estadoVentana(e).clase">{{ estadoVentana(e).texto }}</span>
                           <button type="button" class="btn btn-outline btn-sm" [class.ring-2]="evaluacionSel()?.id === e.id" (click)="abrirEditorDePreguntas(e)">Preguntas</button>
+                          <button type="button" class="btn btn-outline btn-sm" [class.ring-2]="resultadosAbiertosId() === e.id" (click)="toggleResultados(e)">Resultados</button>
                           <button type="button" class="btn btn-outline btn-sm" (click)="abrirEdicionVentana(e)">Fechas</button>
                           <button type="button" class="btn btn-outline btn-sm" (click)="togglePublicada(e)">{{ e.actividad.publicado ? 'Ocultar' : 'Publicar' }}</button>
                           <button type="button" class="btn btn-outline btn-sm text-danger-700" (click)="eliminarEvaluacion(e)">Eliminar</button>
@@ -212,6 +213,74 @@ type TipoEvaluacion = 'quiz' | 'examen';
                             <button type="button" class="btn btn-primary btn-sm" (click)="guardarVentana(e)">Guardar fechas</button>
                             <button type="button" class="btn btn-outline btn-sm" (click)="cancelarEdicionVentana()">Cancelar</button>
                           </div>
+                        </div>
+                      }
+
+                      @if (resultadosAbiertosId() === e.id) {
+                        <div class="mt-3 rounded-xl border border-brand-200 bg-brand-50/40 p-3">
+                          <div class="flex flex-wrap items-center justify-between gap-2">
+                            <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Resultados de los estudiantes</p>
+                            <button type="button" class="btn btn-outline btn-sm" (click)="cargarResultados(e)">Actualizar</button>
+                          </div>
+                          @if (cargandoResultados()) {
+                            <p class="mt-2 text-sm text-marine-500">Cargando resultados…</p>
+                          } @else if (errorResultados(); as err) {
+                            <p class="mt-2 rounded-lg border border-danger-200 bg-danger-50 p-2 text-sm text-danger-700">{{ err }}</p>
+                          } @else if (resultados().length === 0) {
+                            <p class="mt-2 text-sm text-marine-500">Todavía no hay intentos registrados en esta evaluación.</p>
+                          } @else {
+                            <div class="mt-2 overflow-x-auto">
+                              <table class="table">
+                                <thead>
+                                  <tr>
+                                    <th>Estudiante</th><th>Intento</th><th>Estado</th>
+                                    <th>Puntaje</th><th>%</th><th>Resultado</th><th>Finalizado</th><th></th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  @for (r of resultados(); track r.id) {
+                                    <tr>
+                                      <td class="font-medium text-marine-800">
+                                        {{ r.estudiante?.nombre }} {{ r.estudiante?.apellido }}
+                                        <span class="block text-[0.7rem] text-marine-400">{{ r.estudiante?.email }}</span>
+                                      </td>
+                                      <td>{{ r.numero }}</td>
+                                      <td>{{ r.estado.replace('_',' ') }}</td>
+                                      <td>{{ r.puntaje ?? 0 }} / {{ r.puntaje_maximo ?? 0 }}</td>
+                                      <td>{{ porcentajeIntento(r) }}%</td>
+                                      <td>
+                                        <span class="badge" [ngClass]="r.aprobado ? 'badge-success' : 'badge-danger'">{{ r.aprobado ? 'Aprobado' : (r.aprobado === null ? 'Pendiente' : 'Desaprobado') }}</span>
+                                      </td>
+                                      <td>{{ r.tiempo_fin ? (r.tiempo_fin | date:'medium') : '—' }}</td>
+                                      <td><button type="button" class="btn btn-outline btn-sm" (click)="toggleDetalle(r.id)">{{ detalleAbiertoId() === r.id ? 'Ocultar' : 'Detalle' }}</button></td>
+                                    </tr>
+                                    @if (detalleAbiertoId() === r.id) {
+                                      <tr>
+                                        <td colspan="8">
+                                          @if (cargandoDetalle()) {
+                                            <p class="text-sm text-marine-500">Cargando detalle…</p>
+                                          } @else if (detalle().length === 0) {
+                                            <p class="text-sm text-marine-500">Este intento no tiene respuestas registradas.</p>
+                                          } @else {
+                                            <ul class="space-y-1">
+                                              @for (d of detalle(); track d.id) {
+                                                <li class="flex flex-wrap items-start gap-2 rounded-lg border border-surface-200 p-2 text-sm">
+                                                  <span class="font-semibold" [class.text-success-700]="d.es_correcta" [class.text-danger-700]="!d.es_correcta">{{ d.es_correcta ? '✓' : '✗' }}</span>
+                                                  <span class="min-w-0 flex-1">{{ d.pregunta?.enunciado ?? 'Pregunta eliminada' }}</span>
+                                                  <span class="text-xs text-marine-500">{{ d.puntaje_otorgado ?? 0 }} / {{ d.pregunta?.puntos ?? 1 }} pts</span>
+                                                </li>
+                                              }
+                                            </ul>
+                                          }
+                                        </td>
+                                      </tr>
+                                    }
+                                  }
+                                </tbody>
+                              </table>
+                            </div>
+                          }
+                          <p class="mt-2 text-xs text-marine-400">Solo lectura: las calificaciones las genera el backend y no se pueden modificar desde aquí.</p>
                         </div>
                       }
                     </li>
@@ -345,6 +414,15 @@ export class EvaluationsComponent implements OnInit {
   protected readonly opciones = signal<string[]>(['', '', '', '']);
   protected readonly respuestaCorrecta = signal(0);
 
+  // Resultados de los estudiantes (solo lectura, autorizado por RLS)
+  protected readonly resultadosAbiertosId = signal<string | null>(null);
+  protected readonly resultados = signal<ResultadoDocente[]>([]);
+  protected readonly cargandoResultados = signal(false);
+  protected readonly errorResultados = signal<string | null>(null);
+  protected readonly detalleAbiertoId = signal<string | null>(null);
+  protected readonly detalle = signal<RespuestaDetalle[]>([]);
+  protected readonly cargandoDetalle = signal(false);
+
   protected readonly formCrear = this.fb.nonNullable.group({
     titulo: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(140)]],
     tipo: ['quiz' as TipoEvaluacion, Validators.required],
@@ -385,6 +463,11 @@ export class EvaluationsComponent implements OnInit {
     this.leccionIdSel.set('');
     this.evaluacionSel.set(null);
     this.preguntas.set([]);
+    this.resultadosAbiertosId.set(null);
+    this.resultados.set([]);
+    this.detalleAbiertoId.set(null);
+    this.detalle.set([]);
+    this.errorResultados.set(null);
     await this.cargarEstructuraYEvaluaciones(cursoId);
   }
 
@@ -462,6 +545,60 @@ export class EvaluationsComponent implements OnInit {
   protected cerrarEditor(): void {
     this.evaluacionSel.set(null);
     this.preguntas.set([]);
+  }
+
+  // === RESULTADOS DE ESTUDIANTES (solo lectura) ===
+
+  protected async toggleResultados(e: Evaluacion & { actividad: Actividad }): Promise<void> {
+    if (this.resultadosAbiertosId() === e.id) {
+      this.resultadosAbiertosId.set(null);
+      this.resultados.set([]);
+      this.detalleAbiertoId.set(null);
+      this.detalle.set([]);
+      this.errorResultados.set(null);
+      return;
+    }
+    this.resultadosAbiertosId.set(e.id);
+    this.detalleAbiertoId.set(null);
+    this.detalle.set([]);
+    await this.cargarResultados(e);
+  }
+
+  protected async cargarResultados(e: Evaluacion & { actividad: Actividad }): Promise<void> {
+    this.cargandoResultados.set(true);
+    this.errorResultados.set(null);
+    try {
+      this.resultados.set(await this.evaluationService.listarResultadosDocente(e.id));
+    } catch (err) {
+      this.resultados.set([]);
+      this.errorResultados.set(err instanceof Error ? err.message : 'No se pudieron cargar los resultados.');
+    } finally {
+      this.cargandoResultados.set(false);
+    }
+  }
+
+  protected async toggleDetalle(intentoId: string): Promise<void> {
+    if (this.detalleAbiertoId() === intentoId) {
+      this.detalleAbiertoId.set(null);
+      this.detalle.set([]);
+      return;
+    }
+    this.detalleAbiertoId.set(intentoId);
+    this.detalle.set([]);
+    this.cargandoDetalle.set(true);
+    try {
+      this.detalle.set(await this.evaluationService.listarRespuestasIntento(intentoId));
+    } catch (err) {
+      this.errorResultados.set(err instanceof Error ? err.message : 'No se pudo cargar el detalle del intento.');
+    } finally {
+      this.cargandoDetalle.set(false);
+    }
+  }
+
+  protected porcentajeIntento(r: ResultadoDocente): string {
+    const maximo = Number(r.puntaje_maximo ?? 0);
+    if (maximo <= 0) return '—';
+    return String(Math.round((Number(r.puntaje ?? 0) / maximo) * 100));
   }
 
   /** datetime-local (hora local) -> ISO UTC. */
