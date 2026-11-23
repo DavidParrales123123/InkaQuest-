@@ -123,6 +123,10 @@ export class UsersComponent implements OnInit {
     const siguiente = siguienteEstadoCuenta(u.estado_cuenta);
     if (siguiente === 'suspendido' && this.confirmando() !== u.id) {
       this.confirmando.set(u.id);
+      // El primer clic solo pedía confirmación cambiando el texto del botón:
+      // sin este aviso parecía que no pasaba nada.
+      this.exito.set(false);
+      this.mensaje.set(`Pulsa de nuevo en «${this.nombre(u)}» para confirmar la suspensión.`);
       return;
     }
     this.confirmando.set(null);
@@ -133,7 +137,14 @@ export class UsersComponent implements OnInit {
       const res = await this.adminService.cambiarEstadoCuenta(u.id, siguiente);
       this.exito.set(res.ok);
       this.mensaje.set(res.mensaje);
-      if (res.ok) await this.cargar();
+      if (res.ok) {
+        // Actualización optimista: el badge cambia al instante aunque la
+        // recarga posterior falle o tarde.
+        this.usuarios.update((arr) => arr.map((x) => x.id === u.id
+          ? { ...x, estado_cuenta: siguiente as Perfil['estado_cuenta'] }
+          : x));
+        await this.cargar();
+      }
     } catch (e) {
       this.exito.set(false);
       this.mensaje.set(e instanceof Error ? e.message : 'No se pudo actualizar el estado.');

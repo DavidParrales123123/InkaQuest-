@@ -117,6 +117,7 @@ export class AdminService {
       );
       return { ok: true, mensaje: message || 'Estado de la cuenta actualizado.' };
     } catch (e) {
+      console.error('[InkaQuest] Error cambiando estado de cuenta:', e);
       return {
         ok: false,
         mensaje: mensajeErrorApi(e, 'No se pudo actualizar la cuenta.'),

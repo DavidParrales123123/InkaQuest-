@@ -2,7 +2,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 
 import { SupabaseService } from '../../core/services/supabase.service';
-import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 
 interface RankingFila {
   estudiante_id: string;
@@ -36,7 +35,7 @@ interface MejorTiempoFila {
 @Component({
   selector: 'app-ranking-guardianes',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [StatCardComponent],
+  imports: [],
   template: `
     <section class="card card-body space-y-4">
       <header class="flex flex-wrap items-end justify-between gap-2">

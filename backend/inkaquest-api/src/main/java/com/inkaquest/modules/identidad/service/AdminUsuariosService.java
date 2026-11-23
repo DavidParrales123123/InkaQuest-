@@ -90,12 +90,20 @@ public class AdminUsuariosService {
                     ? perfil.getEstadoCuenta().getValor() : "desconocido";
             perfil.setEstadoCuenta(estado);
             Perfil guardado = perfilRepository.save(perfil);
-            auditoriaService.registrar(com.inkaquest.shared.enums.TipoAccion.actualizar,
-                    actorId, usuarioId,
-                    "perfil", usuarioId,
-                    java.util.Map.of("estado_cuenta", estadoAnterior),
-                    java.util.Map.of("estado_cuenta", estado.getValor()),
-                    true, null);
+            // La auditoria no puede revertir un cambio de estado ya persistido:
+            // si el INSERT en registro_accion falla (RLS, red, etc.), se registra
+            // y se continúa. La politica INSERT ya fue añadida en BD.
+            try {
+                auditoriaService.registrar(com.inkaquest.shared.enums.TipoAccion.actualizar,
+                        actorId, usuarioId,
+                        "perfil", usuarioId,
+                        java.util.Map.of("estado_cuenta", estadoAnterior),
+                        java.util.Map.of("estado_cuenta", estado.getValor()),
+                        true, null);
+            } catch (Exception e) {
+                org.slf4j.LoggerFactory.getLogger(AdminUsuariosService.class)
+                        .warn("No se pudo auditar el cambio de estado_cuenta de {}: {}", usuarioId, e.getMessage());
+            }
             return PerfilResponse.from(guardado);
         });
     }
