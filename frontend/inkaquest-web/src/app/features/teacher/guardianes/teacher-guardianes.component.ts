@@ -40,7 +40,7 @@ interface IntentoFila {
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <app-stat-card etiqueta="Estudiantes con avance" [valor]="estudiantesConAvance()" tono="brand" />
         <app-stat-card etiqueta="Niveles completados" [valor]="nivelesCompletados()" tono="gold" />
-        <app-stat-card etiqueta="Intentos total" [valor]="intentos().length" tono="info" />
+        <app-stat-card etiqueta="Intentos total" [valor]="intentosTotales()" tono="info" />
         <app-stat-card etiqueta="Victorias registradas" [valor]="victoriasContadas()" tono="success" />
       </div>
 
@@ -80,7 +80,7 @@ interface IntentoFila {
               Ver más
             </button>
           }
-          <p class="text-xs text-marine-500">Sólo se muestran intentos de estudiantes matriculados en los cursos que tienes asignados a tu cargo. Los datos son de solo lectura.</p>
+          <p class="text-xs text-marine-500">Las estadísticas de arriba consideran <strong>todas</strong> las partidas de tus estudiantes; la tabla se muestra de 20 en 20 con «Ver más». Solo se incluyen estudiantes matriculados en tus cursos asignados. Datos de solo lectura.</p>
         </div>
       </app-data-panel>
 
@@ -96,13 +96,15 @@ export class TeacherGuardiansComponent implements OnInit {
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly intentos = signal<IntentoFila[]>([]);
+  /** Todas las partidas permitidas por RLS: base de las métricas (sin paginar). */
+  protected readonly todosLosIntentos = signal<IntentoFila[]>([]);
+  /** Solo las filas visibles en la tabla; la paginación es local (Ver más). */
+  protected readonly limiteVisible = signal(20);
+  protected readonly intentos = computed(() => this.todosLosIntentos().slice(0, this.limiteVisible()));
+  protected readonly hayMasIntentos = computed(() => this.todosLosIntentos().length > this.limiteVisible());
   protected readonly perfiles = signal<Record<string, { nombre: string; email: string }>>({});
   protected readonly nivelNombres = signal<Record<string, number>>({});
 
-  protected readonly limiteIntentos = signal(20);
-  protected readonly hayMasIntentos = signal(false);
-  protected readonly offsetIntentos = signal(0);
   protected readonly filtroIntentos = signal('');
 
   protected readonly intentosOrdenados = () => [...this.intentos()].sort((a, b) => a.iniciado_en < b.iniciado_en ? 1 : -1);
@@ -121,8 +123,10 @@ export class TeacherGuardiansComponent implements OnInit {
       return nombre.includes(f) || estado.includes(f) || nivel.includes(f) || num.includes(f) || hordas.includes(f);
     });
   });
-  protected readonly estudiantesConAvance = () => new Set(this.intentos().map((i) => i.estudiante_id)).size;
-  protected readonly nivelesCompletados = () => this.intentos().filter((i) => i.estado === 'completado').length;
+  // Las métricas se calculan sobre TODAS las partidas, no sobre la página visible.
+  protected readonly intentosTotales = () => this.todosLosIntentos().length;
+  protected readonly estudiantesConAvance = () => new Set(this.todosLosIntentos().map((i) => i.estudiante_id)).size;
+  protected readonly nivelesCompletados = () => this.todosLosIntentos().filter((i) => i.estado === 'completado').length;
   protected readonly victoriasContadas = () => this.nivelesCompletados();
 
   ngOnInit(): void { void this.cargar(); }
@@ -147,17 +151,17 @@ export class TeacherGuardiansComponent implements OnInit {
     return `${Math.round(v)}%`;
   }
 
-  protected async cargar(off: number = 0): Promise<void> {
-    this.offsetIntentos.set(off);
+  protected async cargar(): Promise<void> {
     this.cargando.set(true); this.error.set(null);
     try {
       const user = this.auth.usuario();
       if (!user) { this.error.set('Debes iniciar sesión.'); this.cargando.set(false); return; }
+      // Sin .range(): las métricas deben considerar TODAS las partidas visibles
+      // para el docente. La paginación se aplica solo a la tabla (verMas).
       const { data, error } = await this.supabase.client
         .from('guardianes_intento')
         .select('*')
-        .order('iniciado_en', { ascending: false })
-        .range(off, off + this.limiteIntentos() - 1);
+        .order('iniciado_en', { ascending: false });
       if (error) throw new Error(error.message);
       let filas = (data ?? []) as IntentoFila[];
       const cursos = await this.teacherService.listarMisCursos(user.id);
@@ -171,8 +175,8 @@ export class TeacherGuardiansComponent implements OnInit {
         }
         filas = filas.filter((f) => ids.has(f.estudiante_id));
       }
-      this.intentos.set(filas);
-      this.hayMasIntentos.set((data?.length ?? 0) >= this.limiteIntentos());
+      this.todosLosIntentos.set(filas);
+      this.limiteVisible.set(20);
       const ids = Array.from(new Set(filas.map((i) => i.estudiante_id)));
       if (ids.length) {
         const { data: perfs } = await this.supabase.client.from('perfil').select('id, nombre, email').in('id', ids);
@@ -191,8 +195,8 @@ export class TeacherGuardiansComponent implements OnInit {
     finally { this.cargando.set(false); }
   }
 
-  protected async verMas(): Promise<void> {
-    await this.cargar(this.offsetIntentos() + this.limiteIntentos());
+  protected verMas(): void {
+    this.limiteVisible.update((n) => n + 20);
   }
 
   protected onFiltroChange(event: Event): void {
