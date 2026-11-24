@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { tamanoLegible } from '../../../shared/utilities/archivo.util';
-import { ahoraLocalInput, validarVentanaFechas } from '../../../shared/utilities/fechas.util';
+import { ahoraLocalInput, errorFechaPasada, errorOrdenFechas, validarVentanaFechas } from '../../../shared/utilities/fechas.util';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -98,11 +99,17 @@ interface GrupoTarea { id: string; titulo: string; items: TareaConActividad[]; }
           <div class="grid grid-cols-2 gap-3">
             <div class="col-span-2 sm:col-span-1">
               <label class="label" for="apertura">Apertura (opcional)</label>
-              <input id="apertura" type="datetime-local" class="input" formControlName="fechaApertura" [attr.min]="minFecha" />
+              <input id="apertura" type="datetime-local" class="input" formControlName="fechaApertura"
+                [attr.min]="minFecha()" (focus)="actualizarMin()"
+                [class.border-danger-500]="errApertura()" [attr.aria-invalid]="errApertura() ? true : null" />
+              <p class="mt-1 text-xs font-medium text-danger-600" aria-live="polite">{{ errApertura() || '\u00A0' }}</p>
             </div>
             <div class="col-span-2 sm:col-span-1">
               <label class="label" for="entrega">Fecha límite de entrega</label>
-              <input id="entrega" type="datetime-local" class="input" formControlName="fechaEntrega" [attr.min]="minFecha" />
+              <input id="entrega" type="datetime-local" class="input" formControlName="fechaEntrega"
+                [attr.min]="minFecha()" (focus)="actualizarMin()"
+                [class.border-danger-500]="errLimite()" [attr.aria-invalid]="errLimite() ? true : null" />
+              <p class="mt-1 text-xs font-medium text-danger-600" aria-live="polite">{{ errLimite() || '\u00A0' }}</p>
             </div>
             <div>
               <label class="label" for="nota">Nota de (sobre 20)</label>
@@ -349,7 +356,8 @@ export class AssignmentsComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly mensaje = signal<{ ok: boolean; texto: string } | null>(null);
   /** Mínimo permitido en los pickers de fecha (ahora, hora local). */
-  protected readonly minFecha = ahoraLocalInput();
+  protected readonly minFecha = signal(ahoraLocalInput());
+  protected actualizarMin(): void { this.minFecha.set(ahoraLocalInput()); }
 
   protected readonly cursos = signal<{ curso: Curso }[]>([]);
   protected readonly cursoSel = signal('');
@@ -427,6 +435,15 @@ export class AssignmentsComponent implements OnInit {
     notaMaxima: [20, [Validators.required, Validators.min(0), Validators.max(20)]],
     publicado: [true],
   });
+
+  private readonly valoresForm = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+  protected readonly errApertura = computed(() =>
+    errorFechaPasada(this.valoresForm().fechaApertura, 'La fecha de apertura'),
+  );
+  protected readonly errLimite = computed(() =>
+    errorFechaPasada(this.valoresForm().fechaEntrega, 'La fecha límite')
+    ?? errorOrdenFechas(this.valoresForm().fechaApertura, this.valoresForm().fechaEntrega, 'La fecha límite'),
+  );
 
   ngOnInit(): void { void this.cargar(); }
 

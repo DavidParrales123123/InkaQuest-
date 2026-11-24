@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -7,7 +8,7 @@ import { EventoGamificacion } from '../../../core/models/domain.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
-import { ahoraLocalInput, validarVentanaFechas } from '../../../shared/utilities/fechas.util';
+import { ahoraLocalInput, errorFechaPasada, errorOrdenFechas, validarVentanaFechas } from '../../../shared/utilities/fechas.util';
 
 @Component({
   selector: 'app-admin-events',
@@ -28,8 +29,18 @@ import { ahoraLocalInput, validarVentanaFechas } from '../../../shared/utilities
         <form class="grid gap-4 md:grid-cols-2 xl:grid-cols-4" [formGroup]="form" (ngSubmit)="crear()">
           <div class="md:col-span-2 xl:col-span-1"><label class="label" for="nombre">Nombre</label><input id="nombre" class="input" formControlName="nombre" placeholder="Ej. Semana de código" /></div>
           <div class="xl:col-span-2"><label class="label" for="desc">Descripción (opcional)</label><input id="desc" class="input" formControlName="descripcion" placeholder="Desafíos, recompensas o reglas del evento" /></div>
-          <div><label class="label" for="inicio">Inicio</label><input id="inicio" class="input" type="datetime-local" formControlName="fecha_inicio" [attr.min]="minFecha" /></div>
-          <div><label class="label" for="fin">Fin</label><input id="fin" class="input" type="datetime-local" formControlName="fecha_fin" [attr.min]="minFecha" /></div>
+          <div>
+            <label class="label" for="inicio">Inicio</label>
+            <input id="inicio" class="input" type="datetime-local" formControlName="fecha_inicio" [attr.min]="minFecha()" (focus)="actualizarMin()"
+              [class.border-danger-500]="errInicio()" />
+            <p class="mt-1 text-xs font-medium text-danger-600">{{ errInicio() || '\u00A0' }}</p>
+          </div>
+          <div>
+            <label class="label" for="fin">Fin</label>
+            <input id="fin" class="input" type="datetime-local" formControlName="fecha_fin" [attr.min]="minFecha()" (focus)="actualizarMin()"
+              [class.border-danger-500]="errFin()" />
+            <p class="mt-1 text-xs font-medium text-danger-600">{{ errFin() || '\u00A0' }}</p>
+          </div>
           <label class="inline-flex items-center gap-2 text-sm text-marine-700 self-end"><input type="checkbox" formControlName="activo" /> Evento activo</label>
           <div class="md:col-span-2 xl:col-span-4 flex flex-wrap items-center gap-3">
             <button class="btn btn-primary" type="submit" [disabled]="form.invalid || guardando()">{{ guardando() ? 'Creando…' : 'Crear evento' }}</button>
@@ -69,7 +80,8 @@ export class EventsComponent implements OnInit {
   protected readonly mensaje = signal('');
   protected readonly exito = signal(false);
   protected readonly eventos = signal<EventoGamificacion[]>([]);
-  protected readonly minFecha = ahoraLocalInput();
+  protected readonly minFecha = signal(ahoraLocalInput());
+  protected actualizarMin(): void { this.minFecha.set(ahoraLocalInput()); }
 
   protected readonly form = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.minLength(3)]],
@@ -78,6 +90,13 @@ export class EventsComponent implements OnInit {
     fecha_fin: ['', Validators.required],
     activo: [true],
   });
+
+  private readonly valoresForm = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+  protected readonly errInicio = computed(() => errorFechaPasada(this.valoresForm().fecha_inicio, 'La fecha de inicio'));
+  protected readonly errFin = computed(() =>
+    errorFechaPasada(this.valoresForm().fecha_fin, 'La fecha de fin')
+    ?? errorOrdenFechas(this.valoresForm().fecha_inicio, this.valoresForm().fecha_fin, 'La fecha de fin'),
+  );
 
   ngOnInit(): void { void this.cargar(); }
 

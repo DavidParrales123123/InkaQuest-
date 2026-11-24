@@ -35,6 +35,28 @@ export interface OpcionesValidacionFechas {
   finObligatorio?: boolean;
 }
 
+/** Error visible para un campo de fecha en el pasado (o con formato inválido). */
+export function errorFechaPasada(valor: string | null | undefined, etiqueta: string): string | null {
+  if (!valor) return null;
+  const ms = new Date(valor).getTime();
+  if (Number.isNaN(ms)) return `${etiqueta}: fecha no válida.`;
+  if (ms <= Date.now()) return `${etiqueta} debe ser posterior a la hora actual (no se permite igual o anterior).`;
+  return null;
+}
+
+/** Error visible cuando el cierre/límite es igual o anterior a la apertura/inicio. */
+export function errorOrdenFechas(
+  inicio: string | null | undefined,
+  fin: string | null | undefined,
+  etiquetaFin: string,
+): string | null {
+  if (!inicio || !fin) return null;
+  const a = new Date(inicio).getTime();
+  const b = new Date(fin).getTime();
+  if (Number.isNaN(a) || Number.isNaN(b)) return null;
+  return b <= a ? `${etiquetaFin} debe ser posterior a la fecha de apertura/inicio.` : null;
+}
+
 /**
  * Valida una ventana de fechas.
  * @returns mensaje de error listo para mostrar, o `null` si es válida.
@@ -57,11 +79,11 @@ export function validarVentanaFechas(
   const inicioSinCambiar = !!inicio && iso(inicio) === iso(opciones.originalInicio);
   const finSinCambiar = !!fin && iso(fin) === iso(opciones.originalFin);
 
-  if (iniMs !== null && iniMs < ahora && !inicioSinCambiar) {
-    return `${iniEtiqueta} no puede ser anterior a la hora actual.`;
+  if (iniMs !== null && iniMs <= ahora && !inicioSinCambiar) {
+    return `${iniEtiqueta} debe ser posterior a la hora actual (no se permite igual o anterior).`;
   }
-  if (finMs !== null && finMs < ahora && !finSinCambiar) {
-    return `${finEtiqueta} no puede ser anterior a la hora actual.`;
+  if (finMs !== null && finMs <= ahora && !finSinCambiar) {
+    return `${finEtiqueta} debe ser posterior a la hora actual (no se permite igual o anterior).`;
   }
   if (iniMs !== null && finMs !== null && finMs <= iniMs) {
     return `${finEtiqueta} debe ser posterior a ${iniEtiqueta[0].toLowerCase() + iniEtiqueta.slice(1)}.`;

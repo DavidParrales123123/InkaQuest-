@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { AdminService } from '../../../core/services/admin.service';
@@ -6,7 +7,7 @@ import { Insignia, Mision, Curso, EventoGamificacion } from '../../../core/model
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
-import { ahoraLocalInput, validarVentanaFechas } from '../../../shared/utilities/fechas.util';
+import { ahoraLocalInput, errorFechaPasada, errorOrdenFechas, validarVentanaFechas } from '../../../shared/utilities/fechas.util';
 
 @Component({
   selector: 'app-admin-rewards',
@@ -64,8 +65,18 @@ import { ahoraLocalInput, validarVentanaFechas } from '../../../shared/utilities
               <label class="label" for="m-evento">Evento (opcional)</label>
               <select id="m-evento" class="select" formControlName="evento_id"><option value="">Sin evento</option>@for (e of eventos(); track e.id) { <option [value]="e.id">{{ e.nombre }}</option> }</select>
             </div>
-            <div><label class="label" for="m-ini">Inicio (opcional)</label><input id="m-ini" class="input" type="datetime-local" formControlName="fecha_inicio" [attr.min]="minFecha" /></div>
-            <div><label class="label" for="m-fin">Fin (opcional)</label><input id="m-fin" class="input" type="datetime-local" formControlName="fecha_fin" [attr.min]="minFecha" /></div>
+            <div>
+              <label class="label" for="m-ini">Inicio (opcional)</label>
+              <input id="m-ini" class="input" type="datetime-local" formControlName="fecha_inicio" [attr.min]="minFecha()" (focus)="actualizarMin()"
+                [class.border-danger-500]="errInicio()" />
+              <p class="mt-1 text-xs font-medium text-danger-600">{{ errInicio() || '\u00A0' }}</p>
+            </div>
+            <div>
+              <label class="label" for="m-fin">Fin (opcional)</label>
+              <input id="m-fin" class="input" type="datetime-local" formControlName="fecha_fin" [attr.min]="minFecha()" (focus)="actualizarMin()"
+                [class.border-danger-500]="errFin()" />
+              <p class="mt-1 text-xs font-medium text-danger-600">{{ errFin() || '\u00A0' }}</p>
+            </div>
             <label class="inline-flex items-center gap-2 text-sm text-marine-700 self-end"><input type="checkbox" formControlName="activa" /> Misión activa</label>
             <div class="md:col-span-2 flex flex-wrap items-center gap-3 border-t border-surface-200 pt-3">
               <button class="btn btn-primary" type="submit" [disabled]="formMision.invalid || guardando()">{{ guardando() ? 'Guardando…' : (editandoMisionId() ? 'Guardar cambios' : 'Crear misión') }}</button>
@@ -150,7 +161,8 @@ export class RewardsComponent implements OnInit {
   protected readonly exito = signal(false);
 
   protected readonly misiones = signal<Mision[]>([]);
-  protected readonly minFecha = ahoraLocalInput();
+  protected readonly minFecha = signal(ahoraLocalInput());
+  protected actualizarMin(): void { this.minFecha.set(ahoraLocalInput()); }
   protected readonly insignias = signal<Insignia[]>([]);
   protected readonly cursos = signal<Curso[]>([]);
   protected readonly eventos = signal<EventoGamificacion[]>([]);
@@ -176,6 +188,13 @@ export class RewardsComponent implements OnInit {
     fecha_fin: [''],
     activa: [true],
   });
+
+  private readonly valoresMision = toSignal(this.formMision.valueChanges, { initialValue: this.formMision.getRawValue() });
+  protected readonly errInicio = computed(() => errorFechaPasada(this.valoresMision().fecha_inicio, 'La fecha de inicio'));
+  protected readonly errFin = computed(() =>
+    errorFechaPasada(this.valoresMision().fecha_fin, 'La fecha de fin')
+    ?? errorOrdenFechas(this.valoresMision().fecha_inicio, this.valoresMision().fecha_fin, 'La fecha de fin'),
+  );
 
   protected readonly formInsignia = this.fb.nonNullable.group({
     codigo: ['', [Validators.required, Validators.minLength(3)]],

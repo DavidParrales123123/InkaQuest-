@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { DatePipe, NgClass } from '@angular/common';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -10,7 +11,7 @@ import { EvaluationService, ResultadoDocente, RespuestaDetalle } from '../../../
 import { EstadoCalificacion, FilaCalificacion, GradebookService } from '../../../core/services/gradebook.service';
 import { ExcelExportService } from '../../../core/services/excel-export.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
-import { ahoraLocalInput, validarVentanaFechas } from '../../../shared/utilities/fechas.util';
+import { ahoraLocalInput, errorFechaPasada, errorOrdenFechas, validarVentanaFechas } from '../../../shared/utilities/fechas.util';
 import { TeacherService } from '../../../core/services/teacher.service';
 import {
   Actividad,
@@ -140,11 +141,17 @@ interface GrupoEvaluacion { id: string; titulo: string; items: EvaluacionGestion
                 <div class="grid gap-3 sm:grid-cols-2">
                   <div>
                     <label class="label" for="fecha-inicio">Fecha de inicio</label>
-                    <input id="fecha-inicio" type="datetime-local" class="input" formControlName="fechaInicio" [attr.min]="minFecha" aria-describedby="ventana-ayuda" />
+                    <input id="fecha-inicio" type="datetime-local" class="input" formControlName="fechaInicio"
+                      [attr.min]="minFecha()" (focus)="actualizarMin()" aria-describedby="ventana-ayuda"
+                      [class.border-danger-500]="errInicio()" [attr.aria-invalid]="errInicio() ? true : null" />
+                    <p class="mt-1 text-xs font-medium text-danger-600" aria-live="polite">{{ errInicio() || '\u00A0' }}</p>
                   </div>
                   <div>
                     <label class="label" for="fecha-limite">Límite de acceso</label>
-                    <input id="fecha-limite" type="datetime-local" class="input" formControlName="fechaLimiteAcceso" [attr.min]="minFecha" aria-describedby="ventana-ayuda" />
+                    <input id="fecha-limite" type="datetime-local" class="input" formControlName="fechaLimiteAcceso"
+                      [attr.min]="minFecha()" (focus)="actualizarMin()" aria-describedby="ventana-ayuda"
+                      [class.border-danger-500]="errLimite()" [attr.aria-invalid]="errLimite() ? true : null" />
+                    <p class="mt-1 text-xs font-medium text-danger-600" aria-live="polite">{{ errLimite() || '\u00A0' }}</p>
                   </div>
                 </div>
                 <p id="ventana-ayuda" class="mt-2 text-[0.7rem] text-marine-400">Deja ambos vacíos para que esté siempre disponible. No se permiten fechas ni horas pasadas, y el límite debe ser posterior al inicio.</p>
@@ -225,10 +232,14 @@ interface GrupoEvaluacion { id: string; titulo: string; items: EvaluacionGestion
                           <p class="mb-2 text-xs font-bold uppercase tracking-wider text-brand-700">Editar ventana de acceso</p>
                           <div class="grid gap-2 sm:grid-cols-2">
                             <label class="label" [attr.for]="'edit-ini-'+e.id">Inicio
-                              <input [id]="'edit-ini-'+e.id" type="datetime-local" class="input" [attr.min]="minFecha" [ngModel]="editInicio()" (ngModelChange)="editInicio.set($event)" />
+                              <input [id]="'edit-ini-'+e.id" type="datetime-local" class="input" [attr.min]="minFecha()" (focus)="actualizarMin()"
+                                [class.border-danger-500]="errEditInicio()" [ngModel]="editInicio()" (ngModelChange)="editInicio.set($event)" />
+                              <span class="mt-1 block text-xs font-medium text-danger-600">{{ errEditInicio() || '' }}</span>
                             </label>
                             <label class="label" [attr.for]="'edit-fin-'+e.id">Límite
-                              <input [id]="'edit-fin-'+e.id" type="datetime-local" class="input" [attr.min]="minFecha" [ngModel]="editLimite()" (ngModelChange)="editLimite.set($event)" />
+                              <input [id]="'edit-fin-'+e.id" type="datetime-local" class="input" [attr.min]="minFecha()" (focus)="actualizarMin()"
+                                [class.border-danger-500]="errEditLimite()" [ngModel]="editLimite()" (ngModelChange)="editLimite.set($event)" />
+                              <span class="mt-1 block text-xs font-medium text-danger-600">{{ errEditLimite() || '' }}</span>
                             </label>
                           </div>
                           <div class="mt-2 flex flex-wrap gap-2">
@@ -508,7 +519,8 @@ export class EvaluationsComponent implements OnInit {
   protected readonly creando = signal(false);
   protected readonly mensaje = signal<{ ok: boolean; texto: string } | null>(null);
   /** Mínimo permitido en los pickers de fecha (ahora, hora local). */
-  protected readonly minFecha = ahoraLocalInput();
+  protected readonly minFecha = signal(ahoraLocalInput());
+  protected actualizarMin(): void { this.minFecha.set(ahoraLocalInput()); }
 
   protected readonly cursoSel = signal('');
   protected readonly leccionIdSel = signal('');
@@ -599,6 +611,30 @@ export class EvaluationsComponent implements OnInit {
     publicado: [true],
     fechaInicio: [''],
     fechaLimiteAcceso: [''],
+  });
+
+  private readonly valoresForm = toSignal(this.formCrear.valueChanges, { initialValue: this.formCrear.getRawValue() });
+  protected readonly errInicio = computed(() =>
+    errorFechaPasada(this.valoresForm().fechaInicio, 'La fecha de inicio'),
+  );
+  protected readonly errLimite = computed(() =>
+    errorFechaPasada(this.valoresForm().fechaLimiteAcceso, 'El límite de acceso')
+    ?? errorOrdenFechas(this.valoresForm().fechaInicio, this.valoresForm().fechaLimiteAcceso, 'El límite de acceso'),
+  );
+
+  // En la edición se tolera una fecha pasada si es la que ya estaba guardada.
+  protected readonly errEditInicio = computed(() => {
+    const e = this.evaluacionSel();
+    const valor = this.editInicio();
+    const sinCambiar = !!e?.fecha_inicio && this.aLocalInput(e.fecha_inicio) === valor;
+    return sinCambiar ? null : errorFechaPasada(valor, 'La fecha de inicio');
+  });
+  protected readonly errEditLimite = computed(() => {
+    const e = this.evaluacionSel();
+    const valor = this.editLimite();
+    const sinCambiar = !!e?.fecha_limite_acceso && this.aLocalInput(e.fecha_limite_acceso) === valor;
+    return (sinCambiar ? null : errorFechaPasada(valor, 'El límite de acceso'))
+      ?? errorOrdenFechas(this.editInicio(), valor, 'El límite de acceso');
   });
 
   ngOnInit(): void { void this.cargar(); }
