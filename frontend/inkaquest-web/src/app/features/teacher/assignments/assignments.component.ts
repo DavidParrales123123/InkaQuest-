@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { tamanoLegible } from '../../../shared/utilities/archivo.util';
+import { ahoraLocalInput, validarVentanaFechas } from '../../../shared/utilities/fechas.util';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DatePipe } from '@angular/common';
@@ -96,11 +97,11 @@ interface GrupoTarea { id: string; titulo: string; items: TareaConActividad[]; }
           <div class="grid grid-cols-2 gap-3">
             <div class="col-span-2 sm:col-span-1">
               <label class="label" for="apertura">Apertura (opcional)</label>
-              <input id="apertura" type="datetime-local" class="input" formControlName="fechaApertura" />
+              <input id="apertura" type="datetime-local" class="input" formControlName="fechaApertura" [attr.min]="minFecha" />
             </div>
             <div class="col-span-2 sm:col-span-1">
               <label class="label" for="entrega">Fecha límite de entrega</label>
-              <input id="entrega" type="datetime-local" class="input" formControlName="fechaEntrega" />
+              <input id="entrega" type="datetime-local" class="input" formControlName="fechaEntrega" [attr.min]="minFecha" />
             </div>
             <div>
               <label class="label" for="nota">Nota de (sobre 20)</label>
@@ -339,6 +340,8 @@ export class AssignmentsComponent implements OnInit {
   protected readonly creando = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly mensaje = signal<{ ok: boolean; texto: string } | null>(null);
+  /** Mínimo permitido en los pickers de fecha (ahora, hora local). */
+  protected readonly minFecha = ahoraLocalInput();
 
   protected readonly cursos = signal<{ curso: Curso }[]>([]);
   protected readonly cursoSel = signal('');
@@ -545,6 +548,11 @@ export class AssignmentsComponent implements OnInit {
     if (!leccionId) { this.mensaje.set({ ok: false, texto: 'Selecciona una lección para la tarea.' }); return; }
 
     const v = this.form.getRawValue();
+    const errorFechas = validarVentanaFechas(v.fechaApertura, v.fechaEntrega, {
+      etiquetaInicio: 'La fecha de apertura',
+      etiquetaFin: 'La fecha límite de entrega',
+    });
+    if (errorFechas) { this.mensaje.set({ ok: false, texto: errorFechas }); return; }
     this.creando.set(true); this.mensaje.set(null);
     try {
       const act = await this.activityService.crearActividad({

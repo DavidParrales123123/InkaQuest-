@@ -9,6 +9,7 @@ import { CourseService } from '../../../core/services/course.service';
 import { EvaluationService, ResultadoDocente, RespuestaDetalle } from '../../../core/services/evaluation.service';
 import { EstadoCalificacion, FilaCalificacion, GradebookService } from '../../../core/services/gradebook.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
+import { ahoraLocalInput, validarVentanaFechas } from '../../../shared/utilities/fechas.util';
 import { TeacherService } from '../../../core/services/teacher.service';
 import {
   Actividad,
@@ -18,6 +19,8 @@ import {
   Pregunta,
 } from '../../../core/models/domain.models';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+
+
 
 type TipoPreguntaNuevo = 'opcion_unica' | 'verdadero_falso';
 type TipoEvaluacion = 'quiz' | 'examen';
@@ -136,14 +139,14 @@ interface GrupoEvaluacion { id: string; titulo: string; items: EvaluacionGestion
                 <div class="grid gap-3 sm:grid-cols-2">
                   <div>
                     <label class="label" for="fecha-inicio">Fecha de inicio</label>
-                    <input id="fecha-inicio" type="datetime-local" class="input" formControlName="fechaInicio" aria-describedby="ventana-ayuda" />
+                    <input id="fecha-inicio" type="datetime-local" class="input" formControlName="fechaInicio" [attr.min]="minFecha" aria-describedby="ventana-ayuda" />
                   </div>
                   <div>
                     <label class="label" for="fecha-limite">Límite de acceso</label>
-                    <input id="fecha-limite" type="datetime-local" class="input" formControlName="fechaLimiteAcceso" aria-describedby="ventana-ayuda" />
+                    <input id="fecha-limite" type="datetime-local" class="input" formControlName="fechaLimiteAcceso" [attr.min]="minFecha" aria-describedby="ventana-ayuda" />
                   </div>
                 </div>
-                <p id="ventana-ayuda" class="mt-2 text-[0.7rem] text-marine-400">Deja ambos vacíos para que esté siempre disponible. El límite solo impide iniciar; quien ya empezó puede terminar.</p>
+                <p id="ventana-ayuda" class="mt-2 text-[0.7rem] text-marine-400">Deja ambos vacíos para que esté siempre disponible. No se permiten fechas ni horas pasadas, y el límite debe ser posterior al inicio.</p>
               </fieldset>
 
               <div>
@@ -218,10 +221,10 @@ interface GrupoEvaluacion { id: string; titulo: string; items: EvaluacionGestion
                           <p class="mb-2 text-xs font-bold uppercase tracking-wider text-brand-700">Editar ventana de acceso</p>
                           <div class="grid gap-2 sm:grid-cols-2">
                             <label class="label" [attr.for]="'edit-ini-'+e.id">Inicio
-                              <input [id]="'edit-ini-'+e.id" type="datetime-local" class="input" [ngModel]="editInicio()" (ngModelChange)="editInicio.set($event)" />
+                              <input [id]="'edit-ini-'+e.id" type="datetime-local" class="input" [attr.min]="minFecha" [ngModel]="editInicio()" (ngModelChange)="editInicio.set($event)" />
                             </label>
                             <label class="label" [attr.for]="'edit-fin-'+e.id">Límite
-                              <input [id]="'edit-fin-'+e.id" type="datetime-local" class="input" [ngModel]="editLimite()" (ngModelChange)="editLimite.set($event)" />
+                              <input [id]="'edit-fin-'+e.id" type="datetime-local" class="input" [attr.min]="minFecha" [ngModel]="editLimite()" (ngModelChange)="editLimite.set($event)" />
                             </label>
                           </div>
                           <div class="mt-2 flex flex-wrap gap-2">
@@ -496,6 +499,8 @@ export class EvaluationsComponent implements OnInit {
   protected readonly cargando = signal(true);
   protected readonly creando = signal(false);
   protected readonly mensaje = signal<{ ok: boolean; texto: string } | null>(null);
+  /** Mínimo permitido en los pickers de fecha (ahora, hora local). */
+  protected readonly minFecha = ahoraLocalInput();
 
   protected readonly cursoSel = signal('');
   protected readonly leccionIdSel = signal('');
@@ -652,12 +657,13 @@ export class EvaluationsComponent implements OnInit {
     if (!leccionId) { this.mensaje.set({ ok: false, texto: 'Selecciona una lección para asociar la evaluación.' }); return; }
 
     const v = this.formCrear.getRawValue();
+    const errorFechas = validarVentanaFechas(v.fechaInicio, v.fechaLimiteAcceso, {
+      etiquetaInicio: 'La fecha de inicio',
+      etiquetaFin: 'El límite de acceso',
+    });
+    if (errorFechas) { this.mensaje.set({ ok: false, texto: errorFechas }); return; }
     const fechaInicio = this.aIso(v.fechaInicio);
     const fechaLimiteAcceso = this.aIso(v.fechaLimiteAcceso);
-    if (fechaInicio && fechaLimiteAcceso && new Date(fechaLimiteAcceso) <= new Date(fechaInicio)) {
-      this.mensaje.set({ ok: false, texto: 'El límite de acceso debe ser posterior a la fecha de inicio.' });
-      return;
-    }
     this.creando.set(true);
     this.mensaje.set(null);
     try {
@@ -816,12 +822,16 @@ export class EvaluationsComponent implements OnInit {
   }
 
   protected async guardarVentana(e: Evaluacion & { actividad: Actividad }): Promise<void> {
+    const errorFechas = validarVentanaFechas(this.editInicio(), this.editLimite(), {
+      etiquetaInicio: 'La fecha de inicio',
+      etiquetaFin: 'El límite de acceso',
+      // Permite conservar fechas ya guardadas en el pasado si no se cambian.
+      originalInicio: e.fecha_inicio,
+      originalFin: e.fecha_limite_acceso,
+    });
+    if (errorFechas) { this.mensaje.set({ ok: false, texto: errorFechas }); return; }
     const inicio = this.aIso(this.editInicio());
     const limite = this.aIso(this.editLimite());
-    if (inicio && limite && new Date(limite) <= new Date(inicio)) {
-      this.mensaje.set({ ok: false, texto: 'El límite de acceso debe ser posterior a la fecha de inicio.' });
-      return;
-    }
     try {
       await this.evaluationService.actualizarVentanaAcceso(e.id, inicio, limite);
       this.evaluaciones.update((arr) => arr.map((x) => x.id === e.id ? { ...x, fecha_inicio: inicio, fecha_limite_acceso: limite } : x));

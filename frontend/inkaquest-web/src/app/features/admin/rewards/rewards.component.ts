@@ -6,6 +6,7 @@ import { Insignia, Mision, Curso, EventoGamificacion } from '../../../core/model
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { ahoraLocalInput, validarVentanaFechas } from '../../../shared/utilities/fechas.util';
 
 @Component({
   selector: 'app-admin-rewards',
@@ -63,8 +64,8 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
               <label class="label" for="m-evento">Evento (opcional)</label>
               <select id="m-evento" class="select" formControlName="evento_id"><option value="">Sin evento</option>@for (e of eventos(); track e.id) { <option [value]="e.id">{{ e.nombre }}</option> }</select>
             </div>
-            <div><label class="label" for="m-ini">Inicio (opcional)</label><input id="m-ini" class="input" type="datetime-local" formControlName="fecha_inicio" /></div>
-            <div><label class="label" for="m-fin">Fin (opcional)</label><input id="m-fin" class="input" type="datetime-local" formControlName="fecha_fin" /></div>
+            <div><label class="label" for="m-ini">Inicio (opcional)</label><input id="m-ini" class="input" type="datetime-local" formControlName="fecha_inicio" [attr.min]="minFecha" /></div>
+            <div><label class="label" for="m-fin">Fin (opcional)</label><input id="m-fin" class="input" type="datetime-local" formControlName="fecha_fin" [attr.min]="minFecha" /></div>
             <label class="inline-flex items-center gap-2 text-sm text-marine-700 self-end"><input type="checkbox" formControlName="activa" /> Misión activa</label>
             <div class="md:col-span-2 flex flex-wrap items-center gap-3 border-t border-surface-200 pt-3">
               <button class="btn btn-primary" type="submit" [disabled]="formMision.invalid || guardando()">{{ guardando() ? 'Guardando…' : (editandoMisionId() ? 'Guardar cambios' : 'Crear misión') }}</button>
@@ -149,6 +150,7 @@ export class RewardsComponent implements OnInit {
   protected readonly exito = signal(false);
 
   protected readonly misiones = signal<Mision[]>([]);
+  protected readonly minFecha = ahoraLocalInput();
   protected readonly insignias = signal<Insignia[]>([]);
   protected readonly cursos = signal<Curso[]>([]);
   protected readonly eventos = signal<EventoGamificacion[]>([]);
@@ -231,9 +233,17 @@ export class RewardsComponent implements OnInit {
 
   protected async guardarMision(): Promise<void> {
     if (this.formMision.invalid) return;
+    const v = this.formMision.getRawValue();
+    const original = this.misiones().find((m) => m.id === this.editandoMisionId());
+    const errorFechas = validarVentanaFechas(v.fecha_inicio, v.fecha_fin, {
+      etiquetaInicio: 'La fecha de inicio',
+      etiquetaFin: 'La fecha de fin',
+      originalInicio: original?.fecha_inicio,
+      originalFin: original?.fecha_fin,
+    });
+    if (errorFechas) { this.setMsg(false, errorFechas); return; }
     this.guardando.set(true); this.setMsg(false, '');
     try {
-      const v = this.formMision.getRawValue();
       const payload = {
         nombre: v.nombre.trim(), descripcion: v.descripcion?.trim() || null, tipo: v.tipo,
         objetivo_tipo: v.objetivo_tipo, objetivo_cantidad: Number(v.objetivo_cantidad),

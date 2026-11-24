@@ -7,6 +7,7 @@ import { EventoGamificacion } from '../../../core/models/domain.models';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { ahoraLocalInput, validarVentanaFechas } from '../../../shared/utilities/fechas.util';
 
 @Component({
   selector: 'app-admin-events',
@@ -27,8 +28,8 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
         <form class="grid gap-4 md:grid-cols-2 xl:grid-cols-4" [formGroup]="form" (ngSubmit)="crear()">
           <div class="md:col-span-2 xl:col-span-1"><label class="label" for="nombre">Nombre</label><input id="nombre" class="input" formControlName="nombre" placeholder="Ej. Semana de código" /></div>
           <div class="xl:col-span-2"><label class="label" for="desc">Descripción (opcional)</label><input id="desc" class="input" formControlName="descripcion" placeholder="Desafíos, recompensas o reglas del evento" /></div>
-          <div><label class="label" for="inicio">Inicio</label><input id="inicio" class="input" type="datetime-local" formControlName="fecha_inicio" /></div>
-          <div><label class="label" for="fin">Fin</label><input id="fin" class="input" type="datetime-local" formControlName="fecha_fin" /></div>
+          <div><label class="label" for="inicio">Inicio</label><input id="inicio" class="input" type="datetime-local" formControlName="fecha_inicio" [attr.min]="minFecha" /></div>
+          <div><label class="label" for="fin">Fin</label><input id="fin" class="input" type="datetime-local" formControlName="fecha_fin" [attr.min]="minFecha" /></div>
           <label class="inline-flex items-center gap-2 text-sm text-marine-700 self-end"><input type="checkbox" formControlName="activo" /> Evento activo</label>
           <div class="md:col-span-2 xl:col-span-4 flex flex-wrap items-center gap-3">
             <button class="btn btn-primary" type="submit" [disabled]="form.invalid || guardando()">{{ guardando() ? 'Creando…' : 'Crear evento' }}</button>
@@ -68,6 +69,7 @@ export class EventsComponent implements OnInit {
   protected readonly mensaje = signal('');
   protected readonly exito = signal(false);
   protected readonly eventos = signal<EventoGamificacion[]>([]);
+  protected readonly minFecha = ahoraLocalInput();
 
   protected readonly form = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.minLength(3)]],
@@ -91,7 +93,12 @@ export class EventsComponent implements OnInit {
   protected async crear(): Promise<void> {
     if (this.form.invalid) return;
     const v = this.form.getRawValue();
-    if (new Date(v.fecha_fin) < new Date(v.fecha_inicio)) { this.setMsg(false, 'La fecha de fin debe ser posterior al inicio.'); return; }
+    const errorFechas = validarVentanaFechas(v.fecha_inicio, v.fecha_fin, {
+      etiquetaInicio: 'La fecha de inicio',
+      etiquetaFin: 'La fecha de fin',
+      finObligatorio: true,
+    });
+    if (errorFechas) { this.setMsg(false, errorFechas); return; }
     this.guardando.set(true); this.setMsg(false, '');
     try {
       const res = await this.adminService.crearEventoGamificacionAdmin({
