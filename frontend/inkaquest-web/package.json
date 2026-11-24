@@ -31,11 +31,15 @@
     "@lucide/angular": "^1.71.0",
     "@supabase/supabase-js": "^2.119.0",
     "chart.js": "^4.6.1",
+    "exceljs": "^4.4.0",
     "phaser": "^4.2.1",
     "rxjs": "~7.8.0",
     "serve": "^14.2.3",
     "tslib": "^2.3.0",
     "zone.js": "^0.15.1"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
     "@angular-eslint/builder": "^22.6.0",

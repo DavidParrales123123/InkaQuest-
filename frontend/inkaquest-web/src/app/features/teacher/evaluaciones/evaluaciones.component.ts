@@ -8,6 +8,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
 import { EvaluationService, ResultadoDocente, RespuestaDetalle } from '../../../core/services/evaluation.service';
 import { EstadoCalificacion, FilaCalificacion, GradebookService } from '../../../core/services/gradebook.service';
+import { ExcelExportService } from '../../../core/services/excel-export.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
 import { ahoraLocalInput, validarVentanaFechas } from '../../../shared/utilities/fechas.util';
 import { TeacherService } from '../../../core/services/teacher.service';
@@ -162,9 +163,12 @@ interface GrupoEvaluacion { id: string; titulo: string; items: EvaluacionGestion
 
             <!-- ════ MIS EVALUACIONES ════ -->
             <div class="space-y-4 xl:col-span-3">
-              <div class="flex items-center justify-between gap-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
                 <h2 class="text-base font-extrabold text-marine-800">Evaluaciones de este curso</h2>
-                <span class="badge badge-neutral">{{ evaluacionesVisibles().length }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-neutral">{{ evaluacionesVisibles().length }}</span>
+                  <button type="button" class="btn btn-outline btn-sm" [disabled]="exportando() || evaluaciones().length === 0" (click)="exportarTodas()">{{ exportando() ? 'Generando…' : '⬇ Excel' }}</button>
+                </div>
               </div>
 
               @if (evaluacionesVisibles().length === 0) {
@@ -350,7 +354,10 @@ interface GrupoEvaluacion { id: string; titulo: string; items: EvaluacionGestion
                               <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Calificar — estudiantes matriculados</p>
                               <p class="mt-0.5 text-[0.7rem] text-marine-400">Plazo de acceso: {{ e.fecha_limite_acceso ? (e.fecha_limite_acceso | date:'short') : 'sin límite' }}</p>
                             </div>
-                            <button type="button" class="btn btn-outline btn-sm" (click)="cargarRoster(e)">Actualizar</button>
+                            <div class="flex items-center gap-2">
+                              <button type="button" class="btn btn-outline btn-sm" (click)="cargarRoster(e)">Actualizar</button>
+                              <button type="button" class="btn btn-outline btn-sm" [disabled]="exportando()" (click)="exportarEvaluacion(e)">Excel</button>
+                            </div>
                           </div>
                           @if (cargandoRoster()) {
                             <p class="mt-2 text-sm text-marine-500">Cargando estudiantes…</p>
@@ -492,6 +499,7 @@ export class EvaluationsComponent implements OnInit {
   private readonly courseService = inject(CourseService);
   private readonly evaluationService = inject(EvaluationService);
   private readonly gradebook = inject(GradebookService);
+  private readonly excel = inject(ExcelExportService);
   private readonly fb = inject(FormBuilder);
   private readonly confirm = inject(ConfirmService);
 
@@ -562,6 +570,7 @@ export class EvaluationsComponent implements OnInit {
   protected readonly roster = signal<FilaCalificacion[]>([]);
   protected readonly cargandoRoster = signal(false);
   protected readonly errorRoster = signal<string | null>(null);
+  protected readonly exportando = signal(false);
   protected readonly etiquetasEstado: Record<EstadoCalificacion, string> = {
     pendiente: 'Pendiente',
     no_entregado: 'No entregado',
@@ -782,6 +791,41 @@ export class EvaluationsComponent implements OnInit {
       this.errorRoster.set(err instanceof Error ? err.message : 'No se pudo cargar el listado de estudiantes.');
     } finally {
       this.cargandoRoster.set(false);
+    }
+  }
+
+  private nombreCurso(): string {
+    return this.cursos().find((c) => c.curso.id === this.cursoSel())?.curso.titulo ?? 'Curso';
+  }
+
+  protected async exportarEvaluacion(e: EvaluacionGestion): Promise<void> {
+    await this.exportar([e]);
+  }
+
+  protected async exportarTodas(): Promise<void> {
+    await this.exportar(this.evaluaciones());
+  }
+
+  private async exportar(items: EvaluacionGestion[]): Promise<void> {
+    if (!items.length || this.exportando()) return;
+    this.exportando.set(true);
+    this.mensaje.set(null);
+    try {
+      const curso = this.nombreCurso();
+      const hojas = await Promise.all(items.map(async (e) => ({
+        nombre: e.actividad.titulo,
+        tipo: 'Evaluación' as const,
+        actividad: e.actividad.titulo,
+        curso,
+        fechaLimite: e.fecha_limite_acceso,
+        filas: await this.gradebook.listarRoster(this.cursoSel(), e.id, 'evaluacion'),
+      })));
+      await this.excel.exportar(`Notas_Evaluaciones_${curso}`, hojas);
+      this.mensaje.set({ ok: true, texto: `Excel generado con ${hojas.length} evaluación(es) y todos sus estudiantes.` });
+    } catch (err) {
+      this.mensaje.set({ ok: false, texto: err instanceof Error ? err.message : 'No se pudo generar el Excel.' });
+    } finally {
+      this.exportando.set(false);
     }
   }
 

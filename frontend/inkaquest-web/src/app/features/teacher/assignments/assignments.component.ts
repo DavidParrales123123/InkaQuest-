@@ -12,6 +12,7 @@ import { ConfirmService } from '../../../core/services/confirm.service';
 import { CourseService } from '../../../core/services/course.service';
 import { TeacherService } from '../../../core/services/teacher.service';
 import { EstadoCalificacion, FilaCalificacion, GradebookService } from '../../../core/services/gradebook.service';
+import { ExcelExportService } from '../../../core/services/excel-export.service';
 import {
   Actividad,
   Curso,
@@ -147,9 +148,12 @@ interface GrupoTarea { id: string; titulo: string; items: TareaConActividad[]; }
 
         <!-- ════ TAREAS DEL CURSO ════ -->
         <div class="space-y-4 xl:col-span-3">
-          <div class="flex items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 class="text-base font-extrabold text-marine-800">Tareas de este curso</h2>
-            <span class="badge badge-neutral">{{ tareasVisibles().length }}</span>
+            <div class="flex items-center gap-2">
+              <span class="badge badge-neutral">{{ tareasVisibles().length }}</span>
+              <button type="button" class="btn btn-outline btn-sm" [disabled]="exportando() || tareas().length === 0" (click)="exportarTodas()">{{ exportando() ? 'Generando…' : '⬇ Excel' }}</button>
+            </div>
           </div>
 
           @if (tareasVisibles().length === 0) {
@@ -223,7 +227,10 @@ interface GrupoTarea { id: string; titulo: string; items: TareaConActividad[]; }
                           <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Calificar — estudiantes matriculados</p>
                           <p class="mt-0.5 text-[0.7rem] text-marine-400">Fecha límite: {{ t.fecha_entrega ? (t.fecha_entrega | date:'short') : 'sin fecha' }}</p>
                         </div>
-                        <button type="button" class="btn btn-outline btn-sm" (click)="cargarRoster(t)">Actualizar</button>
+                        <div class="flex items-center gap-2">
+                          <button type="button" class="btn btn-outline btn-sm" (click)="cargarRoster(t)">Actualizar</button>
+                          <button type="button" class="btn btn-outline btn-sm" [disabled]="exportando()" (click)="exportarTarea(t)">Excel</button>
+                        </div>
                       </div>
                       @if (cargandoRoster()) {
                         <p class="mt-2 text-sm text-marine-500">Cargando estudiantes…</p>
@@ -332,6 +339,7 @@ export class AssignmentsComponent implements OnInit {
   private readonly teacherService = inject(TeacherService);
   private readonly activityService = inject(ActivityService);
   private readonly gradebook = inject(GradebookService);
+  private readonly excel = inject(ExcelExportService);
   private readonly courseService = inject(CourseService);
   private readonly fb = inject(FormBuilder);
   private readonly confirm = inject(ConfirmService);
@@ -389,6 +397,7 @@ export class AssignmentsComponent implements OnInit {
   protected readonly roster = signal<FilaCalificacion[]>([]);
   protected readonly cargandoRoster = signal(false);
   protected readonly errorRoster = signal<string | null>(null);
+  protected readonly exportando = signal(false);
   protected readonly etiquetasEstado: Record<EstadoCalificacion, string> = {
     pendiente: 'Pendiente',
     no_entregado: 'No entregado',
@@ -493,6 +502,41 @@ export class AssignmentsComponent implements OnInit {
       this.errorRoster.set(err instanceof Error ? err.message : 'No se pudo cargar el listado de estudiantes.');
     } finally {
       this.cargandoRoster.set(false);
+    }
+  }
+
+  private nombreCurso(): string {
+    return this.cursos().find((c) => c.curso.id === this.cursoSel())?.curso.titulo ?? 'Curso';
+  }
+
+  protected async exportarTarea(t: TareaConActividad): Promise<void> {
+    await this.exportar([t]);
+  }
+
+  protected async exportarTodas(): Promise<void> {
+    await this.exportar(this.tareas());
+  }
+
+  private async exportar(items: TareaConActividad[]): Promise<void> {
+    if (!items.length || this.exportando()) return;
+    this.exportando.set(true);
+    this.mensaje.set(null);
+    try {
+      const curso = this.nombreCurso();
+      const hojas = await Promise.all(items.map(async (t) => ({
+        nombre: t.actividad.titulo,
+        tipo: 'Tarea' as const,
+        actividad: t.actividad.titulo,
+        curso,
+        fechaLimite: t.fecha_entrega,
+        filas: await this.gradebook.listarRoster(this.cursoSel(), t.id, 'tarea'),
+      })));
+      await this.excel.exportar(`Notas_Tareas_${curso}`, hojas);
+      this.mensaje.set({ ok: true, texto: `Excel generado con ${hojas.length} tarea(s) y todos sus estudiantes.` });
+    } catch (err) {
+      this.mensaje.set({ ok: false, texto: err instanceof Error ? err.message : 'No se pudo generar el Excel.' });
+    } finally {
+      this.exportando.set(false);
     }
   }
 
