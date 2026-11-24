@@ -532,6 +532,14 @@ export const routes: Routes = [
         title: 'Evaluaciones · InkaQuest',
       },
       {
+        path: 'comunidad',
+        loadComponent: () =>
+          import('./features/teacher/community/community.component').then(
+            (m) => m.TeacherCommunityComponent,
+          ),
+        title: 'Comunidad · InkaQuest',
+      },
+      {
         path: 'minijuegos',
         loadComponent: () =>
           import('./features/teacher/games/games.component').then((m) => m.GamesComponent),

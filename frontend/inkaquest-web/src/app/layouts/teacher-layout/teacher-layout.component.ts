@@ -64,6 +64,7 @@ export class TeacherLayoutComponent implements OnInit {
         titulo: 'Comunicación',
         elementos: [
           { texto: 'Mensajes', ruta: '/docente/mensajes', icono: 'inbox' },
+          { texto: 'Comunidad', ruta: '/docente/comunidad', icono: 'users' },
           ...(acceso === 'permitido' ? [{ texto: 'Videojuego', ruta: '/docente/guardianes', icono: 'trophy' }] : []),
           { texto: 'Anuncios', ruta: '/docente/anuncios', icono: 'bell' },
           { texto: 'Calendario', ruta: '/docente/calendario', icono: 'calendar' },

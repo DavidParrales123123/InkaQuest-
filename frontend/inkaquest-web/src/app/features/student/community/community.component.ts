@@ -1,35 +1,62 @@
 // @ts-nocheck
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+
+import { AuthService } from '../../../core/services/auth.service';
+import { CourseService } from '../../../core/services/course.service';
+import { ForumPanelComponent } from '../../shared/forum-panel/forum-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
+interface CursoItem { id: string; titulo: string; }
+
+/** Comunidad del estudiante: foros de sus cursos con temas y respuestas reales. */
 @Component({
   selector: 'app-student-community',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, PageHeaderComponent],
+  imports: [ForumPanelComponent, PageHeaderComponent],
   template: `
     <section class="space-y-6">
-      <app-page-header titulo="Comunidad" descripcion="Espacios de interacción y apoyo en la plataforma." />
-      <div class="grid gap-4 md:grid-cols-2">
+      <app-page-header titulo="Comunidad" descripcion="Foros de tus cursos: comparte dudas y aprende con tus compañeros y docentes." />
+      @if (cargando()) {
+        <p class="text-sm text-marine-500">Cargando tus cursos…</p>
+      } @else if (error()) {
         <div class="card card-body space-y-2">
-          <h2 class="text-lg font-semibold text-marine-800">Mensajes y soporte</h2>
-          <p class="text-sm text-marine-600">Comunícate con docentes/soporte y da seguimiento a tus consultas mediante los canales disponibles.</p>
-          <div class="flex flex-wrap gap-2 pt-2">
-            <a routerLink="/estudiante/soporte" class="btn btn-primary btn-sm">Ir a soporte</a>
-            <a routerLink="/estudiante/notificaciones" class="btn btn-outline btn-sm">Notificaciones</a>
-          </div>
+          <p class="text-sm text-danger-600">{{ error() }}</p>
+          <button type="button" class="btn btn-outline btn-sm" (click)="cargar()">Reintentar</button>
         </div>
-        <div class="card card-body space-y-2">
-          <h2 class="text-lg font-semibold text-marine-800">Aprendizaje colaborativo</h2>
-          <p class="text-sm text-marine-600">Participa en actividades, minijuegos y rankings de tus cursos. Los foros/comunidades por curso dependen de módulos específicos habilitados en la plataforma.</p>
-          <div class="flex flex-wrap gap-2 pt-2">
-            <a routerLink="/estudiante/minijuegos" class="btn btn-outline btn-sm">Minijuegos</a>
-            <a routerLink="/estudiante/rankings" class="btn btn-outline btn-sm">Rankings</a>
-          </div>
+      } @else if (cursos().length === 0) {
+        <div class="card card-body">
+          <p class="text-sm text-marine-500">Aún no tienes cursos matriculados, por lo que no hay comunidades disponibles.</p>
         </div>
-      </div>
-      <p class="text-xs text-marine-500">Esta sección se adapta a las capacidades reales disponibles (mensajería, notificaciones, soporte y actividades). Funciones de foro/comunidad dedicadas pueden requerir módulos adicionales en backend/BD.</p>
+      } @else {
+        <app-forum-panel [cursos]="cursos()" [usuarioId]="usuarioId()" [puedeModerar]="false" />
+      }
     </section>
   `,
 })
-export class CommunityComponent {}
+export class CommunityComponent implements OnInit {
+  private readonly auth = inject(AuthService);
+  private readonly courseService = inject(CourseService);
+
+  protected readonly cursos = signal<CursoItem[]>([]);
+  protected readonly usuarioId = signal('');
+  protected readonly cargando = signal(true);
+  protected readonly error = signal<string | null>(null);
+
+  ngOnInit(): void { void this.cargar(); }
+
+  protected async cargar(): Promise<void> {
+    this.cargando.set(true);
+    this.error.set(null);
+    try {
+      const user = this.auth.usuario();
+      if (!user) { this.error.set('Debes iniciar sesión.'); return; }
+      this.usuarioId.set(user.id);
+      const cursos = await this.courseService.listarCursosDeEstudiante(user.id);
+      this.cursos.set(cursos.map((c) => ({ id: c.id, titulo: c.titulo })));
+    } catch (e) {
+      this.error.set(e instanceof Error ? e.message : 'No se pudieron cargar tus cursos.');
+    } finally {
+      this.cargando.set(false);
+    }
+  }
+}
