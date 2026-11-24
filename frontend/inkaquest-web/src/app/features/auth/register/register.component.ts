@@ -64,11 +64,19 @@ import { ESTILO_HONEYPOT, crearEstadoAntiSpam, envioHumano } from '../../../core
               <p class="field-error" aria-hidden="true">&nbsp;</p>
             </div>
 
-            <div class="auth-field">
-              <label for="nombre">Nombre completo</label>
-              <input id="nombre" type="text" autocomplete="name" formControlName="nombre" placeholder="Nombres y apellidos"
-                [attr.aria-invalid]="campoInvalido('nombre') ? true : null" [class.border-danger-500]="campoInvalido('nombre')" />
-              <p class="field-error" aria-live="polite">{{ campoInvalido('nombre') ? errorControl('nombre') : '\u00A0' }}</p>
+            <div class="grid gap-2 sm:grid-cols-2">
+              <div class="auth-field">
+                <label for="nombre">Nombres</label>
+                <input id="nombre" type="text" autocomplete="given-name" formControlName="nombre" placeholder="Ej. Ana María"
+                  [attr.aria-invalid]="campoInvalido('nombre') ? true : null" [class.border-danger-500]="campoInvalido('nombre')" />
+                <p class="field-error" aria-live="polite">{{ campoInvalido('nombre') ? errorControl('nombre') : '\u00A0' }}</p>
+              </div>
+              <div class="auth-field">
+                <label for="apellido">Apellidos</label>
+                <input id="apellido" type="text" autocomplete="family-name" formControlName="apellido" placeholder="Ej. Pérez Ramírez"
+                  [attr.aria-invalid]="campoInvalido('apellido') ? true : null" [class.border-danger-500]="campoInvalido('apellido')" />
+                <p class="field-error" aria-live="polite">{{ campoInvalido('apellido') ? errorControl('apellido') : '\u00A0' }}</p>
+              </div>
             </div>
 
             <div class="grid gap-2 sm:grid-cols-2">
@@ -215,7 +223,8 @@ export class RegisterComponent {
     {
       empresa: [''],
       tipoCuenta: ['estudiante' as 'estudiante' | 'docente'],
-      nombre: ['', [Validators.required, Validators.minLength(3)]],
+      nombre: ['', [Validators.required, Validators.minLength(2), this.validarSoloLetras()]],
+      apellido: ['', [Validators.required, Validators.minLength(2), this.validarSoloLetras()]],
       genero: ['' as '' | 'masculino' | 'femenino', [Validators.required, this.validarGenero()]],
       fechaNacimiento: ['', [Validators.required, this.validarFechaNacimiento()]],
       email: ['', [Validators.required, Validators.email]],
@@ -276,6 +285,19 @@ export class RegisterComponent {
     };
   }
 
+  /**
+   * Solo letras (incluidos acentos, ñ y diéresis), espacios, apóstrofos y
+   * guiones. Rechaza dígitos y cualquier otro símbolo.
+   */
+  private validarSoloLetras() {
+    const patron = /^[\p{L}\p{M}]+(?:[ '\-][\p{L}\p{M}]+)*$/u;
+    return (control: AbstractControl): ValidationErrors | null => {
+      const valor = String(control.value ?? '').trim();
+      if (!valor) return null; // required se encarga
+      return patron.test(valor) ? null : { soloLetras: true };
+    };
+  }
+
   private validarGenero() {
     return (control: AbstractControl): ValidationErrors | null => {
       const valor = String(control.value ?? '').trim();
@@ -333,6 +355,9 @@ export class RegisterComponent {
         if (msg) return msg;
       }
     }
+    if (control.errors['soloLetras']) {
+      return 'Usa solo letras (se permiten acentos, espacios, apóstrofos y guiones); no números ni símbolos.';
+    }
     if (control.errors['required']) {
       if (nombre === 'genero') return 'Selecciona tu sexo.';
       if (nombre === 'fechaNacimiento') return 'Selecciona tu fecha de nacimiento.';
@@ -345,7 +370,7 @@ export class RegisterComponent {
     if (control.errors['edadMaxima']) return 'Ingresa una fecha de nacimiento válida.';
     if (control.errors['email']) return 'Introduce un correo electrónico válido.';
     if (control.errors['minlength']) {
-      if (nombre === 'nombre') return 'Escribe tu nombre completo.';
+      if (nombre === 'nombre' || nombre === 'apellido') return 'Escribe al menos 2 caracteres.';
       if (nombre === 'password') return 'La contraseña debe tener al menos 8 caracteres.';
       if (nombre === 'motivo') return 'Describe tu motivo o experiencia (mín. 10 caracteres).';
       return 'Completa este campo con más detalle.';
@@ -378,6 +403,7 @@ export class RegisterComponent {
         v.email,
         v.password,
         v.nombre,
+        v.apellido,
         v.genero || null,
         v.fechaNacimiento || null,
       );

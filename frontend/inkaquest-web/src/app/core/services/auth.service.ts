@@ -288,6 +288,7 @@ export class AuthService {
    */
   async asegurarPerfilBasico(
     nombre?: string,
+    apellido?: string,
     genero?: string | null,
     fechaNacimiento?: string | null,
   ): Promise<void> {
@@ -295,10 +296,20 @@ export class AuthService {
     if (!usuario) return;
 
     try {
-      await firstValueFrom(this.api.post<unknown>('/usuarios/asegurar', { nombre: nombre ?? '' }));
+      await firstValueFrom(this.api.post<unknown>('/usuarios/asegurar', {
+        nombre: nombre ?? '',
+        apellido: apellido ?? '',
+      }));
     } catch {
       // Si el backend falla, seguimos sin romantizar un perfil incompleto;
       // la siguiente navegación volverá a intentarlo.
+    }
+
+    // El apellido también se sincroniza si el perfil ya existía (registros anteriores).
+    if (apellido) {
+      try {
+        await firstValueFrom(this.api.put('/usuarios/yo', { apellido }));
+      } catch { /* omitir */ }
     }
 
     // Datos complementarios (género/nacimiento) solo si el ajuste los pide.
@@ -326,18 +337,22 @@ export class AuthService {
    *
    * @param email correo electronico
    * @param password contrasena
-   * @param nombre nombre completo
+   * @param nombre nombres del usuario
+   * @param apellido apellidos del usuario
    * @returns mensaje de exito o error
    */
   async registrar(
     email: string,
     password: string,
     nombre: string,
+    apellido: string,
     genero?: 'masculino' | 'femenino' | null,
     fechaNacimiento?: string | null,
   ): Promise<{ ok: boolean; mensaje: string; requiereVerificacion: boolean }> {
     try {
       const nombreLimpio = nombre.trim();
+      const apellidoLimpio = apellido.trim();
+      const nombreCompleto = `${nombreLimpio} ${apellidoLimpio}`.trim();
       const generoLimpio = genero === 'masculino' || genero === 'femenino' ? genero : undefined;
       const fechaCandidata = (fechaNacimiento ?? '').trim();
       const fechaLimpia = /^\d{4}-\d{2}-\d{2}$/.test(fechaCandidata) ? fechaCandidata : undefined;
@@ -347,9 +362,10 @@ export class AuthService {
         options: {
           data: {
             nombre: nombreLimpio,
-            full_name: nombreLimpio,
-            display_name: nombreLimpio,
-            name: nombreLimpio,
+            apellido: apellidoLimpio,
+            full_name: nombreCompleto,
+            display_name: nombreCompleto,
+            name: nombreCompleto,
             ...(generoLimpio ? { genero: generoLimpio } : {}),
             ...(fechaLimpia ? { fecha_nacimiento: fechaLimpia } : {}),
           },
@@ -366,7 +382,7 @@ export class AuthService {
 
       if (!requiereVerificacion && data.user) {
         this._usuario.set(data.user);
-        await this.asegurarPerfilBasico(nombreLimpio, generoLimpio ?? null, fechaLimpia ?? null);
+        await this.asegurarPerfilBasico(nombreLimpio, apellidoLimpio, generoLimpio ?? null, fechaLimpia ?? null);
         await this.cargarPerfil();
       }
 

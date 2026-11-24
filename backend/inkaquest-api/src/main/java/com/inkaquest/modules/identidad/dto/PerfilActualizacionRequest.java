@@ -2,6 +2,7 @@ package com.inkaquest.modules.identidad.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
@@ -10,8 +11,12 @@ import java.time.LocalDate;
  * Todos los campos son opcionales: se envia solo lo que cambia.
  */
 public record PerfilActualizacionRequest(
-        @Size(max = 120, message = "El nombre no puede superar 120 caracteres.") String nombre,
-        @Size(max = 120, message = "El apellido no puede superar 120 caracteres.") String apellido,
+        @Size(max = 120, message = "El nombre no puede superar 120 caracteres.")
+        @Pattern(regexp = "^[\\p{L}\\p{M}]+(?:[ '\\-][\\p{L}\\p{M}]+)*$",
+                message = "El nombre solo puede contener letras, espacios, apóstrofos y guiones.") String nombre,
+        @Size(max = 120, message = "El apellido no puede superar 120 caracteres.")
+        @Pattern(regexp = "^[\\p{L}\\p{M}]+(?:[ '\\-][\\p{L}\\p{M}]+)*$",
+                message = "El apellido solo puede contener letras, espacios, apóstrofos y guiones.") String apellido,
         @Size(max = 20, message = "El documento no puede superar 20 caracteres.") String documento,
         @Size(max = 20, message = "El género no puede superar 20 caracteres.") String genero,
         @PastOrPresent(message = "Fecha de nacimiento no puede ser futura.") LocalDate fechaNacimiento,

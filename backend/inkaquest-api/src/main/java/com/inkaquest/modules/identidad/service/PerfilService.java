@@ -4,10 +4,12 @@ import com.inkaquest.modules.identidad.dto.PerfilResponse;
 import com.inkaquest.modules.identidad.dto.PerfilActualizacionRequest;
 import com.inkaquest.modules.identidad.entity.Perfil;
 import com.inkaquest.modules.identidad.repository.PerfilRepository;
+import com.inkaquest.shared.exception.BadRequestException;
 import com.inkaquest.shared.exception.ResourceNotFoundException;
 import com.inkaquest.shared.security.RlsExecutor;
 import org.springframework.stereotype.Service;
 
+import java.util.regex.Pattern;
 import java.util.UUID;
 
 /**
@@ -19,6 +21,9 @@ import java.util.UUID;
  */
 @Service
 public class PerfilService {
+
+    /** Letras (con acentos/ñ), espacios, apóstrofos y guiones. Sin dígitos ni símbolos. */
+    private static final Pattern NOMBRE_PATRON = Pattern.compile("^[\\p{L}\\p{M}]+(?:[ '\\-][\\p{L}\\p{M}]+)*$");
 
     private final PerfilRepository perfilRepository;
     private final RlsExecutor rlsExecutor;
@@ -50,12 +55,29 @@ public class PerfilService {
         });
     }
 
+    /** Valida y normaliza un nombre o apellido; rechaza dígitos y símbolos. */
+    private static String validarNombre(String valor, String etiqueta) {
+        if (valor == null || valor.isBlank()) return null;
+        String limpio = valor.trim();
+        if (limpio.length() < 2 || limpio.length() > 120 || !NOMBRE_PATRON.matcher(limpio).matches()) {
+            throw new BadRequestException(etiqueta
+                    + " solo puede contener letras, espacios, apóstrofos y guiones (2 a 120 caracteres).");
+        }
+        return limpio;
+    }
+
     /**
      * Devuelve el perfil del usuario autenticado o lo crea si no existe
      * (idempotente). El perfil creado SIEMPRE nace como estudiante:
      * el rol nunca se acepta del cliente.
      */
     public PerfilResponse asegurarPerfilDe(UUID usuarioId, String email, String nombre) {
+        return asegurarPerfilDe(usuarioId, email, nombre, null);
+    }
+
+    public PerfilResponse asegurarPerfilDe(UUID usuarioId, String email, String nombre, String apellido) {
+        final String nombreValidado = validarNombre(nombre, "El nombre");
+        final String apellidoValidado = validarNombre(apellido, "El apellido");
         return rlsExecutor.executeAs(usuarioId, () ->
                 perfilRepository.findById(usuarioId)
                         .map(PerfilResponse::from)
@@ -65,9 +87,10 @@ public class PerfilService {
                             nuevo.setEmail(email == null || email.isBlank()
                                     ? "usuario-" + usuarioId.toString().substring(0, 8) + "@inkaquest.local"
                                     : email.trim().toLowerCase());
-                            nuevo.setNombre(nombre == null || nombre.isBlank()
-                                    ? "Usuario"
-                                    : nombre.trim());
+                            nuevo.setNombre(nombreValidado == null ? "Usuario" : nombreValidado);
+                            if (apellidoValidado != null) {
+                                nuevo.setApellido(apellidoValidado);
+                            }
                             nuevo.setRol(com.inkaquest.shared.enums.RolUsuario.estudiante);
                             nuevo.setEstadoCuenta(com.inkaquest.shared.enums.EstadoCuenta.activo);
                             nuevo.setXp(0);
@@ -90,10 +113,10 @@ public class PerfilService {
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "No se encontró un perfil para el usuario autenticado."));
             if (request.nombre() != null && !request.nombre().isBlank()) {
-                perfil.setNombre(request.nombre().trim());
+                perfil.setNombre(validarNombre(request.nombre(), "El nombre"));
             }
             if (request.apellido() != null) {
-                perfil.setApellido(blankToNull(request.apellido()));
+                perfil.setApellido(validarNombre(request.apellido(), "El apellido"));
             }
             if (request.documento() != null) {
                 perfil.setDocumento(blankToNull(request.documento()));

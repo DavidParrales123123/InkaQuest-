@@ -53,14 +53,20 @@ public class PerfilController {
         String email = jwt.getClaimAsString("email");
         Object meta = jwt.getClaimAsMap("user_metadata");
         String nombre = null;
+        String apellido = null;
         if (meta instanceof Map<?, ?> metadata) {
             Object fullName = metadata.get("full_name");
             nombre = fullName != null ? fullName.toString() : null;
+            Object metaApellido = metadata.get("apellido");
+            if (metaApellido != null) apellido = metaApellido.toString();
         }
         if (body != null && body.get("nombre") != null && !body.get("nombre").isBlank()) {
             nombre = body.get("nombre").trim();
         }
-        return ApiResponse.ok(perfilService.asegurarPerfilDe(authId(jwt), email, nombre),
+        if (body != null && body.get("apellido") != null && !body.get("apellido").isBlank()) {
+            apellido = body.get("apellido").trim();
+        }
+        return ApiResponse.ok(perfilService.asegurarPerfilDe(authId(jwt), email, nombre, apellido),
                 "Perfil asegurado.");
     }
 
