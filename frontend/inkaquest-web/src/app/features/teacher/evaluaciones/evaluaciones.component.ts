@@ -370,10 +370,11 @@ type TipoEvaluacion = 'quiz' | 'examen';
                 </ul>
               }
 
-              <!-- ════ EDITOR DE PREGUNTAS ════ -->
+              <!-- ════ EDITOR DE PREGUNTAS (modal: se abre donde estés) ════ -->
               @if (evaluacionSel(); as sel) {
-                <div class="card card-body space-y-4">
-                  <div class="flex flex-wrap items-center justify-between gap-2 border-b border-surface-100 pb-3">
+                <div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-marine-900/70 p-3 sm:items-center sm:p-6" role="dialog" aria-modal="true" [attr.aria-label]="'Preguntas de ' + sel.actividad.titulo" (click)="cerrarEditor()">
+                  <div class="relative max-h-[95vh] w-full max-w-3xl space-y-4 overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl sm:p-6" (click)="$event.stopPropagation()">
+                  <div class="flex flex-wrap items-center justify-between gap-2 border-b border-surface-200 pb-3">
                     <div>
                       <p class="text-[0.7rem] font-bold uppercase tracking-wider text-marine-400">Editando preguntas</p>
                       <h3 class="text-base font-extrabold text-marine-800">{{ sel.actividad.titulo }}</h3>
@@ -454,6 +455,7 @@ type TipoEvaluacion = 'quiz' | 'examen';
                     }
                     <div class="flex items-center justify-end gap-2 border-t border-brand-100 pt-3">
                       <button type="button" class="btn btn-primary" (click)="agregarPregunta()">Agregar pregunta</button>
+                    </div>
                     </div>
                   </div>
                 </div>
