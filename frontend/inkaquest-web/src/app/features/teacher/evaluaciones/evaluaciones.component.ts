@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe, NgClass } from '@angular/common';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -21,6 +21,8 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 
 type TipoPreguntaNuevo = 'opcion_unica' | 'verdadero_falso';
 type TipoEvaluacion = 'quiz' | 'examen';
+type EvaluacionGestion = Evaluacion & { actividad: Actividad };
+interface GrupoEvaluacion { id: string; titulo: string; items: EvaluacionGestion[]; }
 
 /**
  * Evaluaciones del docente.
@@ -159,17 +161,28 @@ type TipoEvaluacion = 'quiz' | 'examen';
             <div class="space-y-4 xl:col-span-3">
               <div class="flex items-center justify-between gap-2">
                 <h2 class="text-base font-extrabold text-marine-800">Evaluaciones de este curso</h2>
-                <span class="badge badge-neutral">{{ evaluaciones().length }}</span>
+                <span class="badge badge-neutral">{{ evaluacionesVisibles().length }}</span>
               </div>
 
-              @if (evaluaciones().length === 0) {
-                <div class="card card-body">
-                  <p class="text-sm text-marine-500">Aún no has creado ninguna evaluación. Completa el formulario de la izquierda.</p>
+              @if (evaluacionesVisibles().length === 0) {
+                <div class="card card-body space-y-2">
+                  <p class="text-sm text-marine-500">@if (leccionIdSel()) { Esta lección todavía no tiene evaluaciones. Selecciona «todas las lecciones» para ver las del resto del curso. } @else { Aún no has creado ninguna evaluación. Completa el formulario de la izquierda. }</p>
+                  @if (leccionIdSel()) {
+                    <button type="button" class="btn btn-outline btn-sm" (click)="leccionIdSel.set('')">Ver todas las lecciones</button>
+                  }
                 </div>
               } @else {
-                <ul class="space-y-2">
-                  @for (e of evaluaciones(); track e.id) {
-                    <li class="card card-body">
+                <ul class="space-y-4">
+                  @for (grupo of gruposEvaluaciones(); track grupo.id) {
+                    <li class="space-y-2">
+                      @if (!leccionIdSel()) {
+                        <p class="flex items-center gap-2 text-[0.7rem] font-bold uppercase tracking-wider text-marine-500">
+                          {{ grupo.titulo }} <span class="badge badge-neutral">{{ grupo.items.length }}</span>
+                        </p>
+                      }
+                      <ul class="space-y-2">
+                        @for (e of grupo.items; track e.id) {
+                          <li class="card card-body">
                       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div class="w-full min-w-0 sm:w-auto">
                           <div class="flex flex-wrap items-center gap-2">
@@ -365,6 +378,9 @@ type TipoEvaluacion = 'quiz' | 'examen';
                           <p class="mt-2 text-xs text-marine-400">«No entregado» aparece cuando el plazo ya terminó y el estudiante no dejó ningún intento.</p>
                         </div>
                       }
+                          </li>
+                        }
+                      </ul>
                     </li>
                   }
                 </ul>
@@ -484,7 +500,35 @@ export class EvaluationsComponent implements OnInit {
   protected readonly cursoSel = signal('');
   protected readonly leccionIdSel = signal('');
   protected readonly lecciones = signal<{ id: string; titulo: string; unidadNumero: number }[]>([]);
-  protected readonly evaluaciones = signal<(Evaluacion & { actividad: Actividad })[]>([]);
+  protected readonly evaluaciones = signal<EvaluacionGestion[]>([]);
+
+  /** Evaluaciones agrupadas por lección; si hay una lección elegida, solo esa. */
+  protected readonly gruposEvaluaciones = computed<GrupoEvaluacion[]>(() => {
+    const leccionId = this.leccionIdSel();
+    const items = this.evaluaciones();
+    const visibles = leccionId ? items.filter((e) => e.actividad?.leccion_id === leccionId) : items;
+    const tituloDe = (id: string) => {
+      const l = this.lecciones().find((x) => x.id === id);
+      return l ? `U${l.unidadNumero} · ${l.titulo}` : 'Sin lección asignada';
+    };
+    if (leccionId) {
+      return [{ id: leccionId, titulo: tituloDe(leccionId), items: visibles }];
+    }
+    const map = new Map<string, GrupoEvaluacion>();
+    for (const e of visibles) {
+      const id = e.actividad?.leccion_id || 'sin-leccion';
+      let grupo = map.get(id);
+      if (!grupo) {
+        grupo = { id, titulo: tituloDe(id), items: [] };
+        map.set(id, grupo);
+      }
+      grupo.items.push(e);
+    }
+    return [...map.values()];
+  });
+  protected readonly evaluacionesVisibles = computed(() =>
+    this.gruposEvaluaciones().flatMap((g) => g.items),
+  );
 
   // Editor de preguntas
   protected readonly evaluacionSel = signal<(Evaluacion & { actividad: Actividad }) | null>(null);

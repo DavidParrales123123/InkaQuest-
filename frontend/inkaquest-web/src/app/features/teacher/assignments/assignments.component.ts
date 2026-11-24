@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { tamanoLegible } from '../../../shared/utilities/archivo.util';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -24,6 +24,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 
 type TareaConActividad = Tarea & { actividad: Actividad };
+interface GrupoTarea { id: string; titulo: string; items: TareaConActividad[]; }
 
 /**
  * Gestión de tareas del docente, al estilo universidad:
@@ -147,17 +148,28 @@ type TareaConActividad = Tarea & { actividad: Actividad };
         <div class="space-y-4 xl:col-span-3">
           <div class="flex items-center justify-between gap-2">
             <h2 class="text-base font-extrabold text-marine-800">Tareas de este curso</h2>
-            <span class="badge badge-neutral">{{ tareas().length }}</span>
+            <span class="badge badge-neutral">{{ tareasVisibles().length }}</span>
           </div>
 
-          @if (tareas().length === 0) {
-            <div class="card card-body">
-              <p class="text-sm text-marine-500">Aún no has creado ninguna tarea en este curso. Selecciona una lección a la izquierda y completa el formulario.</p>
+          @if (tareasVisibles().length === 0) {
+            <div class="card card-body space-y-2">
+              <p class="text-sm text-marine-500">@if (leccionIdSel()) { Esta lección todavía no tiene tareas. Selecciona «todas las lecciones» para ver las del resto del curso. } @else { Aún no has creado ninguna tarea en este curso. Selecciona una lección a la izquierda y completa el formulario. }</p>
+              @if (leccionIdSel()) {
+                <button type="button" class="btn btn-outline btn-sm" (click)="leccionIdSel.set('')">Ver todas las lecciones</button>
+              }
             </div>
           } @else {
-            <ul class="space-y-2">
-              @for (t of tareas(); track t.id) {
-                <li class="card card-body space-y-3">
+            <ul class="space-y-4">
+              @for (grupo of gruposTareas(); track grupo.id) {
+                <li class="space-y-2">
+                  @if (!leccionIdSel()) {
+                    <p class="flex items-center gap-2 text-[0.7rem] font-bold uppercase tracking-wider text-marine-500">
+                      {{ grupo.titulo }} <span class="badge badge-neutral">{{ grupo.items.length }}</span>
+                    </p>
+                  }
+                  <ul class="space-y-2">
+                    @for (t of grupo.items; track t.id) {
+                      <li class="card card-body space-y-3">
                   <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
                       <div class="flex flex-wrap items-center gap-2">
@@ -240,6 +252,9 @@ type TareaConActividad = Tarea & { actividad: Actividad };
                       <p class="mt-2 text-xs text-marine-400">«No entregado» aparece cuando la fecha límite ya pasó y el estudiante no envió la tarea.</p>
                     </div>
                   }
+                      </li>
+                    }
+                  </ul>
                 </li>
               }
             </ul>
@@ -330,6 +345,33 @@ export class AssignmentsComponent implements OnInit {
   protected readonly leccionIdSel = signal('');
   protected readonly lecciones = signal<{ id: string; titulo: string; unidadNumero: number }[]>([]);
   protected readonly tareas = signal<TareaConActividad[]>([]);
+
+  /** Tareas agrupadas por lección; si hay una lección elegida, solo esa. */
+  protected readonly gruposTareas = computed<GrupoTarea[]>(() => {
+    const leccionId = this.leccionIdSel();
+    const items = this.tareas();
+    const visibles = leccionId ? items.filter((t) => t.actividad?.leccion_id === leccionId) : items;
+    const tituloDe = (id: string) => {
+      const l = this.lecciones().find((x) => x.id === id);
+      return l ? `U${l.unidadNumero} · ${l.titulo}` : 'Sin lección asignada';
+    };
+    if (leccionId) {
+      return [{ id: leccionId, titulo: tituloDe(leccionId), items: visibles }];
+    }
+    const map = new Map<string, GrupoTarea>();
+    for (const t of visibles) {
+      const id = t.actividad?.leccion_id || 'sin-leccion';
+      let grupo = map.get(id);
+      if (!grupo) {
+        grupo = { id, titulo: tituloDe(id), items: [] };
+        map.set(id, grupo);
+      }
+      grupo.items.push(t);
+    }
+    return [...map.values()];
+  });
+  protected readonly tareasVisibles = computed(() => this.gruposTareas().flatMap((g) => g.items));
+
   protected readonly adjuntos = signal<Record<string, TareaArchivo[]>>({});
   protected readonly archivosDeEntrega = signal<Record<string, EntregaArchivo[]>>({});
   protected readonly subiendoAdjuntos = signal<string | null>(null);
