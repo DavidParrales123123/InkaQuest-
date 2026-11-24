@@ -11,6 +11,7 @@ import com.inkaquest.shared.enums.ConceptoXp;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.UUID;
 
 /**
@@ -53,7 +54,9 @@ public class GamificacionRecorder {
     public void registrarActividad(Perfil estudiante, ConceptoXp concepto,
                                    UUID referenciaId, String referenciaTipo,
                                    String descripcion, int xp) {
-        LocalDate hoy = LocalDate.now();
+        // La racha se cuenta en hora local de negocio (América/Lima), no en UTC
+        // del servidor: a las 20:00 en Lima UTC ya es el día siguiente.
+        LocalDate hoy = LocalDate.now(ZoneId.of("America/Lima"));
         LocalDate ayer = hoy.minusDays(1);
 
         Racha racha = rachaRepository.findDeUsuario(estudiante.getId())

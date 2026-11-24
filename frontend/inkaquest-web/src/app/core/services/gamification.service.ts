@@ -72,13 +72,17 @@ export class GamificationService {
    * Registra la visita de HOY a la plataforma en la racha del usuario.
    *
    * <p>Usa la función SQL `fn_actualizar_racha` (SECURITY DEFINER, idempotente
-   * por día). Es la forma en que "entrar al panel" cuenta como actividad diaria,
-   * además de completar lecciones. Si ya se registró hoy, no hace nada.</p>
+   * por día local). Es la forma en que "entrar al panel" cuenta como actividad
+   * diaria. Enviamos la fecha local del navegador para no usar UTC (en Lima ya
+   * es el día siguiente a partir de las 19:00). Si ya se registró hoy, no hace nada.</p>
    */
   async registrarActividadDiaria(usuarioId: string): Promise<{ ok: boolean; racha: number }> {
     try {
+      const hoy = new Date();
+      const fechaLocal = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
       const { data, error } = await this.supabase.client.rpc('fn_actualizar_racha', {
         p_usuario_id: usuarioId,
+        p_fecha_local: fechaLocal,
       });
       if (error) {
         console.error('[InkaQuest] Error actualizando la racha:', error.message);
