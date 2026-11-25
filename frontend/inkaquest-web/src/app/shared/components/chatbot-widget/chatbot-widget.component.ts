@@ -461,6 +461,15 @@ export class ChatbotWidgetComponent {
     } catch (e) {
       const mensaje = e instanceof Error && e.message ? e.message : 'No se pudo procesar tu pregunta. Inténtalo de nuevo en un momento.';
       this.error.set(mensaje);
+      this.mensajes.update((m) => [
+        ...m,
+        {
+          id: `a${++nextId}`,
+          rol: 'asistente',
+          contenido: 'En este momento no fue posible procesar la consulta. Se recomienda intentar nuevamente en unos instantes.',
+          hora: new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
     } finally {
       this.enviando.set(false);
     }

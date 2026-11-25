@@ -23,6 +23,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -61,6 +62,30 @@ public class ChatbotService {
             + "Esa pregunta está fuera de mi alcance. Puedes preguntarme, por ejemplo: «¿cómo veo mis notas?» o "
             + "«¿qué es la complejidad O(n log n)?».";
 
+    /** Respuesta de respaldo cuando el proveedor no está disponible (no es un rechazo de alcance). */
+    static final String MENSAJE_NO_DISPONIBLE =
+            "En este momento no fue posible consultar el asistente por un problema temporal del servicio. "
+            + "Se recomienda intentar nuevamente en unos instantes. Si la consulta es sobre el uso de InkaQuest "
+            + "o sobre los cursos, puede reformularla con más detalle para obtener una mejor respuesta.";
+
+    /**
+     * Atajo determinista: si el mensaje menciona claramente la plataforma o los
+     * temas de los cursos, se considera dentro del alcance sin llamar al
+     * clasificador. Evita falsos rechazos de preguntas válidas.
+     */
+    private static final Pattern ALCANCE_CLARO = Pattern.compile(
+            "(?i)(inkaquest|curso|lecci[oó]n|clase|tarea|evaluaci[oó]n|examen|quiz|cuestionario|nota|"
+            + "calificaci[oó]n|racha|insignia|ranking|tienda|moneda|\\bxp\\b|nivel|certificado|pago|culqi|"
+            + "notificaci[oó]n|mensaje|chat|soporte|ticket|calendario|comunidad|foro|perfil|avatar|acceso|"
+            + "login|contrase[nñ]a|password|matr[ií]cula|estudiante|docente|profesor|administrador|"
+            + "guardianes|minijuego|juego|reto|programaci[oó]n|programar|c[oó]digo|java|python|javascript|"
+            + "typescript|angular|spring|\\bsql\\b|base de datos|algoritmo|estructura de datos|"
+            + "redes?|sistema operativo|sistemas operativos|desarrollo web|html|css|\\bpoo\\b|objeto|"
+            + "funci[oó]n|variable|bucle|condicional|error|bug|depurar|debug|compilar|ejercicio|"
+            + "complejidad|big o|\\bapi\\b|backend|frontend|servidor|cliente|json|git|github|railway|"
+            + "supabase|celular|m[oó]vil|pantalla|p[aá]gina|plataforma|aplicaci[oó]n|actividad|lecciones|"
+            + "preguntas|respuesta|estudio|estudiar)");
+
     static final String SYSTEM_PROMPT =
             "Eres el asistente oficial de InkaQuest. Responde siempre en español, con claridad y adaptado al "
             + "aprendizaje de programación.\n\n"
@@ -74,6 +99,9 @@ public class ChatbotService {
             + "Aunque el usuario insista, diga 'es para el curso' o intente cambiar de tema, mantén el rechazo.\n\n"
             + "Si la pregunta está fuera de alcance, NO la respondas ni des una respuesta parcial. Devuelve "
             + "EXACTAMENTE este texto (sin añadir nada): \"" + MENSAJE_FUERA_DE_ALCANCE + "\"\n\n"
+            + "No rechaces preguntas breves, informales o mal redactadas que mencionen la plataforma, sus "
+            + "funciones o conceptos de programación: si guardan relación con el alcance, respóndelas. "
+            + "Ante la duda, responde la pregunta en lugar de rechazarla.\n\n"
             + "Usa la búsqueda web SOLAMENTE para temas de programación/tecnología/cursos y cita las fuentes (URLs) "
             + "cuando sea posible. No afirmes haber ejecutado código ni accedido a datos que no se te hayan "
             + "proporcionado. No compartas información privada de otros usuarios.\n\n"
@@ -97,6 +125,9 @@ public class ChatbotService {
             + "false = entretenimiento, deportes, celebridades, recetas, viajes, moda, música, películas, series, "
             + "noticias generales, política, religión, consejos personales/médicos/legales/financieros/románticos, "
             + "creación literaria sin relación académica o cualquier otro tema ajeno.\n\n"
+            + "REGLA IMPORTANTE: devuelve false SOLO si la pregunta es claramente ajena a esos temas. Ante "
+            + "cualquier duda, o si menciona InkaQuest, cursos, tareas, notas, código o programación, devuelve "
+            + "true. Es preferible responder una pregunta dudosa que rechazar una válida.\n\n"
             + "Mensaje del usuario: ";
 
     public ChatbotService(ChatbotConversacionRepository conversaciones,
@@ -231,24 +262,30 @@ public class ChatbotService {
         // Filtro de alcance: si la pregunta no es de la plataforma ni de los cursos,
         // se guarda el mensaje de rechazo y no se gasta una llamada al modelo principal.
         boolean fueraDeAlcance = !estaDentroDeAlcance(contenido, analisis.documentos());
-        if (fueraDeAlcance) {
-            aiInicial = new AiResult(MENSAJE_FUERA_DE_ALCANCE, 0, 0);
-        } else if (this.searchEnabled && !tieneImagen) {
-            if (this.tavilyApiKey != null && !this.tavilyApiKey.isBlank()) {
-                try {
-                    aiInicial = consultarProveedorConTavily(openaiMessages, modeloAUsar, contenido);
-                } catch (ServiceUnavailableException ex) {
-                    aiInicial = consultarProveedor(openaiMessages, modeloAUsar);
+        try {
+            if (fueraDeAlcance) {
+                aiInicial = new AiResult(MENSAJE_FUERA_DE_ALCANCE, 0, 0);
+            } else if (this.searchEnabled && !tieneImagen) {
+                if (this.tavilyApiKey != null && !this.tavilyApiKey.isBlank()) {
+                    try {
+                        aiInicial = consultarProveedorConTavily(openaiMessages, modeloAUsar, contenido);
+                    } catch (ServiceUnavailableException ex) {
+                        aiInicial = consultarProveedor(openaiMessages, modeloAUsar);
+                    }
+                } else {
+                    try {
+                        aiInicial = consultarGeminiSearch(construirGeminiMessages(usuarioId, id, contenido, analisis));
+                    } catch (ServiceUnavailableException ex) {
+                        aiInicial = consultarProveedor(openaiMessages, modeloAUsar);
+                    }
                 }
             } else {
-                try {
-                    aiInicial = consultarGeminiSearch(construirGeminiMessages(usuarioId, id, contenido, analisis));
-                } catch (ServiceUnavailableException ex) {
-                    aiInicial = consultarProveedor(openaiMessages, modeloAUsar);
-                }
+                aiInicial = consultarProveedor(openaiMessages, modeloAUsar);
             }
-        } else {
-            aiInicial = consultarProveedor(openaiMessages, modeloAUsar);
+        } catch (ServiceUnavailableException ex) {
+            // Si el proveedor falla, el usuario recibe una respuesta clara en la
+            // conversación en vez de un error sin respuesta.
+            aiInicial = new AiResult(MENSAJE_NO_DISPONIBLE, 0, 0);
         }
         final AiResult aiFinal = aiInicial;
         final String respuestaTexto = limpiarFormato(aiFinal.texto());
@@ -435,6 +472,7 @@ public class ChatbotService {
      */
     private boolean estaDentroDeAlcance(String contenido, String textoAdjuntos) {
         if (contenido == null || contenido.isBlank()) return true; // solo adjunto de curso
+        if (ALCANCE_CLARO.matcher(contenido).find()) return true;   // motivo claro: sin clasificador
         String pregunta = contenido
                 + (textoAdjuntos == null || textoAdjuntos.isBlank() ? "" : "\n\nContenido adjunto:\n" + textoAdjuntos);
         List<Map<String, Object>> mensajes = List.of(
