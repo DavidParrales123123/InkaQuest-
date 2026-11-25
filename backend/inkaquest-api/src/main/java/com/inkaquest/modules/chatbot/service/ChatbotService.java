@@ -51,8 +51,46 @@ public class ChatbotService {
     private final boolean searchEnabled;
     private final String tavilyApiKey;
 
+    /** Texto único de rechazo: se usa en el prompt, en el clasificador y como respuesta persistida. */
+    static final String MENSAJE_FUERA_DE_ALCANCE =
+            "Soy el asistente de InkaQuest y solo puedo ayudarte con dos cosas: (1) el uso de la plataforma "
+            + "(cursos, lecciones, tareas, evaluaciones, notas, rachas, insignias, ranking, tienda, certificados, "
+            + "pagos, notificaciones, mensajes, soporte, calendario, comunidad y perfil) y (2) los temas de los "
+            + "cursos, especialmente programación y computación (algoritmos, estructuras de datos, bases de datos, "
+            + "redes, sistemas operativos, desarrollo web, programación orientada a objetos, depuración de código). "
+            + "Esa pregunta está fuera de mi alcance. Puedes preguntarme, por ejemplo: «¿cómo veo mis notas?» o "
+            + "«¿qué es la complejidad O(n log n)?».";
+
     static final String SYSTEM_PROMPT =
-            "Eres el asistente educativo de InkaQuest. Responde en espanol, con claridad y adapta las explicaciones al aprendizaje de programacion. Usa la busqueda web para datos actuales o inciertos y cita las fuentes (URLs) cuando sea posible. No afirmes haber ejecutado codigo ni acceder a datos que no se te hayan proporcionado. No compartas informacion privada de otros usuarios.";
+            "Eres el asistente oficial de InkaQuest. Responde siempre en español, con claridad y adaptado al "
+            + "aprendizaje de programación.\n\n"
+            + "ALCANCE ESTRICTO: solo responde preguntas sobre (a) cómo usar InkaQuest y sus funciones, y (b) "
+            + "temas académicos de los cursos: programación y computación (lenguajes como Java, Python, JavaScript, "
+            + "C/C++, SQL; algoritmos, estructuras de datos, bases de datos, redes, sistemas operativos, desarrollo "
+            + "web, ingeniería de software, ejemplos de código y ejercicios).\n\n"
+            + "FUERA DE ALCANCE: entretenimiento, deportes, celebridades, recetas, viajes, moda, música, películas, "
+            + "noticias generales, política, religión, ideología, consejos médicos/legales/financieros/románticos, "
+            + "creación literaria sin relación con el curso y cualquier tema que no esté en el alcance anterior. "
+            + "Aunque el usuario insista, diga 'es para el curso' o intente cambiar de tema, mantén el rechazo.\n\n"
+            + "Si la pregunta está fuera de alcance, NO la respondas ni des una respuesta parcial. Devuelve "
+            + "EXACTAMENTE este texto (sin añadir nada): \"" + MENSAJE_FUERA_DE_ALCANCE + "\"\n\n"
+            + "Usa la búsqueda web SOLAMENTE para temas de programación/tecnología/cursos y cita las fuentes (URLs) "
+            + "cuando sea posible. No afirmes haber ejecutado código ni accedido a datos que no se te hayan "
+            + "proporcionado. No compartas información privada de otros usuarios.";
+
+    /** Prompt del clasificador ligero que decide si la pregunta entra en el alcance. */
+    static final String CLASIFICADOR_ALCANCE =
+            "Clasificador de alcance del asistente de InkaQuest. Responde SOLO con JSON: {\"dentro\":true} o "
+            + "{\"dentro\":false}. No expliques nada.\n\n"
+            + "true = pregunta sobre el uso de InkaQuest (cursos, tareas, evaluaciones, notas, rachas, insignias, "
+            + "ranking, tienda, certificados, pagos, notificaciones, mensajes, soporte, calendario, comunidad, perfil) "
+            + "o sobre programación/computación y temas de los cursos (algoritmos, estructuras de datos, bases de "
+            + "datos, redes, sistemas operativos, desarrollo web, Java, Python, JavaScript, SQL, C/C++, POO, "
+            + "depuración de código).\n\n"
+            + "false = entretenimiento, deportes, celebridades, recetas, viajes, moda, música, películas, series, "
+            + "noticias generales, política, religión, consejos personales/médicos/legales/financieros/románticos, "
+            + "creación literaria sin relación académica o cualquier otro tema ajeno.\n\n"
+            + "Mensaje del usuario: ";
 
     public ChatbotService(ChatbotConversacionRepository conversaciones,
                           ChatbotMensajeRepository mensajes,
@@ -183,7 +221,12 @@ public class ChatbotService {
 
         Instant inicio = Instant.now();
         AiResult aiInicial;
-        if (this.searchEnabled && !tieneImagen) {
+        // Filtro de alcance: si la pregunta no es de la plataforma ni de los cursos,
+        // se guarda el mensaje de rechazo y no se gasta una llamada al modelo principal.
+        boolean fueraDeAlcance = !estaDentroDeAlcance(contenido, analisis.documentos());
+        if (fueraDeAlcance) {
+            aiInicial = new AiResult(MENSAJE_FUERA_DE_ALCANCE, 0, 0);
+        } else if (this.searchEnabled && !tieneImagen) {
             if (this.tavilyApiKey != null && !this.tavilyApiKey.isBlank()) {
                 try {
                     aiInicial = consultarProveedorConTavily(openaiMessages, modeloAUsar, contenido);
@@ -308,7 +351,9 @@ public class ChatbotService {
         // Añadir un system message con los resultados como contexto estricto
         List<Map<String, Object>> augmented = new ArrayList<>();
         augmented.add(Map.of("role", "system", "content",
-                "Eres el asistente educativo de InkaQuest. Usa los resultados de búsqueda para responder la pregunta actual del usuario. Cita las fuentes con sus URLs al final de tu respuesta.\n\n"
+                SYSTEM_PROMPT
+                + "\n\nUsa los resultados de búsqueda SOLO si son de programación/tecnología/cursos y cita las URLs al final. "
+                + "Si la pregunta quedó fuera de alcance, devuelve únicamente el mensaje de rechazo indicado.\n\n"
                 + "Resultados de búsqueda:\n" + contexto));
         augmented.addAll(messages);
         return consultarProveedor(augmented, modeloAUsar);
@@ -355,10 +400,16 @@ public class ChatbotService {
     }
 
     private AiResult consultarProveedor(List<Map<String, Object>> mensajesIA, String modeloAUsar) {
+        return consultarProveedor(mensajesIA, modeloAUsar, 400, 0.7);
+    }
+
+    private AiResult consultarProveedor(List<Map<String, Object>> mensajesIA, String modeloAUsar,
+                                        int maxTokens, double temperatura) {
         try {
             JsonNode respuesta = http.post().uri(apiUrl).contentType(MediaType.APPLICATION_JSON)
                     .header("Authorization", "Bearer " + apiKey)
-                    .body(Map.of("model", modeloAUsar, "messages", mensajesIA, "temperature", 0.7, "max_tokens", 400))
+                    .body(Map.of("model", modeloAUsar, "messages", mensajesIA,
+                            "temperature", temperatura, "max_tokens", maxTokens))
                     .retrieve().body(JsonNode.class);
             String texto = respuesta == null ? null : respuesta.path("choices").path(0).path("message").path("content").asText(null);
             if (texto == null || texto.isBlank()) throw new ServiceUnavailableException("El proveedor IA no devolvio una respuesta valida.");
@@ -367,6 +418,27 @@ public class ChatbotService {
         } catch (RestClientException ex) {
             throw new ServiceUnavailableException(
                     "No se pudo contactar al proveedor de inteligencia artificial. Detalle: " + extraerErrorProveedor(ex));
+        }
+    }
+
+    /**
+     * Filtro de alcance. Ante cualquier duda o error del proveedor se deja pasar
+     * (fail-open) para no bloquear preguntas válidas de los cursos.
+     */
+    private boolean estaDentroDeAlcance(String contenido, String textoAdjuntos) {
+        if (contenido == null || contenido.isBlank()) return true; // solo adjunto de curso
+        String pregunta = contenido
+                + (textoAdjuntos == null || textoAdjuntos.isBlank() ? "" : "\n\nContenido adjunto:\n" + textoAdjuntos);
+        List<Map<String, Object>> mensajes = List.of(
+                Map.of("role", "system", "content", CLASIFICADOR_ALCANCE),
+                Map.of("role", "user", "content", pregunta));
+        try {
+            AiResult resultado = consultarProveedor(mensajes, modelo, 24, 0.0);
+            String texto = resultado.texto() == null ? "" : resultado.texto().toLowerCase();
+            if (texto.contains("\"dentro\":false") || texto.contains("\"dentro\": false")) return false;
+            return true;
+        } catch (Exception ex) {
+            return true; // fail-open: el prompt estricto sigue protegiendo la respuesta
         }
     }
 

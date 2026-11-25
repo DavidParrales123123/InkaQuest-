@@ -101,7 +101,7 @@ const SUGERENCIAS = [
           </span>
           <div class="min-w-0 flex-1">
             <p class="text-[0.78rem] font-black uppercase tracking-[0.2em] text-gold-400">Asistente InkaQuest</p>
-            <p class="text-[0.55rem] font-bold uppercase tracking-[0.2em] text-emerald-400">En línea · IA + búsqueda web</p>
+            <p class="text-[0.55rem] font-bold uppercase tracking-[0.16em] text-emerald-400">En línea · solo InkaQuest y cursos</p>
           </div>
           <button type="button" class="grid size-8 shrink-0 place-items-center rounded-lg text-marine-300 transition-all hover:bg-white/5 hover:text-white" (click)="expandido.update((v) => !v)" [attr.aria-label]="expandido() ? 'Reducir panel' : 'Expandir panel'" [title]="expandido() ? 'Reducir' : 'Expandir'">
             @if (expandido()) {
@@ -132,6 +132,7 @@ const SUGERENCIAS = [
               <div>
                 <h2 class="text-xl font-black tracking-tight text-white">Hola, soy tu <span class="text-gold-400">asistente</span></h2>
                 <p class="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-marine-400">Pregunta · Adjunta · Aprende</p>
+                <p class="mx-auto mt-2 max-w-xs text-[0.7rem] leading-relaxed text-marine-400">Solo respondo sobre el uso de InkaQuest y los temas de los cursos (programación, algoritmos, bases de datos y afines).</p>
               </div>
               <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
                 @for (s of sugerencias; track s.texto) {
