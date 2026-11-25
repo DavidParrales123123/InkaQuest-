@@ -240,7 +240,7 @@ const SUGERENCIAS = [
               <svg viewBox="0 0 24 24" class="size-5" fill="currentColor" aria-hidden="true"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
             </button>
           </div>
-          <p class="mt-1.5 px-1 text-center text-[0.55rem] font-semibold uppercase tracking-widest text-marine-600">La IA puede cometer errores · verifica lo importante · Esc para cerrar</p>
+          <p class="mt-1.5 px-1 text-center text-[0.55rem] font-semibold uppercase tracking-widest text-marine-600">La IA puede cometer errores · no comparte datos privados · Esc para cerrar</p>
           <input type="file" #fileInput multiple accept="image/*,application/pdf,.txt,.md,.csv" class="hidden" (change)="archivosSeleccionados($event)" />
         </form>
       </div>
