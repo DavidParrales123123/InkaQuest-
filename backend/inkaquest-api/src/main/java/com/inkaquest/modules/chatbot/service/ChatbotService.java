@@ -86,6 +86,32 @@ public class ChatbotService {
             + "supabase|celular|m[oó]vil|pantalla|p[aá]gina|plataforma|aplicaci[oó]n|actividad|lecciones|"
             + "preguntas|respuesta|estudio|estudiar)");
 
+    /** Palabras del ámbito de InkaQuest/cursos para coincidencia con errores de tecleo. */
+    private static final List<String> PALABRAS_ALCANCE = List.of(
+            "inkaquest", "curso", "cursos", "leccion", "clase", "tarea", "tareas", "evaluacion", "examen",
+            "quiz", "nota", "notas", "calificacion", "racha", "insignia", "ranking", "tienda", "moneda",
+            "nivel", "certificado", "pago", "culqi", "notificacion", "mensaje", "soporte", "ticket",
+            "calendario", "comunidad", "foro", "perfil", "acceso", "login", "contrasena", "matricula",
+            "estudiante", "docente", "profesor", "administrador", "guardianes", "minijuego", "juego",
+            "reto", "programacion", "programar", "codigo", "java", "python", "javascript", "typescript",
+            "angular", "spring", "sql", "base", "datos", "algoritmo", "estructura", "red", "sistema",
+            "operativo", "desarrollo", "web", "html", "css", "poo", "objeto", "funcion", "variable",
+            "bucle", "condicional", "error", "bug", "depurar", "debug", "compilar", "ejercicio",
+            "complejidad", "api", "backend", "frontend", "servidor", "cliente", "json", "git", "github",
+            "railway", "supabase", "celular", "movil", "pantalla", "pagina", "plataforma", "aplicacion",
+            "actividad", "pregunta", "respuesta", "estudio", "estudiar", "registro", "inscribir");
+
+    /** Temas claramente ajenos: solo con uno de estos se rechaza, nunca por duda. */
+    private static final List<String> PALABRAS_AJENAS = List.of(
+            "futbol", "partido", "pelicula", "serie", "receta", "viaje", "moda", "musica", "celebridad",
+            "politica", "religion", "horoscopo", "apuestas", "novio", "novia", "medico", "abogado",
+            "inversion", "criptomoneda", "chiste", "poema", "cuento", "cocina", "deporte", "equipo");
+
+    static final String MENSAJE_ACLARACION =
+            "Solicitud recibida. Para ayudarle con precisión, le agradecería indicar si su consulta se refiere "
+            + "al uso de InkaQuest, como la inscripción a cursos, las tareas o las calificaciones, o a algún tema "
+            + "de los cursos, como programación, algoritmos o bases de datos.";
+
     static final String SYSTEM_PROMPT =
             "Eres el asistente oficial de InkaQuest. Responde siempre en español, con claridad y adaptado al "
             + "aprendizaje de programación.\n\n"
@@ -102,6 +128,9 @@ public class ChatbotService {
             + "No rechaces preguntas breves, informales o mal redactadas que mencionen la plataforma, sus "
             + "funciones o conceptos de programación: si guardan relación con el alcance, respóndelas. "
             + "Ante la duda, responde la pregunta en lugar de rechazarla.\n\n"
+            + "Tolerancia a errores: si el usuario escribe con faltas de ortografía, tildes incorrectas, mayúsculas "
+            + "arbitrarias o gramática deficiente, interprete su intención y responda igualmente. Si aun así resulta "
+            + "demasiado vaga, pida con cortesía que reformule la consulta; no la trate como un tema ajeno.\n\n"
             + "Usa la búsqueda web SOLAMENTE para temas de programación/tecnología/cursos y cita las fuentes (URLs) "
             + "cuando sea posible. No afirmes haber ejecutado código ni accedido a datos que no se te hayan "
             + "proporcionado. No compartas información privada de otros usuarios.\n\n"
@@ -497,25 +526,75 @@ public class ChatbotService {
     }
 
     /**
-     * Filtro de alcance. Ante cualquier duda o error del proveedor se deja pasar
-     * (fail-open) para no bloquear preguntas válidas de los cursos.
+     * Filtro de alcance determinista y tolerante a errores: normaliza la frase,
+     * compara con coincidencia aproximada y SOLO rechaza si aparece un tema
+     * claramente ajeno. Ante la duda, responde.
      */
     private boolean estaDentroDeAlcance(String contenido, String textoAdjuntos) {
         if (contenido == null || contenido.isBlank()) return true; // solo adjunto de curso
-        if (ALCANCE_CLARO.matcher(contenido).find()) return true;   // motivo claro: sin clasificador
-        String pregunta = contenido
-                + (textoAdjuntos == null || textoAdjuntos.isBlank() ? "" : "\n\nContenido adjunto:\n" + textoAdjuntos);
-        List<Map<String, Object>> mensajes = List.of(
-                Map.of("role", "system", "content", CLASIFICADOR_ALCANCE),
-                Map.of("role", "user", "content", pregunta));
-        try {
-            AiResult resultado = consultarProveedor(mensajes, modelo, 24, 0.0);
-            String texto = resultado.texto() == null ? "" : resultado.texto().toLowerCase();
-            if (texto.contains("\"dentro\":false") || texto.contains("\"dentro\": false")) return false;
-            return true;
-        } catch (Exception ex) {
-            return true; // fail-open: el prompt estricto sigue protegiendo la respuesta
+        String norm = corregirErrores(normalizar(contenido));
+        if (ALCANCE_CLARO.matcher(norm).find()) return true;
+        if (coincideAlguna(norm, PALABRAS_ALCANCE)) return true;
+        if (coincideAlguna(norm, PALABRAS_AJENAS)) return false;
+        return true; // escrito de forma rara o incompleto: se intenta responder igual
+    }
+
+    /** Quita tildes, signos y mayúsculas para comparar aunque el usuario escriba mal. */
+    private static String normalizar(String texto) {
+        if (texto == null) return "";
+        String s = texto.toLowerCase(java.util.Locale.ROOT);
+        s = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+        return s.replaceAll("[^a-z0-9\\s]", " ").replaceAll("\\s+", " ").trim();
+    }
+
+    /** Corrige palabras con errores de tecleo usando el vocabulario del ámbito. */
+    private static String corregirErrores(String textoNormalizado) {
+        StringBuilder sb = new StringBuilder();
+        for (String token : textoNormalizado.split(" ")) {
+            if (token.length() < 3) { sb.append(token).append(' '); continue; }
+            String mejor = token;
+            int distanciaMinima = Integer.MAX_VALUE;
+            for (String palabra : PALABRAS_ALCANCE) {
+                int d = distancia(token, palabra);
+                if (d < distanciaMinima) { distanciaMinima = d; mejor = palabra; }
+            }
+            if (distanciaMinima <= umbral(token.length(), mejor.length())) sb.append(mejor).append(' ');
+            else sb.append(token).append(' ');
         }
+        return sb.toString().trim();
+    }
+
+    /** Coincidencia aproximada (distancia de Levenshtein pequeña). */
+    private static boolean coincideAlguna(String textoNormalizado, List<String> palabras) {
+        for (String token : textoNormalizado.split(" ")) {
+            if (token.length() < 3) continue;
+            for (String palabra : palabras) {
+                if (distancia(token, palabra) <= umbral(token.length(), palabra.length())) return true;
+            }
+        }
+        return false;
+    }
+
+    private static int umbral(int a, int b) {
+        int menor = Math.min(a, b);
+        if (menor <= 4) return 1;
+        if (menor <= 7) return 2;
+        return 3;
+    }
+
+    private static int distancia(String a, String b) {
+        int[] anterior = new int[b.length() + 1];
+        int[] actual = new int[b.length() + 1];
+        for (int j = 0; j <= b.length(); j++) anterior[j] = j;
+        for (int i = 1; i <= a.length(); i++) {
+            actual[0] = i;
+            for (int j = 1; j <= b.length(); j++) {
+                int coste = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
+                actual[j] = Math.min(Math.min(actual[j - 1] + 1, anterior[j] + 1), anterior[j - 1] + coste);
+            }
+            int[] tmp = anterior; anterior = actual; actual = tmp;
+        }
+        return anterior[b.length()];
     }
 
     /** Extrae el código HTTP y cuerpo de la respuesta de error del proveedor para depurar. */
@@ -668,10 +747,18 @@ public class ChatbotService {
 
     private static String respuestaFrecuente(String contenido) {
         if (contenido == null || contenido.isBlank()) return null;
+        String norm = corregirErrores(normalizar(contenido));
         for (RespuestaFrecuente rf : RESPUESTAS_FRECUENTES) {
-            if (rf.patron().matcher(contenido).find()) return rf.respuesta();
+            if (rf.patron().matcher(norm).find()) return rf.respuesta();
         }
+        if (esConsultaVaga(norm)) return MENSAJE_ACLARACION;
         return null;
+    }
+
+    /** Frases muy cortas o sin tema concreto: se pide precisión en lugar de rechazar. */
+    private static boolean esConsultaVaga(String textoNormalizado) {
+        String[] tokens = textoNormalizado.isEmpty() ? new String[0] : textoNormalizado.split(" ");
+        return tokens.length <= 3 && !coincideAlguna(textoNormalizado, PALABRAS_ALCANCE);
     }
 
     private record RespuestaFrecuente(Pattern patron, String respuesta) { }
