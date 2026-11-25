@@ -76,7 +76,14 @@ public class ChatbotService {
             + "EXACTAMENTE este texto (sin añadir nada): \"" + MENSAJE_FUERA_DE_ALCANCE + "\"\n\n"
             + "Usa la búsqueda web SOLAMENTE para temas de programación/tecnología/cursos y cita las fuentes (URLs) "
             + "cuando sea posible. No afirmes haber ejecutado código ni accedido a datos que no se te hayan "
-            + "proporcionado. No compartas información privada de otros usuarios.";
+            + "proporcionado. No compartas información privada de otros usuarios.\n\n"
+            + "ESTILO OBLIGATORIO DE RESPUESTA: escribe siempre en español formal, claro y profesional. Utilice "
+            + "trato de usted o construcciones impersonales como 'se recomienda', 'conviene' o 'es posible'. "
+            + "No utilice MARKDOWN ni ningún símbolo de formato: están prohibidos el carácter #, el asterisco "
+            + "(*) simple o doble, las comillas invertidas, las viñetas con guion o asterisco, las tablas y los emojis. "
+            + "La respuesta debe ser únicamente texto plano en párrafos cortos. Si es necesario enumerar, hágalo "
+            + "con palabras ('Primero,... Segundo,...') o con números seguidos de punto, sin viñetas. Evite "
+            + "expresiones coloquiales, exclamaciones, jerga y frases como 'te recomiendo', 'la clave es' o 'ojo'.";
 
     /** Prompt del clasificador ligero que decide si la pregunta entra en el alcance. */
     static final String CLASIFICADOR_ALCANCE =
@@ -244,6 +251,7 @@ public class ChatbotService {
             aiInicial = consultarProveedor(openaiMessages, modeloAUsar);
         }
         final AiResult aiFinal = aiInicial;
+        final String respuestaTexto = limpiarFormato(aiFinal.texto());
         int latencia = (int) Math.min(Duration.between(inicio, Instant.now()).toMillis(), Integer.MAX_VALUE);
         ChatbotMensaje respuesta = rls.executeAs(usuarioId, () -> {
             ChatbotMensaje m = new ChatbotMensaje();
@@ -251,7 +259,7 @@ public class ChatbotService {
             m.setAutorId(null);
             m.setRol(RolChatbot.asistente);
             m.setOrigen(OrigenMensaje.asistente);
-            m.setContenido(aiFinal.texto());
+            m.setContenido(respuestaTexto);
             m.setTokensEntrada(aiFinal.tokensEntrada());
             m.setTokensSalida(aiFinal.tokensSalida());
             m.setLatenciaMs(latencia);
@@ -459,6 +467,24 @@ public class ChatbotService {
         if (s == null) return "";
         String trim = s.replaceAll("\\s+", " ").trim();
         return trim.length() > max ? trim.substring(0, max) + "…" : trim;
+    }
+
+    /**
+     * Red de seguridad: quita restos de Markdown por si el proveedor los genera
+     * pese a la instrucción de texto plano. No toma decisiones sobre el fondo.
+     */
+    static String limpiarFormato(String texto) {
+        if (texto == null || texto.isBlank()) return "";
+        String limpio = texto
+                .replace("**", "")
+                .replace("__", "")
+                .replace("`", "")
+                .replaceAll("(?m)^\\s{0,3}#{1,6}\\s*", "")
+                .replaceAll("(?m)^\\s*[-*]\\s+", "")
+                .replaceAll("(?m)^\\s*>\\s?", "")
+                .replaceAll("(?<!\\p{Alnum})\\*(?!\\p{Alnum})", "")
+                .replaceAll("\\n{3,}", "\n\n");
+        return limpio.trim();
     }
 
     /** Descarga bytes de una URL firmada (signed URL del bucket privado 'chat'). */
