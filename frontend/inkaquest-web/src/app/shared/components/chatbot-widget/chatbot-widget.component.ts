@@ -459,7 +459,13 @@ export class ChatbotWidgetComponent {
         { id: `a${++nextId}`, rol: 'asistente', contenido: texto, hora: new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) },
       ]);
     } catch (e) {
-      const mensaje = e instanceof Error && e.message ? e.message : 'No se pudo procesar tu pregunta. Inténtalo de nuevo en un momento.';
+      const crudo = e instanceof Error && e.message ? e.message : '';
+      console.error('[InkaQuest] Error del asistente:', crudo);
+      // Los detalles técnicos del proveedor no se muestran al estudiante.
+      const tecnico = /proveedor|ia no|servicio|503|504|timeout/i.test(crudo);
+      const mensaje = tecnico || !crudo
+        ? 'En este momento no fue posible procesar la consulta. Se recomienda intentar nuevamente en unos instantes.'
+        : crudo;
       this.error.set(mensaje);
       this.mensajes.update((m) => [
         ...m,

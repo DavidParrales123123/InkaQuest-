@@ -113,6 +113,33 @@ public class ChatbotService {
             + "con palabras ('Primero,... Segundo,...') o con números seguidos de punto, sin viñetas. Evite "
             + "expresiones coloquiales, exclamaciones, jerga y frases como 'te recomiendo', 'la clave es' o 'ojo'.";
 
+    /** Consultas de la plataforma que se responden sin llamar al proveedor de IA. */
+    private static final List<RespuestaFrecuente> RESPUESTAS_FRECUENTES = List.of(
+            new RespuestaFrecuente(
+                    Pattern.compile("(?i)(c[oó]mo|donde|d[oó]nde|quiero|necesito).*(registr|inscri|matricul|unir).*(curso|cursos)"
+                            + "|(registr|inscri|matricul|unir).*(curso|cursos)"),
+                    "Para registrarse en un curso, ingrese a su panel de estudiante y acceda a la sección Mis cursos. "
+                            + "Desde allí puede explorar el catálogo y seleccionar el curso de su interés. En la página de "
+                            + "detalle, pulse la opción de inscripción: si el curso es gratuito, el acceso queda habilitado "
+                            + "de inmediato; si tiene un precio, debe completar el proceso de pago. Una vez inscrito, el "
+                            + "curso aparece en su lista y puede entrar al aula para revisar las lecciones y actividades. "
+                            + "Si no encuentra la opción, verifique haber iniciado sesión con su cuenta de estudiante."),
+            new RespuestaFrecuente(
+                    Pattern.compile("(?i)(c[oó]mo|donde|d[oó]nde).*(nota|notas|calificaci[oó]n|calificaciones)"
+                            + "|(ver|consultar).*(notas|calificaciones)"),
+                    "Para consultar sus calificaciones, ingrese a su panel de estudiante y abra la sección Calificaciones. "
+                            + "Allí se muestran las notas registradas por el docente en las tareas, junto con el estado de "
+                            + "cada entrega. El resultado de las evaluaciones se encuentra en la sección Evaluaciones, "
+                            + "donde puede revisar el puntaje obtenido en cada intento."),
+            new RespuestaFrecuente(
+                    Pattern.compile("(?i)(c[oó]mo|donde|d[oó]nde).*(entregar|subir|enviar).*(tarea|tareas)"
+                            + "|(entregar|subir|enviar).*(tarea|tareas)"),
+                    "Para entregar una tarea, ingrese a su panel de estudiante, abra la sección Tareas y seleccione la "
+                            + "tarea pendiente. En la página de detalle puede escribir la descripción de su trabajo y "
+                            + "adjuntar los archivos solicitados antes de enviarla. Se recomienda revisar la fecha límite, "
+                            + "porque una vez vencida la plataforma no permite nuevas entregas.")
+    );
+
     /** Prompt del clasificador ligero que decide si la pregunta entra en el alcance. */
     static final String CLASIFICADOR_ALCANCE =
             "Clasificador de alcance del asistente de InkaQuest. Responde SOLO con JSON: {\"dentro\":true} o "
@@ -261,9 +288,12 @@ public class ChatbotService {
         AiResult aiInicial;
         // Filtro de alcance: si la pregunta no es de la plataforma ni de los cursos,
         // se guarda el mensaje de rechazo y no se gasta una llamada al modelo principal.
-        boolean fueraDeAlcance = !estaDentroDeAlcance(contenido, analisis.documentos());
+        String respuestaFrecuente = respuestaFrecuente(contenido);
+        boolean fueraDeAlcance = respuestaFrecuente == null && !estaDentroDeAlcance(contenido, analisis.documentos());
         try {
-            if (fueraDeAlcance) {
+            if (respuestaFrecuente != null) {
+                aiInicial = new AiResult(respuestaFrecuente, 0, 0);
+            } else if (fueraDeAlcance) {
                 aiInicial = new AiResult(MENSAJE_FUERA_DE_ALCANCE, 0, 0);
             } else if (this.searchEnabled && !tieneImagen) {
                 if (this.tavilyApiKey != null && !this.tavilyApiKey.isBlank()) {
@@ -635,6 +665,16 @@ public class ChatbotService {
         if (c.getEstado() == EstadoConversacion.cerrada) throw new BadRequestException("La conversacion esta cerrada.");
         return c;
     }
+
+    private static String respuestaFrecuente(String contenido) {
+        if (contenido == null || contenido.isBlank()) return null;
+        for (RespuestaFrecuente rf : RESPUESTAS_FRECUENTES) {
+            if (rf.patron().matcher(contenido).find()) return rf.respuesta();
+        }
+        return null;
+    }
+
+    private record RespuestaFrecuente(Pattern patron, String respuesta) { }
 
     private record AiResult(String texto, int tokensEntrada, int tokensSalida) { }
 
