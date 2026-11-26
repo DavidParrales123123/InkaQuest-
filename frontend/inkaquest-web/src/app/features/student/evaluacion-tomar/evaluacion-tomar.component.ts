@@ -48,6 +48,8 @@ interface ResultadoIntento {
   puntaje: string | number;
   puntajeMaximo: string | number;
   porcentaje: string | number;
+  /** Nota sobre 20 devuelta por el backend. */
+  nota: string | number;
   aprobado: boolean;
   tiempoInicio: string;
   tiempoFin: string;
@@ -187,8 +189,8 @@ type Fase = 'cargando' | 'intro' | 'jugando' | 'enviando' | 'resultado';
           <div class="card card-body space-y-4">
             <div class="text-center">
               <p class="text-sm font-semibold uppercase tracking-widest text-marine-400">Evaluación enviada</p>
-              <p class="mt-1 text-4xl font-extrabold text-marine-800">{{ r.puntaje }} <span class="text-xl text-marine-500">/ {{ r.puntajeMaximo }}</span></p>
-              <p class="mt-1 text-sm font-medium text-marine-500">{{ porcentajeTexto(r.porcentaje) }}%</p>
+              <p class="mt-1 text-4xl font-extrabold text-marine-800">{{ notaTexto(r.nota) }} <span class="text-xl text-marine-500">/ 20</span></p>
+              <p class="mt-1 text-sm font-medium text-marine-500">Puntaje: {{ r.puntaje }} / {{ r.puntajeMaximo }}</p>
               <div class="mt-3 flex justify-center"><app-status-badge [estado]="r.aprobado ? 'aprobado' : 'reprobado'" /></div>
               <p class="mt-2 text-xs text-marine-400">{{ r.aprobado ? 'Has aprobado la evaluación. ¡Felicitaciones!' : 'No aprobaste esta vez. Revisa las preguntas y vuelve cuando tu docente lo permita.' }}</p>
             </div>
@@ -349,9 +351,10 @@ export class EvaluacionTomarComponent implements OnInit, OnDestroy {
     }
   }
 
-  protected porcentajeTexto(p: string | number): string {
+  /** Formatea la nota sobre 20 con dos decimales. */
+  protected notaTexto(p: string | number | null | undefined): string {
     const n = Number(p);
-    return Number.isFinite(n) ? n.toFixed(1).replace(/\.0$/, '') : String(p);
+    return Number.isFinite(n) ? n.toFixed(2) : '—';
   }
 
   private evaluationServiceBase(): string {

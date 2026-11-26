@@ -262,7 +262,8 @@ export class SubmissionsComponent implements OnInit {
       if (raw === '' || Number.isNaN(n)) {
         delete next[id];
       } else {
-        next[id] = Math.max(0, Math.min(n, 100));
+        const maximo = this.filas().find((f) => f.id === id)?.notaMaxima ?? 20;
+        next[id] = Math.max(0, Math.min(n, maximo));
       }
       return next;
     });

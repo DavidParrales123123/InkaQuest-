@@ -252,14 +252,19 @@ public class EvaluacionesService {
                     .divide(puntajeMaximo, 4, RoundingMode.HALF_UP)
                     .multiply(BigDecimal.valueOf(100))
                     .setScale(2, RoundingMode.HALF_UP);
+            // Escala oficial de calificación: 0 a 20.
+            BigDecimal nota = puntajeTotal
+                    .divide(puntajeMaximo, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(20))
+                    .setScale(2, RoundingMode.HALF_UP);
 
-            boolean aprobado = porcentaje.compareTo(evaluacion.getPorcentajeAprobacion()) >= 0;
+            boolean aprobado = nota.compareTo(evaluacion.getPorcentajeAprobacion()) >= 0;
             intento.setAprobado(aprobado);
 
             intentoRepository.save(intento);
 
-            log.info("Intento {} finalizado con puntaje {} de {} ({}%)",
-                    intentoId, puntajeTotal, puntajeMaximo, porcentaje);
+            log.info("Intento {} finalizado con puntaje {} de {} (nota {}/20)",
+                    intentoId, puntajeTotal, puntajeMaximo, nota);
 
             return new ResultadoIntentoResponse(
                     intento.getId(),
@@ -267,6 +272,7 @@ public class EvaluacionesService {
                     puntajeTotal,
                     puntajeMaximo,
                     porcentaje,
+                    nota,
                     aprobado,
                     intento.getTiempoInicio(),
                     intento.getTiempoFin(),
@@ -307,6 +313,10 @@ public class EvaluacionesService {
                     .divide(puntajeMaximoObt, 4, RoundingMode.HALF_UP)
                     .multiply(BigDecimal.valueOf(100))
                     .setScale(2, RoundingMode.HALF_UP);
+            BigDecimal nota = intento.getPuntaje()
+                    .divide(puntajeMaximoObt, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(20))
+                    .setScale(2, RoundingMode.HALF_UP);
             
             return new ResultadoIntentoResponse(
                     intento.getId(),
@@ -314,6 +324,7 @@ public class EvaluacionesService {
                     intento.getPuntaje(),
                     intento.getPuntajeMaximo(),
                     porcentaje,
+                    nota,
                     intento.getAprobado() != null ? intento.getAprobado() : false,
                     intento.getTiempoInicio(),
                     intento.getTiempoFin(),

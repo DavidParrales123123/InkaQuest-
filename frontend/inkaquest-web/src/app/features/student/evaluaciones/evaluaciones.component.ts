@@ -118,9 +118,11 @@ export class EvaluationsComponent implements OnInit {
             const entregados = intentos.filter((i) => i.estado === 'entregado' || i.estado === 'expirado');
             const ultimo = entregados[0] ?? intentos[0];
             const puntosMax = preguntas.reduce((acc: number, p: any) => acc + Number(p?.puntos ?? 0), 0);
-            const resultadoTexto = ultimo?.puntaje != null
-              ? `${ultimo.puntaje}/${ultimo.puntaje_maximo ?? puntosMax ?? e.nota_maxima} pts`
-              : 'Sin puntaje registrado aún.';
+            const maxPuntos = Number(ultimo?.puntaje_maximo ?? puntosMax ?? e.nota_maxima ?? 0);
+            const nota = maxPuntos > 0 && ultimo?.puntaje != null
+              ? (Math.round((Number(ultimo.puntaje) / maxPuntos) * 20 * 100) / 100).toFixed(2)
+              : null;
+            const resultadoTexto = nota !== null ? `${nota}/20` : 'Sin nota registrada aún.';
             const estadoCard: EstadoEvaluacion = intentosHechos >= intentosPermitidos ? 'rendida' : 'pendiente';
             const ventana = this.estadoVentana(e);
             return { ...e, intentosHechos, intentosPermitidos, estadoCard, ventana, ultimo, resultadoTexto, puntosMax };

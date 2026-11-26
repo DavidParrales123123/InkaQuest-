@@ -157,6 +157,7 @@ export class EvaluationService {
     instrucciones?: string | null;
     tiempoLimiteMinutos?: number | null;
     intentosPermitidos?: number;
+    /** Nota mínima sobre 20 para aprobar (antes porcentaje 0-100). */
     porcentajeAprobacion?: number;
     xpOtorgado?: number;
     publicado?: boolean;
@@ -196,7 +197,7 @@ export class EvaluationService {
         titulo,
         duracion_minutos: tiempo,
         intentos_permitidos: intentos,
-        porcentaje_aprobacion: input.porcentajeAprobacion ?? 60,
+        porcentaje_aprobacion: input.porcentajeAprobacion ?? 12,
         mostrar_resultado_inmediato: true,
         fecha_inicio: input.fechaInicio || null,
         fecha_limite_acceso: input.fechaLimiteAcceso || null,
@@ -440,7 +441,10 @@ export interface ResultadoIntentoResponse {
   numero: number;
   puntaje: number;
   puntajeMaximo: number;
+  /** Compatibilidad: porcentaje interno 0-100. La UI usa `nota` (0-20). */
   porcentaje: number;
+  /** Nota final sobre 20. */
+  nota: number;
   aprobado: boolean;
   tiempoInicio: string;
   tiempoFin: string;

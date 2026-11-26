@@ -1,5 +1,6 @@
 package com.inkaquest.modules.evaluaciones.dto;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
@@ -25,5 +26,6 @@ public record TareaCrearRequest(
         
         @NotNull(message = "La nota máxima es obligatoria")
         @Min(value = 0, message = "La nota máxima debe ser mayor a 0")
+        @Max(value = 20, message = "La nota máxima no puede superar 20")
         BigDecimal notaMaxima
 ) {}

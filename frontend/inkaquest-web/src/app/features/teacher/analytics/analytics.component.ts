@@ -33,7 +33,7 @@ interface BarraCurso {
         <app-stat-card etiqueta="Cursos" [valor]="cursos()" [icono]="true" tono="brand"><span icono><svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span></app-stat-card>
         <app-stat-card etiqueta="Estudiantes" [valor]="estudiantes()" [icono]="true" tono="gold"><span icono><svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span></app-stat-card>
         <app-stat-card etiqueta="Entregas pendientes" [valor]="pendientes()" [icono]="true" tono="danger"><span icono><svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span></app-stat-card>
-        <app-stat-card etiqueta="Promedio general" [valor]="promedio() + '%'" [icono]="true" tono="info"><span icono><svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-6 6"/></svg></span></app-stat-card>
+        <app-stat-card etiqueta="Promedio general" [valor]="promedio() + ' / 20'" [icono]="true" tono="info"><span icono><svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-6 6"/></svg></span></app-stat-card>
       </div>
 
       <app-data-panel [cargando]="cargando()" [error]="error()" [vacio]="barras().length === 0" tituloVacio="Aún no tienes entregas" descripcionVacia="Cuando tus estudiantes entreguen, verás las métricas por curso aquí." (alReintentar)="cargar()">
@@ -64,7 +64,7 @@ interface BarraCurso {
               <p class="flex items-center justify-between border-b border-surface-100 py-2"><span class="text-marine-600">Total entregas</span><strong class="text-marine-800">{{ totalEntregas() }}</strong></p>
               <p class="flex items-center justify-between border-b border-surface-100 py-2"><span class="text-marine-600">Por calificar</span><strong class="text-warning-500">{{ pendientes() }}</strong></p>
               <p class="flex items-center justify-between border-b border-surface-100 py-2"><span class="text-marine-600">Resueltas</span><strong class="text-success-600">{{ resueltas() }}</strong></p>
-              <p class="flex items-center justify-between py-2"><span class="text-marine-600">Promedio general</span><strong class="text-marine-800">{{ promedio() }}%</strong></p>
+              <p class="flex items-center justify-between py-2"><span class="text-marine-600">Promedio general</span><strong class="text-marine-800">{{ promedio() }} / 20</strong></p>
             </div>
           </div>
         </div>
@@ -128,9 +128,10 @@ export class AnalyticsComponent implements OnInit {
       const total = barras.reduce((s, b) => s + b.total, 0);
       const pend = barras.reduce((s, b) => s + b.pendientes, 0);
       const notas = calificaciones
-        .map((c) => (c.nota_maxima ? (c.nota / c.nota_maxima) * 100 : null))
+        .map((c) => (c.nota_maxima ? (c.nota / c.nota_maxima) * 20 : null))
         .filter((v): v is number => v !== null && Number.isFinite(v));
-      const prom = notas.length === 0 ? 0 : Math.round(notas.reduce((a, b) => a + b, 0) / notas.length);
+      const prom = notas.length === 0 ? 0
+        : Math.round((notas.reduce((a, b) => a + b, 0) / notas.length) * 100) / 100;
 
       this.cursos.set(cursos.length);
       this.estudiantes.set(estudiantes.length);

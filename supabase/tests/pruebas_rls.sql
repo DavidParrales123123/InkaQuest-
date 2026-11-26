@@ -340,7 +340,7 @@ begin
     select id into v_actividad from public.actividad
      where leccion_id = v_leccion and titulo = 'Actividad de prueba' order by creado_en desc limit 1;
 
-    insert into public.tarea (actividad_id, nota_maxima) values (v_actividad, 100) on conflict do nothing;
+    insert into public.tarea (actividad_id, nota_maxima) values (v_actividad, 20) on conflict do nothing;
     select id into v_tarea from public.tarea where actividad_id = v_actividad;
     insert into public.evaluacion (actividad_id, titulo) values (v_actividad, 'Evaluacion de prueba') on conflict do nothing;
     select id into v_evaluacion from public.evaluacion where actividad_id = v_actividad;
@@ -351,10 +351,10 @@ begin
     values (v_pregunta, 1, 'Correcta', true), (v_pregunta, 2, 'Incorrecta', false)
     on conflict (pregunta_id, orden) do nothing;
 
-    insert into public.entrega (tarea_id, estudiante_id, estado, nota) values (v_tarea, v_estudiante, 'revisada', 80);
+    insert into public.entrega (tarea_id, estudiante_id, estado, nota) values (v_tarea, v_estudiante, 'revisada', 16);
     select id into v_entrega from public.entrega where tarea_id = v_tarea and estudiante_id = v_estudiante;
     insert into public.calificacion (entrega_id, estudiante_id, docente_id, nota, nota_maxima)
-    values (v_entrega, v_estudiante, v_docente, 80, 100);
+    values (v_entrega, v_estudiante, v_docente, 16, 20);
     select id into v_calif from public.calificacion where entrega_id = v_entrega;
 
     -- El estudiante intenta alterar la nota.
@@ -363,10 +363,10 @@ begin
     perform set_config('app.current_user_id', v_estudiante::text, false);
     set role authenticated;
 
-    update public.calificacion set nota = 100 where id = v_calif;
+    update public.calificacion set nota = 20 where id = v_calif;
     perform public._registrar_prueba(
         'El UPDATE del estudiante no altera filas (RLS filtra)', 'sin_cambio',
-        case when public._calif_no_cambio(v_calif, 80) then 'sin_cambio' else 'alterada' end);
+        case when public._calif_no_cambio(v_calif, 16) then 'sin_cambio' else 'alterada' end);
 
     -- El DELETE se captura: puede ser rechazado por permiso o filtrado por RLS.
     begin
@@ -376,13 +376,13 @@ begin
         v_error := 'denegado';
     end;
     perform public._registrar_prueba('El DELETE del estudiante no borra la calificacion', 'sin_borrada',
-        case when public._calif_no_cambio(v_calif, 80) then 'sin_borrada' else 'borrada' end);
+        case when public._calif_no_cambio(v_calif, 16) then 'sin_borrada' else 'borrada' end);
     perform public._registrar_prueba('El DELETE del estudiante fue bloqueado', 'denegado', v_error);
 
     reset role;
 
     select nota into v_nota from public.calificacion where id = v_calif;
-    perform public._registrar_prueba('La nota permanece intacta', '80.00', v_nota::text);
+    perform public._registrar_prueba('La nota permanece intacta', '16.00', v_nota::text);
     perform public._registrar_prueba('La calificacion sigue existiendo', '1',
         (select count(*) from public.calificacion where id = v_calif)::text);
 end $$;
@@ -660,11 +660,11 @@ begin
     set role authenticated;
 
     -- El docente esta asignado al curso: la RLS le permite calificar.
-    update public.calificacion set nota = 95 where id = v_calif;
+    update public.calificacion set nota = 19 where id = v_calif;
 
     reset role;
     select nota into v_nota from public.calificacion where id = v_calif;
-    perform public._registrar_prueba('El docente del curso SI puede calificar', '95.00', v_nota::text);
+    perform public._registrar_prueba('El docente del curso SI puede calificar', '19.00', v_nota::text);
 end $$;
 
 

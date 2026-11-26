@@ -61,7 +61,7 @@ export class ExcelExportService {
     const azul = 'FF0F5D57';
     const gris = 'FFF2F6F5';
 
-    hoja.mergeCells('A1:I1');
+    hoja.mergeCells('A1:G1');
     const titulo = hoja.getCell('A1');
     titulo.value = `InkaQuest — Calificaciones de ${datos.tipo.toLowerCase()}`;
     titulo.font = { bold: true, size: 15, color: { argb: 'FFFFFFFF' } };
@@ -79,11 +79,11 @@ export class ExcelExportService {
     meta.forEach(([k, v], i) => {
       hoja.getCell(`A${i + 2}`).value = k;
       hoja.getCell(`A${i + 2}`).font = { bold: true, color: { argb: 'FF0F5D57' } };
-      hoja.mergeCells(`B${i + 2}:I${i + 2}`);
+      hoja.mergeCells(`B${i + 2}:G${i + 2}`);
       hoja.getCell(`B${i + 2}`).value = v;
     });
 
-    const cabecera = ['N°', 'Estudiante', 'Correo', 'Estado', 'Nota', 'Nota máxima', 'Porcentaje', 'Fecha', 'Observación'];
+    const cabecera = ['N°', 'Estudiante', 'Correo', 'Estado', 'Nota / 20', 'Fecha', 'Observación'];
     const filaCabecera = hoja.getRow(7);
     filaCabecera.values = cabecera;
     filaCabecera.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -92,22 +92,18 @@ export class ExcelExportService {
     filaCabecera.height = 22;
 
     datos.filas.forEach((f, idx) => {
-      const maximo = Number(f.notaMaxima ?? 0);
       const nota = f.nota === null ? null : Number(f.nota);
-      const porcentaje = nota !== null && maximo > 0 ? Math.round((nota / maximo) * 100) : null;
       const fila = hoja.addRow([
         idx + 1,
         f.nombre,
         f.email,
         f.estado.replace('_', ' '),
         nota,
-        maximo || null,
-        porcentaje === null ? null : porcentaje / 100,
         f.fecha ? new Date(f.fecha) : null,
         OBSERVACION[f.estado] ?? '',
       ]);
-      fila.getCell(7).numFmt = '0%';
-      fila.getCell(8).numFmt = 'dd/mm/yyyy hh:mm';
+      fila.getCell(5).numFmt = '0.00';
+      fila.getCell(6).numFmt = 'dd/mm/yyyy hh:mm';
       fila.alignment = { vertical: 'middle', wrapText: true };
       if (idx % 2 === 1) {
         fila.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: gris } };
@@ -121,9 +117,9 @@ export class ExcelExportService {
 
     hoja.columns = [
       { width: 6 }, { width: 34 }, { width: 36 }, { width: 16 },
-      { width: 10 }, { width: 13 }, { width: 12 }, { width: 20 }, { width: 42 },
+      { width: 12 }, { width: 20 }, { width: 42 },
     ];
-    hoja.autoFilter = { from: 'A7', to: `I${Math.max(7, 7 + datos.filas.length)}` };
+    hoja.autoFilter = { from: 'A7', to: `G${Math.max(7, 7 + datos.filas.length)}` };
   }
 
   private sanitizar(valor: string): string {

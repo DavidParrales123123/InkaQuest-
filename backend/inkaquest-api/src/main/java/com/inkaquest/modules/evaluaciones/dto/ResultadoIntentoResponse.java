@@ -13,7 +13,10 @@ public record ResultadoIntentoResponse(
         String estado,
         BigDecimal puntaje,
         BigDecimal puntajeMaximo,
+        /** Porcentaje interno conservado por compatibilidad; la UI usa nota sobre 20. */
         BigDecimal porcentaje,
+        /** Nota final en escala 0 a 20. */
+        BigDecimal nota,
         boolean aprobado,
         Instant tiempoInicio,
         Instant tiempoFin,

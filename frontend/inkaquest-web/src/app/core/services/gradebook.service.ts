@@ -119,8 +119,12 @@ export class GradebookService {
         const estado = String(propio?.estado ?? '');
         if (estado === 'entregado' || estado === 'expirado') {
           base.estado = 'entregado';
-          base.nota = propio.puntaje ?? null;
-          base.notaMaxima = propio.puntaje_maximo ?? null;
+          // Los puntos brutos se convierten a la escala oficial 0-20.
+          const maximo = Number(propio.puntaje_maximo ?? 0);
+          base.nota = maximo > 0
+            ? Math.round((Number(propio.puntaje ?? 0) / maximo) * 20 * 100) / 100
+            : null;
+          base.notaMaxima = 20;
           base.aprobado = propio.aprobado ?? null;
         } else if (estado === 'iniciado' || estado === 'en_curso') {
           base.estado = 'en_curso';

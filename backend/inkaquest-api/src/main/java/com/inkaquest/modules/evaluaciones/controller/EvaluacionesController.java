@@ -107,14 +107,14 @@ public class EvaluacionesController {
      * <ul>
      *   <li>Califica automáticamente preguntas de opción múltiple</li>
      *   <li>Marca para revisión manual las preguntas abiertas</li>
-     *   <li>Calcula puntaje total y porcentaje</li>
-     *   <li>Determina si aprobó según porcentaje mínimo</li>
+     *   <li>Calcula puntaje total y nota final en escala 0 a 20</li>
+     *   <li>Determina si aprobó según la nota mínima configurada (0-20)</li>
      * </ul>
      * 
      * @param id ID del intento
      * @param request Respuestas del estudiante
      * @param user Usuario autenticado
-     * @return Resultado con puntaje y respuestas correctas (si aplica)
+     * @return Resultado con nota sobre 20 y respuestas correctas (si aplica)
      */
     @PostMapping("/intentos/{id}/responder")
     @PreAuthorize("hasAnyRole('estudiante', 'docente', 'admin')")

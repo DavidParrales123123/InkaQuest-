@@ -125,8 +125,8 @@ interface GrupoEvaluacion { id: string; titulo: string; items: EvaluacionGestion
                   <input id="intentos" type="number" min="1" max="20" class="input" formControlName="intentos" />
                 </div>
                 <div>
-                  <label class="label" for="aprob">% para aprobar</label>
-                  <input id="aprob" type="number" min="0" max="100" class="input" formControlName="aprobacion" />
+                  <label class="label" for="aprob">Nota mín. (0–20)</label>
+                  <input id="aprob" type="number" min="0" max="20" step="0.5" class="input" formControlName="aprobacion" />
                 </div>
                 <div class="flex items-end">
                   <label class="flex h-full cursor-pointer select-none items-center gap-2 rounded-lg border border-surface-200 px-3 py-2 text-sm font-medium text-marine-700">
@@ -208,7 +208,7 @@ interface GrupoEvaluacion { id: string; titulo: string; items: EvaluacionGestion
                               <span class="rounded-full bg-surface-100 px-2 py-0.5 text-[0.65rem] font-bold text-marine-600">BORRADOR</span>
                             }
                           </div>
-                          <p class="mt-1 text-xs text-marine-500">{{ e.intentos_permitidos }} intento(s) · {{ e.porcentaje_aprobacion }}% para aprobar · {{ e.duracion_minutos ?? 'sin' }} min · {{ e.nota_maxima }} pts máx.</p>
+                          <p class="mt-1 text-xs text-marine-500">{{ e.intentos_permitidos }} intento(s) · {{ e.porcentaje_aprobacion }}/20 para aprobar · {{ e.duracion_minutos ?? 'sin' }} min · nota máx. {{ e.nota_maxima }}</p>
                           <p class="mt-1 text-xs text-marine-500">
                             Acceso:
                             @if (e.fecha_inicio) { desde {{ e.fecha_inicio | date:'short' }} } @else { sin inicio }
@@ -276,7 +276,7 @@ interface GrupoEvaluacion { id: string; titulo: string; items: EvaluacionGestion
                                   <div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
                                     <div><span class="block text-marine-400">Intento</span><span class="font-semibold text-marine-700">{{ r.numero }}</span></div>
                                     <div><span class="block text-marine-400">Estado</span><span class="font-semibold text-marine-700">{{ r.estado.replace('_',' ') }}</span></div>
-                                    <div><span class="block text-marine-400">Puntaje</span><span class="font-semibold text-marine-700">{{ r.puntaje ?? 0 }} / {{ r.puntaje_maximo ?? 0 }} ({{ porcentajeIntento(r) }}%)</span></div>
+                                    <div><span class="block text-marine-400">Puntaje</span><span class="font-semibold text-marine-700">{{ r.puntaje ?? 0 }} / {{ r.puntaje_maximo ?? 0 }} · nota {{ notaIntento(r) }}/20</span></div>
                                     <div><span class="block text-marine-400">Finalizado</span><span class="font-semibold text-marine-700">{{ r.tiempo_fin ? (r.tiempo_fin | date:'short') : '—' }}</span></div>
                                   </div>
                                   <button type="button" class="btn btn-outline btn-sm mt-3 w-full" (click)="toggleDetalle(r.id)">{{ detalleAbiertoId() === r.id ? 'Ocultar detalle' : 'Ver detalle' }}</button>
@@ -308,7 +308,7 @@ interface GrupoEvaluacion { id: string; titulo: string; items: EvaluacionGestion
                                 <thead>
                                   <tr>
                                     <th>Estudiante</th><th>Intento</th><th>Estado</th>
-                                    <th>Puntaje</th><th>%</th><th>Resultado</th><th>Finalizado</th><th></th>
+                                    <th>Puntaje</th><th>Nota / 20</th><th>Resultado</th><th>Finalizado</th><th></th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -321,7 +321,7 @@ interface GrupoEvaluacion { id: string; titulo: string; items: EvaluacionGestion
                                       <td>{{ r.numero }}</td>
                                       <td>{{ r.estado.replace('_',' ') }}</td>
                                       <td>{{ r.puntaje ?? 0 }} / {{ r.puntaje_maximo ?? 0 }}</td>
-                                      <td>{{ porcentajeIntento(r) }}%</td>
+                                      <td>{{ notaIntento(r) }}</td>
                                       <td>
                                         <span class="badge" [ngClass]="r.aprobado ? 'badge-success' : 'badge-danger'">{{ r.aprobado ? 'Aprobado' : (r.aprobado === null ? 'Pendiente' : 'Desaprobado') }}</span>
                                       </td>
@@ -606,7 +606,7 @@ export class EvaluationsComponent implements OnInit {
     instrucciones: [''],
     tiempoMin: [0, [Validators.min(0), Validators.max(600)]],
     intentos: [1, [Validators.required, Validators.min(1), Validators.max(20)]],
-    aprobacion: [60, [Validators.required, Validators.min(0), Validators.max(100)]],
+    aprobacion: [12, [Validators.required, Validators.min(0), Validators.max(20)]],
     xp: [50, [Validators.required, Validators.min(0)]],
     publicado: [true],
     fechaInicio: [''],
@@ -728,7 +728,7 @@ export class EvaluationsComponent implements OnInit {
       });
       this.evaluaciones.update((arr) => [creada, ...arr]);
       await this.abrirEditorDePreguntas(creada);
-      this.formCrear.reset({ tipo: v.tipo, tiempoMin: 0, intentos: 1, aprobacion: 60, xp: v.xp, publicado: true, instrucciones: '', titulo: '', fechaInicio: '', fechaLimiteAcceso: '' });
+      this.formCrear.reset({ tipo: v.tipo, tiempoMin: 0, intentos: 1, aprobacion: 12, xp: v.xp, publicado: true, instrucciones: '', titulo: '', fechaInicio: '', fechaLimiteAcceso: '' });
       this.mensaje.set({ ok: true, texto: 'Evaluación creada. Ahora agrega sus preguntas.' });
     } catch (e) {
       this.mensaje.set({ ok: false, texto: e instanceof Error ? e.message : 'No se pudo crear la evaluación.' });
@@ -800,10 +800,11 @@ export class EvaluationsComponent implements OnInit {
     }
   }
 
-  protected porcentajeIntento(r: ResultadoDocente): string {
+  /** Nota del intento en la escala oficial 0 a 20. */
+  protected notaIntento(r: ResultadoDocente): string {
     const maximo = Number(r.puntaje_maximo ?? 0);
     if (maximo <= 0) return '—';
-    return String(Math.round((Number(r.puntaje ?? 0) / maximo) * 100));
+    return (Math.round((Number(r.puntaje ?? 0) / maximo) * 20 * 100) / 100).toFixed(2);
   }
 
   protected async toggleCalificar(e: Evaluacion & { actividad: Actividad }): Promise<void> {
