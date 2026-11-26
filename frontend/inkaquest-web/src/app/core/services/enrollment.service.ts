@@ -7,6 +7,7 @@ import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
+import { PaymentService } from './payment.service';
 
 /**
  * Servicio de matrículas y progreso del estudiante.
@@ -23,6 +24,7 @@ export class EnrollmentService {
   private readonly supabase = inject(SupabaseService);
   private readonly client = this.supabase.client;
   private readonly auth = inject(AuthService);
+  private readonly pagos = inject(PaymentService);
   private readonly baseUrl = `${environment.apiUrl}/matriculas`;
 
   // === MIS MATRÍCULAS ===
@@ -169,6 +171,22 @@ export class EnrollmentService {
       }
     } catch {
       // Si la lectura de matrículas falla, seguimos intentando la solicitud.
+    }
+
+    // Evitar pedidos duplicados: si ya hay un pago pendiente de este curso,
+    // el estudiante debe completarlo desde la sección de pagos.
+    try {
+      const pedidos = await this.pagos.misPedidos();
+      const pendiente = pedidos.find((p) =>
+        ['pendiente', 'iniciado'].includes(p.estado)
+        && p.items?.some((i) => (curso?.id && i.cursoId === curso.id)
+          || (curso?.slug && i.cursoTitulo?.toLowerCase().includes(curso.slug.replace(/-/g, ' ')))),
+      );
+      if (pendiente) {
+        return { ok: true, mensaje: 'Ya tienes un pago pendiente de este curso. Completa el pago en la sección de Pagos.' };
+      }
+    } catch {
+      // Si no se pueden consultar los pedidos, continuamos con el flujo normal.
     }
 
     try {

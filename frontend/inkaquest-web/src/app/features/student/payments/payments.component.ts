@@ -6,12 +6,21 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
-import { PaymentService, ConfiguracionPago, TarjetaGuardada } from '../../../core/services/payment.service';
+import { PaymentService, ConfiguracionPago, TarjetaGuardada, PedidoResponse } from '../../../core/services/payment.service';
 import { CulqiService } from '../../../core/services/culqi.service';
 import { Curso, Matricula, Pedido, Reembolso, Transaccion } from '../../../core/models/domain.models';
 import { DataPanelComponent } from '../../../shared/components/data-panel/data-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+
+interface PagoPendiente {
+  id: string;
+  titulo: string;
+  total: number;
+  moneda: string;
+  pedidoNumero: string | null;
+  cursoSlug: string | null;
+}
 
 @Component({
   selector: 'app-student-payments',
@@ -43,15 +52,15 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
                 role="status">{{ mp.texto }}</p>
             }
 
-            @if (pendientes().length === 0) {
-              <p class="text-sm text-marine-500">No tienes matrículas pendientes de pago.</p>
+            @if (pagables().length === 0) {
+              <p class="text-sm text-marine-500">No tienes pagos pendientes. Inscríbete a un curso de pago para verlo aquí.</p>
             } @else {
               <div>
-                <label class="label" for="matricula-pago">Matrícula a pagar</label>
+                <label class="label" for="matricula-pago">Pago pendiente</label>
                 <select id="matricula-pago" class="select" [value]="matriculaSel()"
                   (change)="matriculaSel.set($any($event.target).value)">
-                  @for (m of pendientes(); track m.id) {
-                    <option [value]="m.id">{{ cursoDe(m.curso_id)?.titulo || 'Curso' }} — {{ moneda(cursoDe(m.curso_id)?.precio ?? m.precio_pagado, cursoDe(m.curso_id)?.moneda || m.moneda) }}</option>
+                  @for (p of pagables(); track p.id) {
+                    <option [value]="p.id">{{ p.titulo }} — {{ moneda(p.total, p.moneda) }}</option>
                   }
                 </select>
               </div>
@@ -239,7 +248,37 @@ export class PaymentsComponent implements OnInit {
   // === CHECKOUT CULQI 3DS ===
   protected readonly configPago = signal<ConfiguracionPago | null>(null);
   protected readonly tarjetas = signal<TarjetaGuardada[]>([]);
-  protected readonly pendientes = computed(() => this.matriculas().filter((m) => m.estado === 'pendiente_pago'));
+  protected readonly pedidosApi = signal<PedidoResponse[]>([]);
+
+  /** Pedidos pendientes (lo que crea la inscripción) y matrículas sin pedido. */
+  protected readonly pagables = computed<PagoPendiente[]>(() => {
+    const pedidos = this.pedidosApi().filter((p) => ['pendiente', 'iniciado'].includes(p.estado));
+    const out: PagoPendiente[] = pedidos.map((p) => ({
+      id: p.numero,
+      titulo: p.items?.[0]?.cursoTitulo || `Pedido ${p.numero}`,
+      total: Number(p.total ?? 0),
+      moneda: p.moneda || 'PEN',
+      pedidoNumero: p.numero,
+      cursoSlug: null,
+    }));
+    const cursosConPedido = new Set(
+      pedidos.flatMap((p) => (p.items ?? []).map((i) => i.cursoId)),
+    );
+    for (const m of this.matriculas().filter((x) => x.estado === 'pendiente_pago')) {
+      const curso = this.cursosMap()[m.curso_id];
+      if (curso && cursosConPedido.has(curso.id)) continue;
+      out.push({
+        id: m.id,
+        titulo: curso?.titulo || 'Curso',
+        total: Number(curso?.precio ?? m.precio_pagado ?? 0),
+        moneda: curso?.moneda || m.moneda || 'PEN',
+        pedidoNumero: null,
+        cursoSlug: curso?.slug ?? null,
+      });
+    }
+    return out;
+  });
+
   protected readonly matriculaSel = signal('');
   protected readonly procesandoPago = signal(false);
   protected readonly mensajePago = signal<{ ok: boolean; texto: string } | null>(null);
@@ -273,13 +312,14 @@ export class PaymentsComponent implements OnInit {
     if (!user) { this.error.set('Debes iniciar sesión.'); this.cargando.set(false); return; }
     this.cargando.set(true); this.error.set(null);
     try {
-      const [pedidos, transacciones, reembolsos, matriculas, configuracion, tarjetas] = await Promise.all([
+      const [pedidos, transacciones, reembolsos, matriculas, configuracion, tarjetas, pedidosApi] = await Promise.all([
         this.paymentService.listarPedidos(user.id),
         this.paymentService.listarTransacciones(user.id),
         this.paymentService.listarReembolsos(user.id),
         this.enrollmentService.listarMisMatriculas(),
         this.paymentService.configuracionPago().catch(() => null),
         this.paymentService.listarTarjetas().catch(() => [] as TarjetaGuardada[]),
+        this.paymentService.misPedidos().catch(() => [] as PedidoResponse[]),
       ]);
       this.pedidos.set(pedidos);
       this.transacciones.set(transacciones);
@@ -287,9 +327,10 @@ export class PaymentsComponent implements OnInit {
       this.matriculas.set(matriculas);
       this.configPago.set(configuracion);
       this.tarjetas.set(tarjetas);
+      this.pedidosApi.set(pedidosApi);
       if (configuracion?.publicKey) this.culqi.configurar(configuracion.publicKey);
-      const pendientes = matriculas.filter((m) => m.estado === 'pendiente_pago');
-      if (pendientes.length && !this.matriculaSel()) this.matriculaSel.set(pendientes[0].id);
+      const primera = pedidosApi.find((p) => ['pendiente', 'iniciado'].includes(p.estado));
+      if (primera && !this.matriculaSel()) this.matriculaSel.set(primera.numero);
 
       const ids = [...new Set(matriculas.map((m) => m.curso_id))];
       const cursos = await Promise.all(ids.map((id) => this.courseService.obtenerPorId(id).catch(() => null)));
@@ -340,17 +381,29 @@ export class PaymentsComponent implements OnInit {
     }
   }
 
+  private pagoSeleccionado(): PagoPendiente | null {
+    return this.pagables().find((p) => p.id === this.matriculaSel()) ?? this.pagables()[0] ?? null;
+  }
+
+  private async completarPago(source: { culqiToken?: string; metodoPagoId?: string }): Promise<void> {
+    const pago = this.pagoSeleccionado();
+    if (!pago) { throw new Error('Selecciona un pago pendiente.'); }
+    if (pago.pedidoNumero) {
+      await this.paymentService.pagarPedido(pago.pedidoNumero, source);
+      return;
+    }
+    if (pago.cursoSlug) {
+      await this.paymentService.iniciarCompra({ cursoSlug: pago.cursoSlug, ...source });
+      return;
+    }
+    throw new Error('No se pudo identificar el pago pendiente.');
+  }
+
   protected async pagarConTarjetaGuardada(t: TarjetaGuardada): Promise<void> {
-    const m = this.pendientes().find((x) => x.id === this.matriculaSel()) ?? this.pendientes()[0];
-    const curso = m ? this.cursoDe(m.curso_id) : null;
-    if (!m || !curso) { this.mensajePago.set({ ok: false, texto: 'Selecciona una matrícula pendiente.' }); return; }
     this.procesandoPago.set(true);
     this.mensajePago.set(null);
     try {
-      await this.paymentService.iniciarCompra({
-        cursoSlug: curso.slug,
-        metodoPagoId: t.id,
-      });
+      await this.completarPago({ metodoPagoId: t.id });
       this.mensajePago.set({ ok: true, texto: 'Pago enviado. La matrícula se activará automáticamente cuando Culqi confirme la operación.' });
       await this.cargar();
     } catch (e) {
@@ -363,16 +416,13 @@ export class PaymentsComponent implements OnInit {
   protected async pagarConNuevaTarjeta(): Promise<void> {
     const error = this.validarTarjeta();
     if (error) { this.mensajePago.set({ ok: false, texto: error }); return; }
-    const m = this.pendientes().find((x) => x.id === this.matriculaSel()) ?? this.pendientes()[0];
-    const curso = m ? this.cursoDe(m.curso_id) : null;
-    if (!m || !curso) { this.mensajePago.set({ ok: false, texto: 'Selecciona una matrícula pendiente.' }); return; }
     this.procesandoPago.set(true);
     this.mensajePago.set(null);
     try {
       const datos = this.datosTarjeta();
       const token = await this.culqi.tokenizar(datos);
       await this.culqi.confirmar3DS(token, datos.email);
-      await this.paymentService.iniciarCompra({ cursoSlug: curso.slug, culqiToken: token });
+      await this.completarPago({ culqiToken: token });
       if (this.guardarParaDespues()) {
         await this.paymentService.guardarTarjeta(token);
         this.tarjetas.set(await this.paymentService.listarTarjetas());

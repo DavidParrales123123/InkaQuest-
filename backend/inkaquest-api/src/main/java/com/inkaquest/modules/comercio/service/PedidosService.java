@@ -2,6 +2,7 @@ package com.inkaquest.modules.comercio.service;
 
 import com.inkaquest.modules.academico.entity.Curso;
 import com.inkaquest.modules.academico.repository.CursoRepository;
+import com.inkaquest.modules.comercio.dto.PagarPedidoRequest;
 import com.inkaquest.modules.comercio.dto.PedidoIniciarRequest;
 import com.inkaquest.modules.comercio.dto.PedidoResponse;
 import com.inkaquest.modules.comercio.entity.*;
@@ -197,6 +198,64 @@ public class PedidosService {
                 }
             }
 
+            return aResponse(pedido);
+        });
+    }
+
+    /**
+     * Paga un pedido que ya existe (creado al inscribirse en un curso de pago).
+     * El webhook de Culqi es el único que confirma y activa la matrícula.
+     */
+    @Transactional
+    public PedidoResponse pagarPedido(UUID actorId, String numero, PagarPedidoRequest request) {
+        return rlsExecutor.executeAs(actorId, () -> {
+            Pedido pedido = pedidoRepository.findByNumero(numero)
+                    .orElseThrow(() -> new ResourceNotFoundException("Pedido no encontrado."));
+            if (pedido.getUsuarioId() == null || !pedido.getUsuarioId().getId().equals(actorId)) {
+                throw new ResourceNotFoundException("Pedido no encontrado.");
+            }
+            if (pedido.getEstado() != EstadoPedido.pendiente) {
+                throw new BadRequestException("Este pedido ya no está pendiente de pago.");
+            }
+            Transaccion transaccion = transaccionRepository.findDePedido(pedido.getId()).stream()
+                    .filter(t -> t.getEstado() == EstadoPago.iniciado)
+                    .findFirst()
+                    .orElseThrow(() -> new BadRequestException("No hay una transacción pendiente para este pedido."));
+
+            String sourceId = null;
+            if (request.culqiToken() != null && !request.culqiToken().isBlank()) {
+                sourceId = request.culqiToken().trim();
+                try {
+                    culqiClient.confirmar3DS(sourceId, pedido.getUsuarioId().getEmail());
+                } catch (CulqiClient.CulqiException yaConfirmado) {
+                    // Culqi.js ya gestionó el desafío 3DS.
+                } catch (IllegalStateException sinLlavePublica) {
+                    // Sin llave pública se confía en la tokenización de Culqi.js.
+                }
+            } else if (request.metodoPagoId() != null) {
+                sourceId = tarjetasService.tarjetaDeUsuario(actorId, request.metodoPagoId());
+            }
+            if (sourceId == null) {
+                throw new BadRequestException("Indica una tarjeta guardada o una tarjeta nueva.");
+            }
+
+            try {
+                String cargoId = culqiClient.crearCobro(
+                        pedido.getTotal().multiply(BigDecimal.valueOf(100))
+                                .setScale(0, RoundingMode.HALF_UP).longValueExact(),
+                        pedido.getMoneda(),
+                        pedido.getUsuarioId().getEmail(),
+                        pedido.getNumero(),
+                        sourceId);
+                transaccion.setReferencia(cargoId);
+                transaccionRepository.save(transaccion);
+            } catch (CulqiClient.CulqiException e) {
+                transaccion.setEstado(EstadoPago.fallido);
+                transaccionRepository.save(transaccion);
+                pedido.setEstado(EstadoPedido.fallido);
+                pedidoRepository.save(pedido);
+                throw new BadRequestException("El pago fue rechazado por Culqi. Inténtalo nuevamente.");
+            }
             return aResponse(pedido);
         });
     }

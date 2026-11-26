@@ -75,6 +75,20 @@ export class PaymentService {
     await firstValueFrom(this.http.delete<ApiResponse<unknown>>(`${this.pagosUrl}/tarjetas/${id}`));
   }
 
+  /** Paga un pedido pendiente con token 3DS o tarjeta guardada. */
+  async pagarPedido(numero: string, datos: {
+    culqiToken?: string;
+    metodoPagoId?: string;
+  }): Promise<PedidoResponse> {
+    const res = await firstValueFrom(
+      this.http.post<ApiResponse<PedidoResponse>>(
+        `${this.baseUrl}/${encodeURIComponent(numero)}/pagar`,
+        datos
+      )
+    );
+    return res.data!;
+  }
+
   /** Obtiene los pedidos del usuario autenticado. */
   async misPedidos(): Promise<PedidoResponse[]> {
     const res = await firstValueFrom(

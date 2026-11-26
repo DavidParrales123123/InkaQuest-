@@ -1,5 +1,6 @@
 package com.inkaquest.modules.comercio.controller;
 
+import com.inkaquest.modules.comercio.dto.PagarPedidoRequest;
 import com.inkaquest.modules.comercio.dto.PedidoIniciarRequest;
 import com.inkaquest.modules.comercio.dto.PedidoResponse;
 import com.inkaquest.modules.comercio.service.CulqiWebhookService;
@@ -53,6 +54,15 @@ public class PedidosController {
     }
 
     /** GET /api/v1/pedidos/yo — mis pedidos. */
+    /** Paga un pedido pendiente con token 3DS o tarjeta guardada. */
+    @PostMapping("/pedidos/{numero}/pagar")
+    public ApiResponse<PedidoResponse> pagar(@AuthenticationPrincipal Jwt jwt,
+                                             @PathVariable String numero,
+                                             @Valid @RequestBody PagarPedidoRequest request) {
+        return ApiResponse.ok(pedidosService.pagarPedido(authId(jwt), numero, request),
+                "Pago enviado a Culqi.");
+    }
+
     @GetMapping("/pedidos/yo")
     public ApiResponse<List<PedidoResponse>> misPedidos(@AuthenticationPrincipal Jwt jwt) {
         return ApiResponse.ok(pedidosService.misPedidos(authId(jwt)), "Pedidos cargados.");
