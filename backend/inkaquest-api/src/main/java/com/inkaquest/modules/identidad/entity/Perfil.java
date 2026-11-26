@@ -60,6 +60,10 @@ public class Perfil implements Serializable {
     @Column(name = "telefono", nullable = true)
     private String telefono;
 
+    /** Referencia al customer de Culqi (vault). Nunca datos de tarjeta. */
+    @Column(name = "culqi_customer_id", nullable = true)
+    private String culqiCustomerId;
+
     @Column(name = "avatar_url", nullable = true)
     private String avatarUrl;
 
@@ -177,6 +181,14 @@ public class Perfil implements Serializable {
     /** Establece la columna {@code telefono}. */
     public void setTelefono(String telefono) {
         this.telefono = telefono;
+    }
+
+    public String getCulqiCustomerId() {
+        return culqiCustomerId;
+    }
+
+    public void setCulqiCustomerId(String culqiCustomerId) {
+        this.culqiCustomerId = culqiCustomerId;
     }
 
     /** Obtiene la columna {@code avatar_url}. */

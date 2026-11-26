@@ -44,6 +44,7 @@ public class PedidosService {
     private final MatriculaRepository matriculaRepository;
     private final CuponesService cuponesService;
     private final CulqiClient culqiClient;
+    private final TarjetasService tarjetasService;
     private final CheckRoleService checkRoleService;
     private final RlsExecutor rlsExecutor;
 
@@ -55,6 +56,7 @@ public class PedidosService {
                           MatriculaRepository matriculaRepository,
                           CuponesService cuponesService,
                           CulqiClient culqiClient,
+                          TarjetasService tarjetasService,
                           CheckRoleService checkRoleService,
                           RlsExecutor rlsExecutor) {
         this.pedidoRepository = pedidoRepository;
@@ -65,6 +67,7 @@ public class PedidosService {
         this.matriculaRepository = matriculaRepository;
         this.cuponesService = cuponesService;
         this.culqiClient = culqiClient;
+        this.tarjetasService = tarjetasService;
         this.checkRoleService = checkRoleService;
         this.rlsExecutor = rlsExecutor;
     }
@@ -152,16 +155,31 @@ public class PedidosService {
                     "curso_slug", curso.getSlug()));
             transaccion = transaccionRepository.save(transaccion);
 
-            // Si el cliente aporto un token Culqi y el servidor esta configurado, crear el cargo.
-            if (request.culqiToken() != null && !request.culqiToken().isBlank()
-                    && culqiClient.configurado()) {
+            // Fuente del cargo: token 3DS recién autenticado o tarjeta guardada en el vault.
+            String sourceId = null;
+            if (request.culqiToken() != null && !request.culqiToken().isBlank()) {
+                sourceId = request.culqiToken().trim();
+                // Confirmación 3DS en el host seguro. Culqi.js ya la hace cuando
+                // gestiona el desafío; si fue confirmada, Culqi responde 400 y se ignora.
+                try {
+                    culqiClient.confirmar3DS(sourceId, estudiante.getEmail());
+                } catch (CulqiClient.CulqiException ignorada) {
+                    // El token ya estaba autenticado: se continúa con el cargo.
+                } catch (IllegalStateException sinLlavePublica) {
+                    // Sin llave pública no se puede confirmar por aquí; Culqi.js la gestionó.
+                }
+            } else if (request.metodoPagoId() != null) {
+                sourceId = tarjetasService.tarjetaDeUsuario(estudianteId, request.metodoPagoId());
+            }
+
+            if (sourceId != null && culqiClient.configurado()) {
                 try {
                     String cargoId = culqiClient.crearCobro(
                             total.multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValueExact(),
                             moneda,
                             estudiante.getEmail(),
                             pedido.getNumero(),
-                            request.culqiToken().trim());
+                            sourceId);
                     transaccion.setReferencia(cargoId);
                     transaccion = transaccionRepository.save(transaccion);
                 } catch (CulqiClient.CulqiException e) {

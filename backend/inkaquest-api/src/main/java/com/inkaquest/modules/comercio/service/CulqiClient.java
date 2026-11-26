@@ -149,6 +149,99 @@ public class CulqiClient {
         return valor;
     }
 
+    /**
+     * Crea un cliente (customer) en el vault de Culqi. El id se guarda en el
+     * perfil; NUNCA se guardan datos de tarjeta en nuestra base de datos.
+     */
+    public String crearCustomer(String nombre, String apellido, String email, String telefono) {
+        if (!config.configurado()) throw new IllegalStateException("Culqi no esta configurado.");
+        String nombreLimpio = nombre == null || nombre.isBlank() ? "Cliente" : nombre.trim();
+        String apellidoLimpio = apellido == null || apellido.isBlank() ? "InkaQuest" : apellido.trim();
+        String telefonoLimpio = telefono == null || !telefono.matches("[0-9]{7,15}")
+                ? "999999999" : telefono.trim();
+        Map<String, Object> body = Map.of(
+                "first_name", nombreLimpio,
+                "last_name", apellidoLimpio,
+                "email", email == null || email.isBlank() ? "cliente@inkaquest.local" : email.trim(),
+                "address", "Lima",
+                "address_city", "Lima",
+                "country_code", "PE",
+                "phone_number", telefonoLimpio);
+        JsonNode json = post(config.getApiBase() + "/customers", config.getApiKey(), body, "crear cliente");
+        String id = json.path("id").asText(null);
+        if (id == null || id.isBlank()) throw new CulqiException("Culqi no devolvio id de cliente.");
+        return id;
+    }
+
+    /** Asocia un token ya autenticado al customer y devuelve la tarjeta guardada. */
+    public JsonNode crearTarjeta(String customerId, String tokenId) {
+        if (!config.configurado()) throw new IllegalStateException("Culqi no esta configurado.");
+        Map<String, Object> body = Map.of(
+                "customer_id", segmentoSeguro(customerId),
+                "token_id", segmentoSeguro(tokenId));
+        return post(config.getApiBase() + "/cards", config.getApiKey(), body, "guardar tarjeta");
+    }
+
+    /** Elimina una tarjeta del vault de Culqi. */
+    public void eliminarTarjeta(String cardId) {
+        if (!config.configurado()) throw new IllegalStateException("Culqi no esta configurado.");
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(config.getApiBase() + "/cards/" + segmentoSeguro(cardId)))
+                    .timeout(TIMEOUT)
+                    .header("Authorization", "Bearer " + config.getApiKey())
+                    .DELETE().build();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() / 100 != 2) {
+                throw new CulqiException("Culqi rechazo la eliminacion (HTTP " + response.statusCode() + ").");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new CulqiException("Interrumpido al eliminar la tarjeta.");
+        } catch (IOException e) {
+            throw new CulqiException("No se pudo eliminar la tarjeta: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Confirma un cargo autenticado con 3DS en el host seguro (llave pública).
+     * Se usa cuando el desafío 3DS se resolvió fuera del flujo de Culqi.js.
+     */
+    public JsonNode confirmar3DS(String tokenId, String usermail) {
+        if (!config.configuradoPublica()) {
+            throw new IllegalStateException("Culqi no tiene llave pública configurada.");
+        }
+        Map<String, Object> body = new java.util.HashMap<>();
+        body.put("token_id", segmentoSeguro(tokenId));
+        if (usermail != null && !usermail.isBlank()) body.put("usermail", usermail.trim());
+        return post(config.getSecureBase() + "/confirm", config.getPublicKey(), body, "confirmar 3DS");
+    }
+
+    private JsonNode post(String url, String apiKey, Map<String, Object> body, String accion) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(TIMEOUT)
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
+                    .build();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            JsonNode json = objectMapper.readTree(response.body());
+            if (response.statusCode() / 100 != 2) {
+                String detalle = json.path("user_message").asText(json.path("merchant_message").asText(""));
+                throw new CulqiException("Culqi rechazo " + accion + " (HTTP " + response.statusCode()
+                        + "): " + detalle);
+            }
+            return json;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new CulqiException("Interrumpido al " + accion + ".");
+        } catch (IOException e) {
+            throw new CulqiException("No se pudo " + accion + ": " + e.getMessage());
+        }
+    }
+
     /** Solicita un reembolso de un cargo ya capturado. */
     public String reembolso(String cargoId, long montoCentavos, String motivo) {
         if (!config.configurado()) {

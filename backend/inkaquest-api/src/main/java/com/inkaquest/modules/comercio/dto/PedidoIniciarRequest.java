@@ -10,5 +10,7 @@ public record PedidoIniciarRequest(
         @Size(max = 200) String cursoSlug,
         @Size(max = 50) String cuponCodigo,
         @Size(max = 200) String claveIdempotencia,
-        @Size(max = 100, message = "El token Culqi es invalido.") String culqiToken) {
+        @Size(max = 100, message = "El token Culqi es invalido.") String culqiToken,
+        /** Id de una tarjeta guardada en el vault (se usa en lugar del token). */
+        java.util.UUID metodoPagoId) {
 }

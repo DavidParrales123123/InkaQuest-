@@ -27,13 +27,17 @@ export class PaymentService {
   private readonly client = this.supabase.client;
   private readonly baseUrl = `${environment.apiUrl}/pedidos`;
   private readonly cuponesUrl = `${environment.apiUrl}/cupones`;
+  private readonly pagosUrl = `${environment.apiUrl}/pagos`;
 
   // === PEDIDOS ===
 
-  /** Inicia la compra de un curso (crea pedido pendiente). */
+  /** Inicia la compra de un curso con token 3DS o tarjeta guardada. */
   async iniciarCompra(datos: {
-    cursoId: string;
+    cursoSlug: string;
     codigoCupon?: string;
+    culqiToken?: string;
+    metodoPagoId?: string;
+    claveIdempotencia?: string;
   }): Promise<PedidoResponse> {
     const res = await firstValueFrom(
       this.http.post<ApiResponse<PedidoResponse>>(
@@ -42,6 +46,33 @@ export class PaymentService {
       )
     );
     return res.data!;
+  }
+
+  /** Configuración pública de Culqi (llave pública para tokenizar/3DS). */
+  async configuracionPago(): Promise<ConfiguracionPago> {
+    const res = await firstValueFrom(
+      this.http.get<ApiResponse<ConfiguracionPago>>(`${this.pagosUrl}/configuracion`),
+    );
+    return res.data!;
+  }
+
+  async listarTarjetas(): Promise<TarjetaGuardada[]> {
+    const res = await firstValueFrom(
+      this.http.get<ApiResponse<TarjetaGuardada[]>>(`${this.pagosUrl}/tarjetas`),
+    );
+    return res.data || [];
+  }
+
+  /** Guarda la tarjeta en el vault de Culqi (solo se envía el token). */
+  async guardarTarjeta(tokenId: string): Promise<TarjetaGuardada> {
+    const res = await firstValueFrom(
+      this.http.post<ApiResponse<TarjetaGuardada>>(`${this.pagosUrl}/tarjetas`, { tokenId }),
+    );
+    return res.data!;
+  }
+
+  async eliminarTarjeta(id: string): Promise<void> {
+    await firstValueFrom(this.http.delete<ApiResponse<unknown>>(`${this.pagosUrl}/tarjetas/${id}`));
   }
 
   /** Obtiene los pedidos del usuario autenticado. */
@@ -169,6 +200,23 @@ export interface PedidoResponse {
   items: ItemPedidoResponse[];
   culqiChargeId: string | null;
   culqiMetodoPago: string | null;
+}
+
+export interface ConfiguracionPago {
+  publicKey: string;
+  moneda: string;
+  habilitado: boolean;
+}
+
+/** Solo metadata no sensible; el PAN y el CVV viven en Culqi. */
+export interface TarjetaGuardada {
+  id: string;
+  marca: string | null;
+  ultimos4: string;
+  mesExpiracion: number | null;
+  anioExpiracion: number | null;
+  activo: boolean;
+  creadoEn: string;
 }
 
 export interface ItemPedidoResponse {

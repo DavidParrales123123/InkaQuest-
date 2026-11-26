@@ -58,6 +58,7 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 // Webhook de Culqi: se verifica contra la API autenticada del proveedor (nunca JWT).
                                 "/api/v1/webhooks/culqi",
+                                "/api/v1/pagos/configuracion",
                                 // Verificacion publica de certificados por codigo.
                                 "/api/v1/certificados/verificar/**",
                                 // Catálogo público de cursos (GET solamente)
