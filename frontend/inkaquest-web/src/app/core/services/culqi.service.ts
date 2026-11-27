@@ -7,6 +7,8 @@ export interface CheckoutCulqiOptions {
   titulo: string;
   moneda: string;
   email: string;
+  /** Para "solo guardar tarjeta": oculta el importe del toolbar. */
+  ocultarMonto?: boolean;
 }
 
 /**
@@ -88,8 +90,26 @@ export class CulqiService {
   async tokenizarConModal(opciones: CheckoutCulqiOptions): Promise<string> {
     await this.cargar();
     return new Promise<string>((resolve, reject) => {
-      this.resolutorToken = resolve;
-      this.rechazadorToken = reject;
+      // Si el usuario cierra el modal sin completar, Culqi no llama al callback:
+      // liberamos el estado para poder reintentar.
+      const temporizador = window.setTimeout(() => {
+        if (this.resolutorToken) {
+          this.resolutorToken = null;
+          this.rechazadorToken = null;
+          reject(new Error('El checkout de Culqi se cerró sin completar el pago. Puedes intentarlo de nuevo.'));
+        }
+      }, 5 * 60 * 1000);
+
+      const resolver: (token: string) => void = (token) => {
+        window.clearTimeout(temporizador);
+        resolve(token);
+      };
+      const rechazar: (error: Error) => void = (error) => {
+        window.clearTimeout(temporizador);
+        reject(error);
+      };
+      this.resolutorToken = resolver;
+      this.rechazadorToken = rechazar;
       try {
         this.Culqi.settings({
           title: opciones.titulo,
@@ -99,6 +119,7 @@ export class CulqiService {
         this.Culqi.options({
           lang: 'es',
           installments: false,
+          style: { hiddenToolBarAmount: !!opciones.ocultarMonto },
           paymentMethods: {
             tarjeta: true, yape: false, bancaMovil: false,
             agente: false, billetera: false, cuotealo: false,
@@ -106,6 +127,7 @@ export class CulqiService {
         });
         this.Culqi.open();
       } catch (e) {
+        window.clearTimeout(temporizador);
         this.resolutorToken = null;
         this.rechazadorToken = null;
         reject(e instanceof Error ? e : new Error('No se pudo abrir el checkout de Culqi.'));

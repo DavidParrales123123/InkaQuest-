@@ -343,6 +343,7 @@ export class PaymentsComponent implements OnInit {
         titulo: 'Guardar tarjeta · InkaQuest',
         moneda: this.configPago()?.moneda || 'PEN',
         email: this.emailPago(),
+        ocultarMonto: true,
       });
       await this.paymentService.guardarTarjeta(token);
       this.tarjetas.set(await this.paymentService.listarTarjetas());
