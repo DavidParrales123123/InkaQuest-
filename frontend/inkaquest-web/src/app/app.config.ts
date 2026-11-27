@@ -26,7 +26,7 @@ import { SessionTrackingService } from './core/services/session-tracking.service
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideZoneChangeDetection({ eventCoalescing: true }),
+    provideZoneChangeDetection({ eventCoalescing: true, runCoalescing: true }),
     provideRouter(
       routes,
       withComponentInputBinding(),

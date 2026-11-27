@@ -349,17 +349,20 @@ export class PanelLayoutComponent implements OnInit {
     void this.registrarActividadDiaria();
     void this.cargarNoLeidas();
     void this.cargarMensajesNoLeidos();
+    // La primera navegación ya se cargó arriba: evitar duplicar llamadas.
+    let primeraNavegacion = true;
     this.router.events
       .pipe(
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(() => {
+        if (primeraNavegacion) { primeraNavegacion = false; return; }
         void this.cargarNoLeidas();
         void this.cargarMensajesNoLeidos();
       });
 
-    // Sondea cada 60 s mientras la pestaña está visible (el estado de lectura
+    // Sondea cada 120 s mientras la pestaña está visible (el estado de lectura
     // también cambia por acciones ajenas a la navegación, p. ej. desde otro
     // dispositivo). Se limpia al destruir el layout.
     if (typeof window !== 'undefined' && typeof document !== 'undefined') {
@@ -368,7 +371,7 @@ export class PanelLayoutComponent implements OnInit {
           void this.cargarNoLeidas();
           void this.cargarMensajesNoLeidos();
         }
-      }, 60_000);
+      }, 120_000);
       window.addEventListener('focus', this.manejarFocoVentana);
       this.destroyRef.onDestroy(() => {
         window.clearInterval(intervalo);

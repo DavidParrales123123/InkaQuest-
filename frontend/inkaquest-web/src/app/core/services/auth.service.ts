@@ -111,7 +111,16 @@ export class AuthService {
   /**
    * Carga (o recarga) el perfil de aplicacion del usuario autenticado.
    */
+  /** Evita dos peticiones simultáneas del perfil (arranque + cambio de sesión + layout). */
+  private perfilEnVuelo: Promise<Perfil | null> | null = null;
+
   async cargarPerfil(): Promise<Perfil | null> {
+    if (this.perfilEnVuelo) return this.perfilEnVuelo;
+    this.perfilEnVuelo = this.cargarPerfilInterno().finally(() => { this.perfilEnVuelo = null; });
+    return this.perfilEnVuelo;
+  }
+
+  private async cargarPerfilInterno(): Promise<Perfil | null> {
     const usuario = this._usuario();
     if (!usuario) {
       this._perfil.set(null);
@@ -324,8 +333,8 @@ export class AuthService {
       } catch { /* omitir */ }
     }
 
+    // cargarPerfil ya dispara el procesamiento de la solicitud pendiente.
     await this.cargarPerfil();
-    await this.procesarSolicitudDocentePendiente();
   }
 
   /**
@@ -383,7 +392,6 @@ export class AuthService {
       if (!requiereVerificacion && data.user) {
         this._usuario.set(data.user);
         await this.asegurarPerfilBasico(nombreLimpio, apellidoLimpio, generoLimpio ?? null, fechaLimpia ?? null);
-        await this.cargarPerfil();
       }
 
       return {
@@ -421,8 +429,9 @@ export class AuthService {
       }
 
       this._usuario.set(data.user);
+      // asegurarPerfilBasico ya carga el perfil (con dedupe) y dispara
+      // el procesamiento de la solicitud docente pendiente.
       await this.asegurarPerfilBasico();
-      await this.cargarPerfil();
       if (!this._perfil()) {
         return {
           ok: false,
@@ -432,8 +441,6 @@ export class AuthService {
       if (!this.verificarEstadoCuenta()) {
         return { ok: false, mensaje: this._motivoSesion() ?? 'Tu cuenta no está activa.' };
       }
-      await this.procesarSolicitudDocentePendiente();
-
       return { ok: true, mensaje: 'Sesión iniciada.' };
     } catch (e) {
       return {
