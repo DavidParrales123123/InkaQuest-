@@ -1,77 +1,121 @@
 // @ts-nocheck
 import { Injectable } from '@angular/core';
 
-/** Datos de tarjeta introducidos por el usuario (nunca se envían a nuestro backend). */
-export interface DatosTarjeta {
-  number: string;
-  cvc: string;
-  expMonth: string;
-  expYear: string;
+/** Opciones para abrir el checkout seguro de Culqi (v4). */
+export interface CheckoutCulqiOptions {
+  montoCentavos: number;
+  titulo: string;
+  moneda: string;
   email: string;
 }
 
 /**
- * Puente con Culqi.js y el endpoint seguro de confirmación 3DS.
+ * Puente con Culqi Checkout v4 (SDK oficial) y el endpoint seguro de
+ * confirmación 3DS.
  *
- * La librería tokeniza en el navegador: ni el PAN ni el CVV pasan por nuestro
- * backend ni por nuestra base de datos. Solo se envía el token a nuestro API.
+ * La tarjeta se introduce en el FORMULARIO SEGURO DE CULQI: el PAN y el CVV
+ * nunca pasan por nuestro frontend ni por nuestro backend. Solo recibimos el
+ * token que Culqi devuelve en el callback `culqi()`.
  */
 @Injectable({ providedIn: 'root' })
 export class CulqiService {
+  private readonly urlSdk = 'https://checkout.culqi.com/js/v4';
   private scriptCargado = false;
   private publicKey = '';
+  private resolutorToken: ((token: string) => void) | null = null;
+  private rechazadorToken: ((error: Error) => void) | null = null;
 
   get Culqi(): any { return (window as any).Culqi; }
 
+  /** Configura la llave pública obtenida del backend. */
   configurar(publicKey: string): void {
     this.publicKey = publicKey;
     if (this.Culqi) this.Culqi.publicKey = publicKey;
   }
 
+  /** Carga el SDK oficial una sola vez. */
   async cargar(): Promise<void> {
     if (this.scriptCargado && this.Culqi) return;
-    if (this.Culqi) { this.scriptCargado = true; return; }
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://static.culqi.com/v2/culqi.js';
-      script.async = true;
-      script.onload = () => { this.scriptCargado = true; resolve(); };
-      script.onerror = () => reject(new Error('No se pudo cargar Culqi.js.'));
-      document.head.appendChild(script);
-    });
-    if (!this.Culqi) throw new Error('Culqi.js no está disponible.');
+    if (!this.Culqi) {
+      await new Promise<void>((resolve, reject) => {
+        const existente = document.getElementById('culqi-sdk') as HTMLScriptElement | null;
+        if (existente) {
+          existente.addEventListener('load', () => resolve());
+          existente.addEventListener('error', () => reject(new Error('No se pudo cargar Culqi.js.')));
+          return;
+        }
+        const script = document.createElement('script');
+        script.id = 'culqi-sdk';
+        script.src = this.urlSdk;
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('No se pudo cargar Culqi.js.'));
+        document.head.appendChild(script);
+      });
+    }
+    if (!this.Culqi) throw new Error('No se pudo cargar Culqi.js.');
+    this.scriptCargado = true;
     this.Culqi.publicKey = this.publicKey;
+    this.instalarCallback();
   }
 
-  /** Tokeniza la tarjeta. Culqi.js gestiona el desafío 3DS cuando aplica. */
-  async tokenizar(datos: DatosTarjeta): Promise<string> {
+  /** Instala el callback global que exige Culqi v4. */
+  private instalarCallback(): void {
+    (window as any).culqi = () => {
+      const api = this.Culqi;
+      if (api?.token?.id) {
+        const token = api.token.id;
+        try { api.close?.(); } catch { /* noop */ }
+        this.resolutorToken?.(token);
+        this.resolutorToken = null;
+        this.rechazadorToken = null;
+        return;
+      }
+      const mensaje = api?.error?.user_message
+        || api?.error?.merchant_message
+        || 'Culqi no pudo tokenizar la tarjeta. Revisa los datos e inténtalo de nuevo.';
+      try { api?.close?.(); } catch { /* noop */ }
+      this.rechazadorToken?.(new Error(mensaje));
+      this.resolutorToken = null;
+      this.rechazadorToken = null;
+    };
+  }
+
+  /**
+   * Abre el modal seguro de Culqi y resuelve con el token generado.
+   * El monto se envía en centavos, como exige la API v2.
+   */
+  async tokenizarConModal(opciones: CheckoutCulqiOptions): Promise<string> {
     await this.cargar();
     return new Promise<string>((resolve, reject) => {
+      this.resolutorToken = resolve;
+      this.rechazadorToken = reject;
       try {
-        this.Culqi.token.create({
-          number: datos.number.replace(/\s/g, ''),
-          cvc: datos.cvc,
-          exp_month: datos.expMonth,
-          exp_year: datos.expYear,
-          email: datos.email,
-        }, (respuesta: any) => {
-          if (respuesta?.error) {
-            reject(new Error(respuesta.user_message || respuesta.merchant_message || 'Culqi rechazó la tarjeta.'));
-            return;
-          }
-          const token = respuesta?.data?.id || respuesta?.id;
-          if (!token) { reject(new Error('Culqi no devolvió un token.')); return; }
-          resolve(token);
+        this.Culqi.settings({
+          title: opciones.titulo,
+          currency: opciones.moneda,
+          amount: opciones.montoCentavos,
         });
+        this.Culqi.options({
+          lang: 'es',
+          installments: false,
+          paymentMethods: {
+            tarjeta: true, yape: false, bancaMovil: false,
+            agente: false, billetera: false, cuotealo: false,
+          },
+        });
+        this.Culqi.open();
       } catch (e) {
-        reject(e instanceof Error ? e : new Error('No se pudo tokenizar la tarjeta.'));
+        this.resolutorToken = null;
+        this.rechazadorToken = null;
+        reject(e instanceof Error ? e : new Error('No se pudo abrir el checkout de Culqi.'));
       }
     });
   }
 
   /**
    * Confirma el cargo autenticado con 3DS en el host seguro (llave pública).
-   * Si Culqi.js ya lo confirmó, Culqi responde 400 y se considera exitoso.
+   * Si Culqi.js ya lo confirmó, la API responde 400 y se considera exitoso.
    */
   async confirmar3DS(tokenId: string, email: string): Promise<void> {
     try {

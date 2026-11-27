@@ -86,23 +86,9 @@ interface PagoPendiente {
 
               <details class="rounded-xl border border-surface-200 p-3">
                 <summary class="cursor-pointer text-sm font-semibold text-marine-700">Pagar con una tarjeta nueva</summary>
-                <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div class="sm:col-span-2">
-                    <label class="label" for="num-tarjeta">Número de tarjeta</label>
-                    <input id="num-tarjeta" class="input" inputmode="numeric" autocomplete="cc-number" [value]="numeroTarjeta()" (input)="numeroTarjeta.set($any($event.target).value)" placeholder="4111 1111 1111 1111" />
-                  </div>
-                  <div>
-                    <label class="label" for="cvc-tarjeta">CVV</label>
-                    <input id="cvc-tarjeta" class="input" inputmode="numeric" autocomplete="cc-csc" [value]="cvc()" (input)="cvc.set($any($event.target).value)" placeholder="123" />
-                  </div>
-                  <div class="grid grid-cols-2 gap-2">
-                    <div><label class="label" for="mes-tarjeta">Mes</label><input id="mes-tarjeta" class="input" inputmode="numeric" [value]="expMes()" (input)="expMes.set($any($event.target).value)" placeholder="12" /></div>
-                    <div><label class="label" for="anio-tarjeta">Año</label><input id="anio-tarjeta" class="input" inputmode="numeric" [value]="expAnio()" (input)="expAnio.set($any($event.target).value)" placeholder="2030" /></div>
-                  </div>
-                  <div class="sm:col-span-2">
-                    <label class="label" for="email-tarjeta">Correo de la tarjeta</label>
-                    <input id="email-tarjeta" class="input" type="email" autocomplete="email" [value]="emailTarjeta()" (input)="emailTarjeta.set($any($event.target).value)" placeholder="tu@correo.com" />
-                  </div>
+                <div class="mt-3">
+                  <label class="label" for="email-tarjeta">Correo asociado a la tarjeta</label>
+                  <input id="email-tarjeta" class="input" type="email" autocomplete="email" [value]="emailTarjeta()" (input)="emailTarjeta.set($any($event.target).value)" placeholder="tu@correo.com" />
                 </div>
                 <label class="mt-3 flex items-center gap-2 text-sm text-marine-600">
                   <input type="checkbox" [checked]="guardarParaDespues()" (change)="guardarParaDespues.set($any($event.target).checked)" />
@@ -112,7 +98,7 @@ interface PagoPendiente {
                   <button type="button" class="btn btn-primary btn-sm" [disabled]="procesandoPago()" (click)="pagarConNuevaTarjeta()">{{ procesandoPago() ? 'Procesando…' : 'Pagar con 3DS' }}</button>
                   <button type="button" class="btn btn-outline btn-sm" [disabled]="procesandoPago()" (click)="guardarTarjeta()">Solo guardar tarjeta</button>
                 </div>
-                <p class="mt-2 text-xs text-marine-400">Los datos de la tarjeta se envían directamente a Culqi. Nunca se guardan en InkaQuest; solo se conserva la marca y los últimos 4 dígitos.</p>
+                <p class="mt-2 text-xs text-marine-400">Al pulsar el botón se abre el formulario seguro de Culqi: el número y el CVV se escriben allí, nunca en InkaQuest. Solo recibimos un token; si eliges guardar, se conservan únicamente la marca y los últimos 4 dígitos.</p>
               </details>
             }
           }
@@ -283,10 +269,6 @@ export class PaymentsComponent implements OnInit {
   protected readonly procesandoPago = signal(false);
   protected readonly mensajePago = signal<{ ok: boolean; texto: string } | null>(null);
 
-  protected readonly numeroTarjeta = signal('');
-  protected readonly cvc = signal('');
-  protected readonly expMes = signal('');
-  protected readonly expAnio = signal('');
   protected readonly emailTarjeta = signal('');
   protected readonly guardarParaDespues = signal(false);
 
@@ -342,38 +324,29 @@ export class PaymentsComponent implements OnInit {
     } finally { this.cargando.set(false); }
   }
 
-  private datosTarjeta() {
-    return {
-      number: this.numeroTarjeta(),
-      cvc: this.cvc(),
-      expMonth: this.expMes(),
-      expYear: this.expAnio(),
-      email: this.emailTarjeta() || this.auth.usuario()?.email || '',
-    };
+  private emailPago(): string {
+    return this.emailTarjeta().trim() || this.auth.usuario()?.email || '';
   }
 
-  private validarTarjeta(): string | null {
-    const d = this.datosTarjeta();
-    if (d.number.replace(/\s/g, '').length < 13) return 'Ingresa un número de tarjeta válido.';
-    if (!/^\d{3,4}$/.test(d.cvc)) return 'Ingresa un CVV válido.';
-    if (!/^\d{1,2}$/.test(d.expMonth) || Number(d.expMonth) < 1 || Number(d.expMonth) > 12) return 'Ingresa un mes de vencimiento válido.';
-    if (!/^\d{2,4}$/.test(d.expYear)) return 'Ingresa un año de vencimiento válido.';
-    if (!d.email.includes('@')) return 'Ingresa el correo asociado a la tarjeta.';
-    return null;
+  private validarEmail(): string | null {
+    return this.emailPago().includes('@') ? null : 'Ingresa el correo asociado a la tarjeta.';
   }
 
   protected async guardarTarjeta(): Promise<void> {
-    const error = this.validarTarjeta();
+    const error = this.validarEmail();
     if (error) { this.mensajePago.set({ ok: false, texto: error }); return; }
     this.procesandoPago.set(true);
     this.mensajePago.set(null);
     try {
-      const token = await this.culqi.tokenizar(this.datosTarjeta());
-      await this.culqi.confirmar3DS(token, this.datosTarjeta().email);
+      const token = await this.culqi.tokenizarConModal({
+        montoCentavos: 100,
+        titulo: 'Guardar tarjeta · InkaQuest',
+        moneda: this.configPago()?.moneda || 'PEN',
+        email: this.emailPago(),
+      });
       await this.paymentService.guardarTarjeta(token);
       this.tarjetas.set(await this.paymentService.listarTarjetas());
       this.mensajePago.set({ ok: true, texto: 'Tarjeta guardada de forma segura en Culqi. Solo se conservan la marca y los últimos 4 dígitos.' });
-      this.limpiarTarjeta();
     } catch (e) {
       this.mensajePago.set({ ok: false, texto: e instanceof Error ? e.message : 'No se pudo guardar la tarjeta.' });
     } finally {
@@ -414,21 +387,27 @@ export class PaymentsComponent implements OnInit {
   }
 
   protected async pagarConNuevaTarjeta(): Promise<void> {
-    const error = this.validarTarjeta();
+    const error = this.validarEmail();
     if (error) { this.mensajePago.set({ ok: false, texto: error }); return; }
+    const pago = this.pagoSeleccionado();
+    if (!pago) { this.mensajePago.set({ ok: false, texto: 'Selecciona un pago pendiente.' }); return; }
     this.procesandoPago.set(true);
     this.mensajePago.set(null);
     try {
-      const datos = this.datosTarjeta();
-      const token = await this.culqi.tokenizar(datos);
-      await this.culqi.confirmar3DS(token, datos.email);
+      const token = await this.culqi.tokenizarConModal({
+        montoCentavos: Math.round(Number(pago.total) * 100),
+        titulo: pago.titulo,
+        moneda: pago.moneda,
+        email: this.emailPago(),
+      });
+      await this.culqi.confirmar3DS(token, this.emailPago());
       await this.completarPago({ culqiToken: token });
       if (this.guardarParaDespues()) {
         await this.paymentService.guardarTarjeta(token);
         this.tarjetas.set(await this.paymentService.listarTarjetas());
       }
       this.mensajePago.set({ ok: true, texto: 'Pago enviado con autenticación 3DS. La matrícula se activará cuando Culqi confirme.' });
-      this.limpiarTarjeta();
+      this.guardarParaDespues.set(false);
       await this.cargar();
     } catch (e) {
       this.mensajePago.set({ ok: false, texto: e instanceof Error ? e.message : 'No se pudo procesar el pago.' });
@@ -447,11 +426,4 @@ export class PaymentsComponent implements OnInit {
     }
   }
 
-  private limpiarTarjeta(): void {
-    this.numeroTarjeta.set('');
-    this.cvc.set('');
-    this.expMes.set('');
-    this.expAnio.set('');
-    this.guardarParaDespues.set(false);
-  }
 }
