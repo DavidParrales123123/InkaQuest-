@@ -93,15 +93,21 @@ public class CulqiWebhookService {
         }
 
         // Verificación de autenticidad con la API oficial autenticada de Culqi.
+        // Culqi entrega el webhook ANTES de que el evento sea consultable por API:
+        // un fallo aquí no se trata como error, se valida el cargo directamente
+        // con la llave privada antes de confirmar cualquier pedido.
         JsonNode eventoOficial;
         try {
             eventoOficial = culqiClient.consultarEvento(eventoId);
+            if (!eventoId.equals(eventoOficial.path("id").asText(null)) ||
+                    !tipoEvento.equals(eventoOficial.path("type").asText(null))) {
+                throw new BadRequestException("El evento recibido no coincide con el evento registrado en Culqi.");
+            }
+        } catch (BadRequestException ex) {
+            throw ex;
         } catch (RuntimeException ex) {
-            throw new ServiceUnavailableException("No se pudo verificar el evento directamente con Culqi.");
-        }
-        if (!eventoId.equals(eventoOficial.path("id").asText(null)) ||
-                !tipoEvento.equals(eventoOficial.path("type").asText(null))) {
-            throw new BadRequestException("El evento recibido no coincide con el evento registrado en Culqi.");
+            log.warn("Evento {} aún no consultable en Culqi; se valida el cargo directamente.", eventoId);
+            eventoOficial = payload;
         }
 
         JsonNode data = nodoData(eventoOficial.path("data"));
@@ -112,21 +118,32 @@ public class CulqiWebhookService {
         }
 
         String cargoId = data.path("id").asText(null);
-        String numeroPedido = data.path("metadata").path("numero_pedido").asText(null);
-        if (cargoId == null || numeroPedido == null || numeroPedido.isBlank()) {
-            throw new BadRequestException("El evento de cargo no contiene el identificador o número de pedido.");
+        if (cargoId == null || cargoId.isBlank()) {
+            throw new BadRequestException("El evento de cargo no contiene el identificador del cargo.");
         }
 
-        JsonNode cargo;
-        try {
-            cargo = culqiClient.consultarCargo(cargoId);
-        } catch (RuntimeException ex) {
-            throw new ServiceUnavailableException("No se pudo verificar el cargo directamente con Culqi.");
+        // El cargo puede tardar unos milisegundos en estar disponible vía API.
+        JsonNode cargo = null;
+        for (int intento = 0; intento < 3 && cargo == null; intento++) {
+            try {
+                cargo = culqiClient.consultarCargo(cargoId);
+            } catch (RuntimeException ex) {
+                if (intento == 2) {
+                    guardarEvento(eventoId, tipoEvento, rawBody, false,
+                            "Cargo aún no disponible en Culqi; pendiente de reprocesar.");
+                    return new WebhookResultado(false, false, "Cargo aún no disponible; evento registrado.");
+                }
+                try { Thread.sleep(400L); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+            }
         }
-        if (!cargoId.equals(cargo.path("id").asText(null)) ||
-                !numeroPedido.equals(cargo.path("metadata").path("numero_pedido").asText(null)) ||
-                !cargo.path("capture").asBoolean(false)) {
-            throw new BadRequestException("El cargo no coincide con el pedido o todavía no está capturado.");
+        final JsonNode cargoFinal = cargo;
+        String numeroPedido = cargoFinal.path("metadata").path("numero_pedido").asText(null);
+        if (numeroPedido == null || numeroPedido.isBlank()) {
+            throw new BadRequestException("El cargo no contiene el número de pedido en su metadata.");
+        }
+        if (!cargoId.equals(cargoFinal.path("id").asText(null)) ||
+                !cargoFinal.path("capture").asBoolean(false)) {
+            throw new BadRequestException("El cargo no coincide o todavía no está capturado.");
         }
 
         final String eventoIdFinal = eventoId;
@@ -138,8 +155,8 @@ public class CulqiWebhookService {
                     .orElseThrow(() -> new ResourceNotFoundException("Pedido no encontrado."));
             long montoEsperado = pedido.getTotal().multiply(BigDecimal.valueOf(100))
                     .setScale(0, java.math.RoundingMode.HALF_UP).longValueExact();
-            if (cargo.path("amount").asLong(-1) != montoEsperado ||
-                    !pedido.getMoneda().equalsIgnoreCase(cargo.path("currency_code").asText(""))) {
+            if (cargoFinal.path("amount").asLong(-1) != montoEsperado ||
+                    !pedido.getMoneda().equalsIgnoreCase(cargoFinal.path("currency_code").asText(""))) {
                 throw new BadRequestException("El importe o moneda del cargo no coincide con el pedido.");
             }
 
