@@ -46,6 +46,12 @@ public final class RateLimiter {
         return v.contador.incrementAndGet() <= limite;
     }
 
+    /** Elimina ventanas expiradas para evitar crecimiento ilimitado de memoria. */
+    public void limpiar() {
+        long ahora = System.currentTimeMillis();
+        ventanas.entrySet().removeIf(e -> ahora - e.getValue().inicio >= VENTANA_MS);
+    }
+
     /** Segundos restantes hasta que la ventana expire (para Retry-After). */
     public int segundosHastaReinicio(String clave) {
         Ventana v = ventanas.get(clave);

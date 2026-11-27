@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, map, throwError } from 'rxjs';
+import { Observable, catchError, map, retry, throwError, timer } from 'rxjs';
 
 import { APP_CONFIG } from '../config/app-config';
 
@@ -26,35 +26,53 @@ export class ApiClientService {
   get<T>(ruta: string, params?: Record<string, string | number | boolean>): Observable<T> {
     return this.http
       .get<unknown>(`${this.baseUrl}${ruta}`, { params })
-      .pipe(map((respuesta) => this.desenvolver<T>(respuesta)), catchError((error: unknown) => this.traducir(error)));
+      .pipe(this.reintentar(), map((respuesta) => this.desenvolver<T>(respuesta)), catchError((error: unknown) => this.traducir(error)));
   }
 
   /** Ejecuta una peticion POST contra el backend. */
   post<T>(ruta: string, cuerpo: unknown): Observable<T> {
     return this.http
       .post<unknown>(`${this.baseUrl}${ruta}`, cuerpo)
-      .pipe(map((respuesta) => this.desenvolver<T>(respuesta)), catchError((error: unknown) => this.traducir(error)));
+      .pipe(this.reintentar(), map((respuesta) => this.desenvolver<T>(respuesta)), catchError((error: unknown) => this.traducir(error)));
   }
 
   /** Ejecuta una peticion PUT contra el backend. */
   put<T>(ruta: string, cuerpo: unknown): Observable<T> {
     return this.http
       .put<unknown>(`${this.baseUrl}${ruta}`, cuerpo)
-      .pipe(map((respuesta) => this.desenvolver<T>(respuesta)), catchError((error: unknown) => this.traducir(error)));
+      .pipe(this.reintentar(), map((respuesta) => this.desenvolver<T>(respuesta)), catchError((error: unknown) => this.traducir(error)));
   }
 
   /** Ejecuta una peticion PATCH contra el backend. */
   patch<T>(ruta: string, cuerpo: unknown): Observable<T> {
     return this.http
       .patch<unknown>(`${this.baseUrl}${ruta}`, cuerpo)
-      .pipe(map((respuesta) => this.desenvolver<T>(respuesta)), catchError((error: unknown) => this.traducir(error)));
+      .pipe(this.reintentar(), map((respuesta) => this.desenvolver<T>(respuesta)), catchError((error: unknown) => this.traducir(error)));
   }
 
   /** Ejecuta una peticion DELETE contra el backend. */
   delete<T>(ruta: string): Observable<T> {
     return this.http
       .delete<unknown>(`${this.baseUrl}${ruta}`)
-      .pipe(map((respuesta) => this.desenvolver<T>(respuesta)), catchError((error: unknown) => this.traducir(error)));
+      .pipe(this.reintentar(), map((respuesta) => this.desenvolver<T>(respuesta)), catchError((error: unknown) => this.traducir(error)));
+  }
+
+  /**
+   * Ante 429/503 espera y reintenta como máximo 2 veces. Evita que un pico
+   * de tráfico o un ataque provoque un temporal de peticiones desde el navegador.
+   */
+  private reintentar() {
+    return retry({
+      count: 2,
+      delay: (error: unknown, intento: number) => {
+        const e = error as HttpErrorResponse;
+        if (e?.status !== 429 && e?.status !== 503) return throwError(() => error);
+        const cabecera = Number(e.headers?.get('Retry-After'));
+        const segundos = Number.isFinite(cabecera) && cabecera > 0
+          ? Math.min(cabecera, 5) : intento;
+        return timer(segundos * 1000);
+      },
+    });
   }
 
   /** Desenvuelve ApiResponse del backend y conserva compatibilidad con respuestas antiguas. */

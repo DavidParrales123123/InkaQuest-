@@ -13,14 +13,24 @@ public record RateLimitProperties(
         /** Cuota general por IP y ruta (peticiones/minuto). */
         int maxPerMinute,
         /** Cuota estricta para rutas sensibles (webhooks, verificación pública). */
-        int strictPerMinute) {
+        int strictPerMinute,
+        /** Cuota global por IP, sumando todas las rutas. */
+        int globalPerMinute,
+        /** Cuota para rutas caras (chatbot, pagos, pedidos). */
+        int sensitivePerMinute) {
 
     public RateLimitProperties {
         if (maxPerMinute <= 0) {
-            maxPerMinute = 60;
+            maxPerMinute = 120;
         }
         if (strictPerMinute <= 0) {
-            strictPerMinute = 20;
+            strictPerMinute = 30;
+        }
+        if (globalPerMinute <= 0) {
+            globalPerMinute = 300;
+        }
+        if (sensitivePerMinute <= 0) {
+            sensitivePerMinute = 20;
         }
     }
 }

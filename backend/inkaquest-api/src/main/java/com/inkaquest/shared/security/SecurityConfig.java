@@ -88,7 +88,13 @@ public class SecurityConfig {
                                 .maxAgeInSeconds(63072000)
                                 .preload(true))
                         .contentTypeOptions(Customizer.withDefaults())
-                        .cacheControl(Customizer.withDefaults()));
+                        .cacheControl(Customizer.withDefaults())
+                        .addHeaderWriter((request, response) -> {
+                            response.setHeader("Permissions-Policy",
+                                    "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
+                            response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+                            response.setHeader("Cross-Origin-Resource-Policy", "same-site");
+                        }));
 
         return http.build();
     }
