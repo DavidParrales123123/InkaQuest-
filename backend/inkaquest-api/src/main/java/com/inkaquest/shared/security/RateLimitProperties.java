@@ -21,16 +21,16 @@ public record RateLimitProperties(
 
     public RateLimitProperties {
         if (maxPerMinute <= 0) {
-            maxPerMinute = 120;
+            maxPerMinute = 180;
         }
         if (strictPerMinute <= 0) {
             strictPerMinute = 30;
         }
         if (globalPerMinute <= 0) {
-            globalPerMinute = 300;
+            globalPerMinute = 600;
         }
         if (sensitivePerMinute <= 0) {
-            sensitivePerMinute = 20;
+            sensitivePerMinute = 30;
         }
     }
 }

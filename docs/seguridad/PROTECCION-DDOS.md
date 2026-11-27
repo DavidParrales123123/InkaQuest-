@@ -20,8 +20,8 @@ Cloudflare absorbe los ataques L3/L4 y gran parte de L7 antes de que lleguen a R
 
 `RateLimitFilter` + `RateLimiter`:
 
-- Cuota **global por IP** (todas las rutas): 300/min.
-- Cuota por IP + ruta: 120/min (general), 30/min (webhook y verificación pública), 20/min (chatbot, pagos y pedidos).
+- Cuota **global por IP** (todas las rutas): 600/min.
+- Cuota por IP + ruta: 180/min (general), 30/min (webhook y verificación pública), 30/min (chatbot, pagos y pedidos). La configuración pública de pagos usa la cuota general porque se consulta en cada carga de página.
 - Respuestas `429` con `Retry-After` y cabeceras `X-RateLimit-*`.
 - IP normalizada: `CF-Connecting-IP` → `X-Forwarded-For` → remoto, con validación para evitar evasión por cabeceras falsas.
 - Limpieza periódica de ventanas para evitar crecimiento de memoria (memory-DoS).
@@ -31,10 +31,10 @@ Cloudflare absorbe los ataques L3/L4 y gran parte de L7 antes de que lleguen a R
 Variables ajustables sin tocar código:
 
 ```
-RATE_LIMIT_MAX_PER_MINUTE=120
+RATE_LIMIT_MAX_PER_MINUTE=180
 RATE_LIMIT_STRICT_PER_MINUTE=30
-RATE_LIMIT_GLOBAL_PER_MINUTE=300
-RATE_LIMIT_SENSITIVE_PER_MINUTE=20
+RATE_LIMIT_GLOBAL_PER_MINUTE=600
+RATE_LIMIT_SENSITIVE_PER_MINUTE=30
 ```
 
 ## 3) Frontend (ya implementado)

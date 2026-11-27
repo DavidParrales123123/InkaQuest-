@@ -75,10 +75,10 @@ spring:
 # -----------------------------------------------------------------------------
 app:
   rate-limit:
-    max-per-minute: ${RATE_LIMIT_MAX_PER_MINUTE:120}
+    max-per-minute: ${RATE_LIMIT_MAX_PER_MINUTE:180}
     strict-per-minute: ${RATE_LIMIT_STRICT_PER_MINUTE:30}
-    global-per-minute: ${RATE_LIMIT_GLOBAL_PER_MINUTE:300}
-    sensitive-per-minute: ${RATE_LIMIT_SENSITIVE_PER_MINUTE:20}
+    global-per-minute: ${RATE_LIMIT_GLOBAL_PER_MINUTE:600}
+    sensitive-per-minute: ${RATE_LIMIT_SENSITIVE_PER_MINUTE:30}
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
     allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:https://*.up.railway.app}

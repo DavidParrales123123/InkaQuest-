@@ -80,7 +80,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         // Capa 2: tope por IP + ruta, con tiers según el tipo de endpoint.
         boolean estricta = RUTAS_ESTRICTAS.stream().anyMatch(ruta::startsWith);
-        boolean sensible = RUTAS_SENSIBLES.stream().anyMatch(ruta::startsWith);
+        // La configuración pública es una lectura tiny y la necesita cada carga de página.
+        boolean sensible = RUTAS_SENSIBLES.stream().anyMatch(ruta::startsWith)
+                && !"/api/v1/pagos/configuracion".equals(ruta);
         int limite = estricta ? maxEstricto : (sensible ? maxSensible : maxGeneral);
         if (!limiter.intentar(ip + "|" + ruta, limite)) {
             rechazar(response, ruta, limite, ip);
