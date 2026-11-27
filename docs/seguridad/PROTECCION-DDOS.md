@@ -41,6 +41,12 @@ RATE_LIMIT_SENSITIVE_PER_MINUTE=30
 
 `ApiClientService` reintenta automáticamente 2 veces con backoff ante `429`/`503` respetando `Retry-After`, evitando avalanchas desde el navegador.
 
+## Secretos y claves
+
+- **Ninguna clave secreta está en el repositorio.** `sk_test_*` / `sk_live_*` de Culqi, `SUPABASE_SERVICE_ROLE_KEY` y `SUPABASE_JWT_SECRET` existen únicamente como variables de Railway.
+- La clave **anon** de Supabase aparece en el frontend porque **es pública por diseño**: viaja a cada navegador y está protegida por RLS. Ocultarla en un SPA es imposible y no aporta seguridad.
+- Se eliminaron las copias duplicadas de la clave anon en archivos `.env` de ejemplo; solo queda la necesaria para compilar.
+
 ## Nota
 
-El rate limiting de la aplicación es por instancia (en memoria). Si Railway escala a varias réplicas, Cloudflare es la capa que garantiza el límite global real.
+El rate limiting de la aplicación es por instancia (en memoria). Si Railway escala a varias réplicas, se recomienda Cloudflare (o Redis) para un límite global real.

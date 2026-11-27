@@ -156,46 +156,10 @@ public class PedidosService {
                     "curso_slug", curso.getSlug()));
             transaccion = transaccionRepository.save(transaccion);
 
-            // Fuente del cargo: token 3DS recién autenticado o tarjeta guardada en el vault.
-            String sourceId = null;
-            if (request.culqiToken() != null && !request.culqiToken().isBlank()) {
-                sourceId = request.culqiToken().trim();
-                // Confirmación 3DS en el host seguro. Culqi.js ya la hace cuando
-                // gestiona el desafío; si fue confirmada, Culqi responde 400 y se ignora.
-                try {
-                    culqiClient.confirmar3DS(sourceId, estudiante.getEmail());
-                } catch (CulqiClient.CulqiException ignorada) {
-                    // El token ya estaba autenticado: se continúa con el cargo.
-                } catch (IllegalStateException sinLlavePublica) {
-                    // Sin llave pública no se puede confirmar por aquí; Culqi.js la gestionó.
-                }
-            } else if (request.metodoPagoId() != null) {
-                sourceId = tarjetasService.tarjetaDeUsuario(estudianteId, request.metodoPagoId());
-            }
-
+            String sourceId = resolverFuente(estudianteId, request.culqiToken(),
+                    request.metodoPagoId(), estudiante.getEmail());
             if (sourceId != null && culqiClient.configurado()) {
-                try {
-                    String cargoId = culqiClient.crearCobro(
-                            total.multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValueExact(),
-                            moneda,
-                            estudiante.getEmail(),
-                            pedido.getNumero(),
-                            sourceId);
-                    transaccion.setReferencia(cargoId);
-                    transaccion = transaccionRepository.save(transaccion);
-                } catch (CulqiClient.CulqiException e) {
-                    // No exponemos el detalle al frontend; el pedido queda pendiente.
-                    transaccion.setEstado(EstadoPago.fallido);
-                    transaccion.setDatos(Map.of(
-                            "numero_pedido", pedido.getNumero(),
-                            "curso_slug", curso.getSlug(),
-                            "error", "cargo_rechazado"));
-                    transaccionRepository.save(transaccion);
-                    pedido.setEstado(EstadoPedido.fallido);
-                    pedidoRepository.save(pedido);
-                    throw new BadRequestException(
-                            "El pago fue rechazado por el proveedor. Revisa tus datos e intentalo de nuevo.");
-                }
+                cargar(pedido, transaccion, sourceId);
             }
 
             return aResponse(pedido);
@@ -222,42 +186,55 @@ public class PedidosService {
                     .findFirst()
                     .orElseThrow(() -> new BadRequestException("No hay una transacción pendiente para este pedido."));
 
-            String sourceId = null;
-            if (request.culqiToken() != null && !request.culqiToken().isBlank()) {
-                sourceId = request.culqiToken().trim();
-                try {
-                    culqiClient.confirmar3DS(sourceId, pedido.getUsuarioId().getEmail());
-                } catch (CulqiClient.CulqiException yaConfirmado) {
-                    // Culqi.js ya gestionó el desafío 3DS.
-                } catch (IllegalStateException sinLlavePublica) {
-                    // Sin llave pública se confía en la tokenización de Culqi.js.
-                }
-            } else if (request.metodoPagoId() != null) {
-                sourceId = tarjetasService.tarjetaDeUsuario(actorId, request.metodoPagoId());
-            }
+            String sourceId = resolverFuente(actorId, request.culqiToken(),
+                    request.metodoPagoId(), pedido.getUsuarioId().getEmail());
             if (sourceId == null) {
                 throw new BadRequestException("Indica una tarjeta guardada o una tarjeta nueva.");
             }
-
-            try {
-                String cargoId = culqiClient.crearCobro(
-                        pedido.getTotal().multiply(BigDecimal.valueOf(100))
-                                .setScale(0, RoundingMode.HALF_UP).longValueExact(),
-                        pedido.getMoneda(),
-                        pedido.getUsuarioId().getEmail(),
-                        pedido.getNumero(),
-                        sourceId);
-                transaccion.setReferencia(cargoId);
-                transaccionRepository.save(transaccion);
-            } catch (CulqiClient.CulqiException e) {
-                transaccion.setEstado(EstadoPago.fallido);
-                transaccionRepository.save(transaccion);
-                pedido.setEstado(EstadoPedido.fallido);
-                pedidoRepository.save(pedido);
-                throw new BadRequestException("El pago fue rechazado por Culqi. Inténtalo nuevamente.");
-            }
+            cargar(pedido, transaccion, sourceId);
             return aResponse(pedido);
         });
+    }
+
+    /** Fuente del cargo: token 3DS autenticado o tarjeta guardada en el vault. */
+    private String resolverFuente(UUID actorId, String token, UUID metodoPagoId, String email) {
+        if (token != null && !token.isBlank()) {
+            String source = token.trim();
+            // Culqi.js ya gestiona el desafío; si fue confirmado antes, Culqi
+            // responde 400 y se continúa igual con el cargo.
+            try {
+                culqiClient.confirmar3DS(source, email);
+            } catch (CulqiClient.CulqiException yaConfirmado) {
+                // token ya autenticado
+            } catch (IllegalStateException sinLlavePublica) {
+                // sin llave pública: se confía en la tokenización de Culqi.js
+            }
+            return source;
+        }
+        return metodoPagoId != null ? tarjetasService.tarjetaDeUsuario(actorId, metodoPagoId) : null;
+    }
+
+    /** Ejecuta el cargo y registra la referencia; único punto de cobro del servicio. */
+    private void cargar(Pedido pedido, Transaccion transaccion, String sourceId) {
+        try {
+            String cargoId = culqiClient.crearCobro(
+                    pedido.getTotal().multiply(BigDecimal.valueOf(100))
+                            .setScale(0, RoundingMode.HALF_UP).longValueExact(),
+                    pedido.getMoneda(),
+                    pedido.getUsuarioId().getEmail(),
+                    pedido.getNumero(),
+                    sourceId);
+            transaccion.setReferencia(cargoId);
+            transaccionRepository.save(transaccion);
+        } catch (CulqiClient.CulqiException e) {
+            // El detalle del proveedor nunca se expone al cliente.
+            transaccion.setEstado(EstadoPago.fallido);
+            transaccion.setDatos(Map.of("numero_pedido", pedido.getNumero(), "error", "cargo_rechazado"));
+            transaccionRepository.save(transaccion);
+            pedido.setEstado(EstadoPedido.fallido);
+            pedidoRepository.save(pedido);
+            throw new BadRequestException("El pago fue rechazado por Culqi. Revisa tus datos e inténtalo de nuevo.");
+        }
     }
 
     /** Lista pedidos del estudiante autenticado. */
